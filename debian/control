@@ -1,0 +1,80 @@
+Source: apache-log4j2
+Section: java
+Priority: optional
+Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.org>
+Uploaders: Emmanuel Bourg <ebourg@apache.org>
+Build-Depends: cdbs, debhelper (>= 9), default-jdk, maven-debian-helper (>= 1.5)
+Build-Depends-Indep: default-jdk-doc,
+                     libapache-pom-java (>= 10),
+                     libcommons-logging-java,
+                     libcommons-logging-java-doc,
+                     libdisruptor-java,
+                     libgeronimo-jms-1.1-spec-java,
+                     libgnumail-java,
+                     libjackson2-databind-java,
+                     libjansi-java,
+                     libjpa-2.1-spec-java,
+                     liblightcouch-java,
+                     libmaven-bundle-plugin-java,
+                     libmaven-exec-plugin-java,
+                     libmaven-javadoc-plugin-java,
+                     libmongodb-java,
+                     libosgi-core-java,
+                     libservlet3.0-java,
+                     libslf4j-java
+Standards-Version: 3.9.5
+Vcs-Git: git://anonscm.debian.org/pkg-java/apache-log4j2.git
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-java/apache-log4j2.git
+Homepage: http://logging.apache.org/log4j/2.x/
+
+Package: liblog4j2-java
+Architecture: all
+Depends: ${maven:Depends}, ${misc:Depends}
+Suggests: ${maven:OptionalDepends}, liblog4j2-java-doc
+Description: Apache Log4j - Logging Framework for Java
+ Apache Log4j 2 is an upgrade to Log4j that provides significant improvements
+ over its predecessor, Log4j 1.x:
+ .
+ API Separation: The API for Log4j is separate from the implementation making
+ it clear for application developers which classes and methods they can use
+ while ensuring forward compatibility.
+ .
+ Improved Performance: Log4j 2 contains next-generation Asynchronous Loggers
+ based on the LMAX Disruptor library. In multi-threaded scenarios Asynchronous
+ Loggers have 10 times higher throughput and orders of magnitude lower latency
+ than Log4j 1.x.
+ .
+ Support for multiple APIs: While the Log4j 2 API will provide the best
+ performance, Log4j 2 provides support for the SLF4J and Commons Logging APIs.
+ .
+ Automatic Reloading of Configurations: Log4j 2 can automatically reload its 
+ configuration upon modification. It will do so without losing log events 
+ while reconfiguration is taking place.
+ .
+ Advanced Filtering: Log4j 2 supports filtering based on context
+ data, markers, regular expressions, and other components in the Log event.
+ Filtering can be specified to apply to all events before being passed to
+ Loggers or as they pass through Appenders.
+ .
+ Plugin Architecture: Log4j uses the plugin pattern to configure components.
+ As such, no code is needed to create and configure an Appender, Layout,
+ Pattern Converter, and so on. Log4j automatically recognizes plugins
+ and uses them when a configuration references them.
+ .
+ Property Support: Properties can be referenced in a configuration, Log4j will
+ directly replace them, or Log4j will pass them to an underlying component that
+ will dynamically resolve them. Properties come from values defined in the
+ configuration file, system properties, environment variables, the 
+ ThreadContext Map, and data present in the event.
+
+Package: liblog4j2-java-doc
+Architecture: all
+Section: doc
+Depends: ${maven:DocDepends}, ${misc:Depends}
+Recommends: ${maven:DocOptionalDepends}
+Suggests: liblog4j2-java
+Description: Documentation for Apache Log4j 2
+ Apache Log4j 2 is an upgrade to Log4j that provides significant improvements
+ over its predecessor, Log4j 1.x.
+ .
+ This package contains the API documentation of liblog4j2-java.

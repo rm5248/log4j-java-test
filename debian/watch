@@ -1,0 +1,4 @@
+
+version=3
+opts="uversionmangle=s/-(alpha|beta)/~$1/;s/-rc/~rc/" \
+http://svn.apache.org/repos/asf/logging/log4j/log4j2/tags/ log4j-(.*)/ debian debian/orig-tar.sh
