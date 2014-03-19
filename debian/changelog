@@ -1,5 +1,5 @@
-apache-log4j2 (2.0~beta9-1) UNRELEASED; urgency=medium
+apache-log4j2 (2.0~beta9-1) unstable; urgency=medium
 
   * Initial release (Closes: #718867)
 
- -- Emmanuel Bourg <ebourg@apache.org>  Mon, 27 Jan 2014 23:48:33 +0100
+ -- Emmanuel Bourg <ebourg@apache.org>  Wed, 19 Mar 2014 11:49:25 +0100
