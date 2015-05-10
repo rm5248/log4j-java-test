@@ -39,5 +39,6 @@ log4j-samples/pom.xml --ignore
 log4j-bom/pom.xml --ignore
 log4j-nosql/pom.xml --has-package-version --java-lib
 log4j-web/pom.xml --has-package-version --java-lib
+log4j-jul/pom.xml --has-package-version --java-lib
 log4j-perf/pom.xml --ignore
 log4j-iostreams/pom.xml --ignore
