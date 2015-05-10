@@ -1,7 +1,7 @@
 
 com.fasterxml.jackson.core jackson-core jar s/2\..*/2.x/ * *
 com.fasterxml.jackson.core jackson-databind jar s/2\..*/2.x/ * *
-com.fasterxml.jackson.dataformat jackson-dataformat-yaml s/2\..*/2.x/ * *
+com.fasterxml.jackson.dataformat jackson-dataformat-yaml * s/2\..*/2.x/ * *
 s/com\.sun\.mail/javax.mail/ s/javax\.mail/gnumail/ jar s/.*/debian/ * *
 org.apache apache pom s/.*/debian/ * *
 org.lightcouch lightcouch jar s/.*/debian/ * *
