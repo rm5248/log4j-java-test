@@ -38,3 +38,4 @@ org.slf4j slf4j-ext * * * *
 org.springframework spring-test * * * *
 org.jboss.spec.javax.jms jboss-jms-api_1.1_spec * * * *
 org.codehaus.woodstox woodstox-core-asl * * * *
+com.fasterxml.jackson.dataformat jackson-dataformat-xml * * * *
