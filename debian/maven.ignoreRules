@@ -23,6 +23,7 @@ org.apache.maven.plugins maven-pmd-plugin * * * *
 org.apache.maven.plugins maven-project-info-reports-plugin * * * *
 org.apache.maven.plugins maven-remote-resources-plugin * * * *
 org.apache.maven.plugins maven-surefire-plugin * * * *
+org.apache.maven.plugins maven-failsafe-plugin * * * *
 org.apache.maven.wagon wagon-ssh * * * *
 org.apache.rat apache-rat-plugin * * * *
 org.apache.velocity velocity * * * *
