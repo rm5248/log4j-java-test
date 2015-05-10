@@ -1,3 +1,9 @@
+apache-log4j2 (2.2-1) unstable; urgency=medium
+
+  * Imported Upstream version 2.2
+
+ -- Markus Koschany <apo@gambaru.de>  Sun, 10 May 2015 21:37:10 +0200
+
 apache-log4j2 (2.0~beta9-1) unstable; urgency=medium
 
   * Initial release (Closes: #718867)
