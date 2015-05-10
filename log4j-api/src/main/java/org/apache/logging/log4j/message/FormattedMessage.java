@@ -49,9 +49,7 @@ public class FormattedMessage implements Message {
     }
 
     public FormattedMessage(final String messagePattern, final Object[] arguments) {
-        this.messagePattern = messagePattern;
-        this.argArray = arguments;
-        this.throwable = null;
+        this(messagePattern, arguments, null);
     }
 
     /**
@@ -60,9 +58,7 @@ public class FormattedMessage implements Message {
      * @param arg The parameter.
      */
     public FormattedMessage(final String messagePattern, final Object arg) {
-        this.messagePattern = messagePattern;
-        this.argArray = new Object[] {arg};
-        this.throwable = null;
+        this(messagePattern, new Object[] {arg}, null);
     }
 
     /**
@@ -119,14 +115,14 @@ public class FormattedMessage implements Message {
             if (formats != null && formats.length > 0) {
                 return new MessageFormatMessage(msgPattern, args);
             }
-        } catch (final Exception ex) {
+        } catch (final Exception ignored) {
             // Obviously, the message is not a proper pattern for MessageFormat.
         }
         try {
             if (MSG_PATTERN.matcher(msgPattern).find()) {
                 return new StringFormattedMessage(msgPattern, args);
             }
-        } catch (final Exception ex) {
+        } catch (final Exception ignored) {
             // Also not properly formatted.
         }
         return new ParameterizedMessage(msgPattern, args, throwable);
@@ -164,7 +160,7 @@ public class FormattedMessage implements Message {
     @Override
     public String toString() {
         return "FormattedMessage[messagePattern=" + messagePattern + ", args=" +
-            Arrays.toString(argArray) +  "]";
+            Arrays.toString(argArray) + ']';
     }
 
     private void writeObject(final ObjectOutputStream out) throws IOException {
@@ -203,7 +199,7 @@ public class FormattedMessage implements Message {
             return throwable;
         }
         if (message == null) {
-            message = getMessage(messagePattern, argArray, throwable);
+            message = getMessage(messagePattern, argArray, null);
         }
         return message.getThrowable();
     }

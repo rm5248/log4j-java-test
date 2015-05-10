@@ -21,14 +21,17 @@ import org.apache.logging.log4j.Level;
 /**
  * This configuration defaults to no logging.
  */
-public class NullConfiguration extends BaseConfiguration {
+public class NullConfiguration extends AbstractConfiguration {
 
+    private static final long serialVersionUID = 1L;
     public static final String NULL_NAME = "Null";
 
     public NullConfiguration() {
+        super(ConfigurationSource.NULL_SOURCE);
 
         setName(NULL_NAME);
         final LoggerConfig root = getRootLogger();
         root.setLevel(Level.OFF);
     }
+
 }

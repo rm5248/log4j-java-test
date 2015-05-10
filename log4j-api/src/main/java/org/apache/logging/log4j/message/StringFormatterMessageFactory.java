@@ -24,11 +24,11 @@ package org.apache.logging.log4j.message;
  * <p>
  * This class is immutable.
  * </p>
- *
- * @version $Id: StringFormatterMessageFactory.java 1500521 2013-07-07 19:42:44Z nickwilliams $
  */
 public final class StringFormatterMessageFactory extends AbstractMessageFactory {
 
+    private static final long serialVersionUID = 1L;
+    
     /**
      * Instance of StringFormatterMessageFactory.
      */

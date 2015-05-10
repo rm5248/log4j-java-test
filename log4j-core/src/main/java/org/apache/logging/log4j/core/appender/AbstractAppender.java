@@ -24,7 +24,7 @@ import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.filter.AbstractFilterable;
-import org.apache.logging.log4j.core.helpers.Integers;
+import org.apache.logging.log4j.core.util.Integers;
 
 /**
  * Abstract base class for Appenders. Although Appenders do not have to extend this class, doing so
@@ -32,6 +32,9 @@ import org.apache.logging.log4j.core.helpers.Integers;
  */
 public abstract class AbstractAppender extends AbstractFilterable
     implements Appender {
+
+    private static final long serialVersionUID = 1L;
+
     private final boolean ignoreExceptions;
 
     private ErrorHandler handler = new DefaultErrorHandler(this);
@@ -40,15 +43,10 @@ public abstract class AbstractAppender extends AbstractFilterable
 
     private final String name;
 
-    /**
-     * Appenders set this by calling super.start().
-     */
-    private boolean started = false;
-
-    public static int parseInt(String s, int defaultValue) {
+    public static int parseInt(final String s, final int defaultValue) {
         try {
             return Integers.parseInt(s, defaultValue);
-        } catch (NumberFormatException e) {
+        } catch (final NumberFormatException e) {
             LOGGER.error("Could not parse \"{}\" as an integer,  using default value {}: {}", s, defaultValue, e);
             return defaultValue;
         }
@@ -81,7 +79,7 @@ public abstract class AbstractAppender extends AbstractFilterable
     }
 
     /**
-     * Handle an error with a message.
+     * Handle an error with a message using the {@link ErrorHandler} configured for this Appender.
      * @param msg The message.
      */
     public void error(final String msg) {
@@ -89,7 +87,8 @@ public abstract class AbstractAppender extends AbstractFilterable
     }
 
     /**
-     * Handle an error with a message, and exception and a logging event.
+     * Handle an error with a message, exception, and a logging event, using the {@link ErrorHandler} configured for
+     * this Appender.
      * @param msg The message.
      * @param event The LogEvent.
      * @param t The Throwable.
@@ -99,7 +98,7 @@ public abstract class AbstractAppender extends AbstractFilterable
     }
 
     /**
-     * Handle an error with a message and an exception.
+     * Handle an error with a message and an exception using the {@link ErrorHandler} configured for this Appender.
      * @param msg The message.
      * @param t The Throwable.
      */
@@ -146,15 +145,6 @@ public abstract class AbstractAppender extends AbstractFilterable
     }
 
     /**
-     * Returns true if the Appender is started, false otherwise.
-     * @return true if the Appender is started, false otherwise.
-     */
-    @Override
-    public boolean isStarted() {
-        return started;
-    }
-
-    /**
      * The handler must be set before the appender is started.
      * @param handler The ErrorHandler to use.
      */
@@ -168,24 +158,6 @@ public abstract class AbstractAppender extends AbstractFilterable
             return;
         }
         this.handler = handler;
-    }
-
-    /**
-     * Start the Appender.
-     */
-    @Override
-    public void start() {
-        startFilter();
-        this.started = true;
-    }
-
-    /**
-     * Stop the Appender.
-     */
-    @Override
-    public void stop() {
-        this.started = false;
-        stopFilter();
     }
 
     @Override

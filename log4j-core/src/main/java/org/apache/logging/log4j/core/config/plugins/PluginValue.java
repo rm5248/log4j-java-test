@@ -16,16 +16,24 @@
  */
 package org.apache.logging.log4j.core.config.plugins;
 
+import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.apache.logging.log4j.core.config.plugins.visitors.PluginValueVisitor;
+
 /**
- * Identifies a parameter as a value.
+ * Identifies a parameter as a value. These correspond with property values generally, but are meant as values to be
+ * used as a placeholder value somewhere.
+ *
+ * @see org.apache.logging.log4j.core.config.PropertiesPlugin
  */
+@Documented
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.PARAMETER)
+@Target({ElementType.PARAMETER, ElementType.FIELD})
+@PluginVisitorStrategy(PluginValueVisitor.class)
 public @interface PluginValue {
 
     String value();

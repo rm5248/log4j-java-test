@@ -18,7 +18,7 @@ package org.apache.logging.log4j.message;
 
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 /**
  *
@@ -82,5 +82,30 @@ public class FormattedMessageTest {
         msg = new FormattedMessage(testMsg, array, null);
         result = msg.getFormattedMessage();
         assertEquals(testMsg, result);
+    }
+
+    @Test
+    public void testUnsafeWithMutableParams() { // LOG4J2-763
+        final String testMsg = "Test message %s";
+        final Mutable param = new Mutable().set("abc");
+        final FormattedMessage msg = new FormattedMessage(testMsg, param);
+
+        // modify parameter before calling msg.getFormattedMessage
+        param.set("XYZ");
+        final String actual = msg.getFormattedMessage();
+        assertEquals("Expected most recent param value", "Test message XYZ", actual);
+    }
+
+    @Test
+    public void testSafeAfterGetFormattedMessageIsCalled() { // LOG4J2-763
+        final String testMsg = "Test message %s";
+        final Mutable param = new Mutable().set("abc");
+        final FormattedMessage msg = new FormattedMessage(testMsg, param);
+
+        // modify parameter after calling msg.getFormattedMessage
+        msg.getFormattedMessage(); // freeze the formatted message
+        param.set("XYZ");
+        final String actual = msg.getFormattedMessage();
+        assertEquals("Should use initial param value", "Test message abc", actual);
     }
 }

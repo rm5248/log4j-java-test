@@ -21,7 +21,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
-import java.util.Map;
 
 import javax.servlet.jsp.tagext.Tag;
 
@@ -98,8 +97,7 @@ public class CatchingTagTest {
 
     private void verify(final String expected) {
         final LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-        final Map<String, Appender> list = ctx.getConfiguration().getAppenders();
-        final Appender listApp = list.get("List");
+        final Appender listApp = ctx.getConfiguration().getAppender("List");
         assertNotNull("Missing Appender", listApp);
         assertTrue("Not a ListAppender", listApp instanceof ListAppender);
         final List<String> events = ((ListAppender) listApp).getMessages();

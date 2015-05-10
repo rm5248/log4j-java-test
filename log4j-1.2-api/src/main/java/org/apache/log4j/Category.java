@@ -27,10 +27,11 @@ import org.apache.log4j.helpers.NullEnumeration;
 import org.apache.log4j.spi.LoggerFactory;
 import org.apache.log4j.spi.LoggingEvent;
 import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.helpers.NameUtil;
+import org.apache.logging.log4j.core.util.NameUtil;
 import org.apache.logging.log4j.message.LocalizedMessage;
 import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.message.ObjectMessage;
+import org.apache.logging.log4j.util.Strings;
 
 
 /**
@@ -119,12 +120,12 @@ public class Category {
     }
 
     public static Category getRoot() {
-        return getInstance("");
+        return getInstance(Strings.EMPTY);
     }
 
 
     static Category getRoot(final LoggerContext context) {
-        return getInstance(context, "");
+        return getInstance(context, Strings.EMPTY);
     }
 
     private static ConcurrentMap<String, Logger> getLoggersMap(final LoggerContext context) {
@@ -155,19 +156,26 @@ public class Category {
     }
 
     public final Level getEffectiveLevel() {
-        final org.apache.logging.log4j.Level level = logger.getLevel();
-
-        switch (level) {
-            case TRACE:
-                return Level.TRACE;
-            case DEBUG:
-                return Level.DEBUG;
-            case INFO:
-                return Level.INFO;
-            case WARN:
-                return Level.WARN;
-            default:
-                return Level.ERROR;
+        switch (logger.getLevel().getStandardLevel()) {
+        case ALL:
+            return Level.ALL;
+        case TRACE:
+            return Level.TRACE;
+        case DEBUG:
+            return Level.DEBUG;
+        case INFO:
+            return Level.INFO;
+        case WARN:
+            return Level.WARN;
+        case ERROR:
+            return Level.ERROR;
+        case FATAL:
+            return Level.FATAL;
+        case OFF:
+            return Level.OFF;
+        default:
+            // TODO Should this be an IllegalStateException?
+            return Level.OFF;
         }
     }
 
@@ -335,7 +343,7 @@ public class Category {
     public void forcedLog(final String fqcn, final Priority level, final Object message, final Throwable t) {
         final org.apache.logging.log4j.Level lvl = org.apache.logging.log4j.Level.toLevel(level.toString());
         final Message msg = message instanceof Message ? (Message) message : new ObjectMessage(message);
-        logger.log(null, fqcn, lvl, msg, t);
+        logger.logMessage(fqcn, lvl, null, msg, t);
     }
 
     public boolean exists(final String name) {
@@ -429,7 +437,7 @@ public class Category {
     private void maybeLog(final String fqcn, final org.apache.logging.log4j.Level level,
             final Object message, final Throwable throwable) {
         if (logger.isEnabled(level, null, message, throwable)) {
-            logger.log(null, FQCN, level, new ObjectMessage(message), throwable);
+            logger.logMessage(FQCN, level, null, new ObjectMessage(message), throwable);
         }
     }
 

@@ -19,7 +19,8 @@ package org.apache.logging.log4j.core.jmx;
 import javax.management.ObjectName;
 
 import org.apache.logging.log4j.core.Appender;
-import org.apache.logging.log4j.core.helpers.Assert;
+import org.apache.logging.log4j.core.filter.AbstractFilterable;
+import org.apache.logging.log4j.core.util.Assert;
 
 /**
  * Implementation of the {@code AppenderAdminMBean} interface.
@@ -39,8 +40,8 @@ public class AppenderAdmin implements AppenderAdminMBean {
      */
     public AppenderAdmin(final String contextName, final Appender appender) {
         // super(executor); // no notifications for now
-        this.contextName = Assert.isNotNull(contextName, "contextName");
-        this.appender = Assert.isNotNull(appender, "appender");
+        this.contextName = Assert.requireNonNull(contextName, "contextName");
+        this.appender = Assert.requireNonNull(appender, "appender");
         try {
             final String ctxName = Server.escape(this.contextName);
             final String configName = Server.escape(appender.getName());
@@ -72,12 +73,20 @@ public class AppenderAdmin implements AppenderAdminMBean {
     }
 
     @Override
-    public boolean isExceptionSuppressed() {
+    public boolean isIgnoreExceptions() {
         return appender.ignoreExceptions();
     }
 
     @Override
     public String getErrorHandler() {
         return String.valueOf(appender.getHandler());
+    }
+
+    @Override
+    public String getFilter() {
+        if (appender instanceof AbstractFilterable) {
+            return String.valueOf(((AbstractFilterable) appender).getFilter());
+        }
+        return null;
     }
 }

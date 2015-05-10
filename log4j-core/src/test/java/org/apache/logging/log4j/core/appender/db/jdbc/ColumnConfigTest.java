@@ -16,6 +16,7 @@
  */
 package org.apache.logging.log4j.core.appender.db.jdbc;
 
+import org.apache.logging.log4j.util.Strings;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -83,7 +84,7 @@ public class ColumnConfigTest {
     @Test
     public void testNoSettingNoConfig03() {
         final ColumnConfig config =
-                ColumnConfig.createColumnConfig(null, "columnName01", "", "", "", null, null);
+                ColumnConfig.createColumnConfig(null, "columnName01", Strings.EMPTY, Strings.EMPTY, Strings.EMPTY, null, null);
 
         assertNull("The result should be null.", config);
     }
@@ -134,7 +135,7 @@ public class ColumnConfigTest {
     @Test
     public void testPatternColumn02() {
         final ColumnConfig config =
-                ColumnConfig.createColumnConfig(null, "anotherName02", "%X{id} %level", "", "false", "false", "true");
+                ColumnConfig.createColumnConfig(null, "anotherName02", "%X{id} %level", Strings.EMPTY, "false", "false", "true");
 
         assertNotNull("The result should not be null.", config);
         assertEquals("The column name is not correct.", "anotherName02", config.getColumnName());
@@ -149,7 +150,7 @@ public class ColumnConfigTest {
     @Test
     public void testPatternColumn03() {
         final ColumnConfig config =
-                ColumnConfig.createColumnConfig(null, "anotherName02", "%X{id} %level", "", "false", "true", "false");
+                ColumnConfig.createColumnConfig(null, "anotherName02", "%X{id} %level", Strings.EMPTY, "false", "true", "false");
 
         assertNotNull("The result should not be null.", config);
         assertEquals("The column name is not correct.", "anotherName02", config.getColumnName());

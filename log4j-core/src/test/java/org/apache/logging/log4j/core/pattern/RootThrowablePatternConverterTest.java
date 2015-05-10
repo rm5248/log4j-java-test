@@ -16,13 +16,13 @@
  */
 package org.apache.logging.log4j.core.pattern;
 
-import static org.junit.Assert.assertTrue;
-
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.message.SimpleMessage;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 /**
  *
@@ -56,10 +56,10 @@ public class RootThrowablePatternConverterTest {
         try {
             try {
                 throw new NullPointerException("null pointer");
-            } catch (NullPointerException e) {
+            } catch (final NullPointerException e) {
                 throw new IllegalArgumentException("IllegalArgument", e);
             }
-        } catch (IllegalArgumentException e) {
+        } catch (final IllegalArgumentException e) {
             parent = e;
         }
         final LogEvent event = new Log4jLogEvent("testLogger", null, this.getClass().getName(), Level.DEBUG,

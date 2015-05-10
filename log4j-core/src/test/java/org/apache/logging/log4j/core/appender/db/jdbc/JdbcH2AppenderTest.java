@@ -20,12 +20,14 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+import org.apache.logging.log4j.util.Strings;
+
 /**
  * Tests the JDBC appender with the H2 database in memory.
  */
 public class JdbcH2AppenderTest extends AbstractJdbcAppenderTest {
     private static final String USER_ID = "sa";
-    private static final String PASSWORD = "";
+    private static final String PASSWORD = Strings.EMPTY;
 
     public JdbcH2AppenderTest() {
         super("h2");
@@ -34,7 +36,6 @@ public class JdbcH2AppenderTest extends AbstractJdbcAppenderTest {
     /**
      * Referred from log4j2-h2-factory-method.xml.
      */
-    @SuppressWarnings("unused")
     public static Connection getConfigConnection() throws SQLException {
         return DriverManager.getConnection("jdbc:h2:mem:Log4j", USER_ID, PASSWORD);
     }

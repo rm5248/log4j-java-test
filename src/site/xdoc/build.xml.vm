@@ -15,6 +15,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
+#set($dollar = '$')
 <document xmlns="http://maven.apache.org/XDOC/2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/XDOC/2.0 http://maven.apache.org/xsd/xdoc-2.0.xsd">
 
@@ -25,7 +26,7 @@
 	<body>
 		<section name="Building and Installing Log4j">
 
-      <p>
+      <p class="text-info">
         <i>The information below is for developers who want to modify Log4j or
         contribute to Log4j. If your goal is to add logging to your application
         you don't need to build from the source code,
@@ -33,31 +34,38 @@
         </i>
       </p>
       <p>
-        Log4j 2.x is hosted in the Apache Software Foundation's subversion repository. Details on obtaining the
+        Log4j 2 is hosted in the Apache Software Foundation's Git repository. Details on obtaining the
         most current source code can be found at
         <a href="./source-repository.html">Log4j Source Repository</a>. The source from the latest release may be
         obtained by downloading it using the instructions at <a href="./download.html">Log4j Downloads</a>.
       </p>
       <p>
-        Log4j 2.x uses Maven 2 or 3 as its build tool. To build and install Log4j in your local Maven cache, from
-        the root directory run:
+        Log4j 2.x uses Maven 3 as its build tool. To build and install Log4j in your local Maven cache, from
+        the root directory run: <kbd>mvn install</kbd>
       </p>
-      <pre>mvn install</pre>
+      <p class="bg-warning">Note that in order to build the website, you need to use
+          <a href="http://maven.apache.org/download.cgi#Maven_3.0.5">Maven 3.0.5</a> due to plugin compatibility
+          issues as documented in
+          <a href="http://jira.codehaus.org/browse/MSITE-695">MSITE-695</a>.
+      </p>
       <p>
         Then to build the full site, you must use a local staging directory:
       </p>
       <pre>mvn site
 [Windows] mvn site:stage-deploy -DstagingSiteURL=file:///%HOME%/log4j
-[Unix] mvn site:stage-deploy -DstagingSiteURL=file:///$HOME/log4j</pre>
+[Unix] mvn site:stage-deploy -DstagingSiteURL=file:///${dollar}HOME/log4j</pre>
       <p>
-        To rebuild only what's changed and execute the tests, run:
+          To rebuild only what's changed and execute the tests, run: <kbd>mvn test</kbd>
       </p>
-      <pre>mvn test</pre>
       <p>
-        To rebuild from scratch, add "clean", for example:
+          To rebuild from scratch, add "clean", for example: <kbd>mvn clean test</kbd>
       </p>
-      <pre>mvn clean test</pre>
 
-		</section>
+    </section>
+	<section name="Releasing Log4j">
+      <p>
+	    Please see the wiki <a href="https://wiki.apache.org/logging/Log4j2ReleaseGuide">Log4j2ReleaseGuide</a>.
+      </p>
+    </section>
 	</body>
 </document>

@@ -27,10 +27,10 @@ import java.util.Set;
 /**
  * Handles messages that consist of a format string containing '{}' to represent each replaceable token, and
  * the parameters.
- * <p/>
- * This class was originally written for Lillith (http://mac.freshmeat.net/projects/lilith-viewer) by
- * Joern Huxhorn where it is licensed under the LGPL. It has been relicensed here with his permission
- * providing that this attribution remain.
+ * <p>
+ * This class was originally written for <a href="http://lilithapp.com/">Lilith</a> by Joern Huxhorn where it is
+ * licensed under the LGPL. It has been relicensed here with his permission providing that this attribution remain.
+ * </p>
  */
 public class ParameterizedMessage implements Message {
 
@@ -97,24 +97,23 @@ public class ParameterizedMessage implements Message {
     public ParameterizedMessage(final String messagePattern, final Object[] objectArgs, final Throwable throwable) {
         this.messagePattern = messagePattern;
         this.throwable = throwable;
-        this.stringArgs = parseArguments(objectArgs);
+        this.stringArgs = argumentsToStrings(objectArgs);
     }
 
     /**
-     * <p>This method returns a ParameterizedMessage which contains the arguments converted to String
-     * as well as an optional Throwable.</p>
-     * <p/>
+     * Constructs a ParameterizedMessage which contains the arguments converted to String as well as an optional
+     * Throwable.
+     *
      * <p>If the last argument is a Throwable and is NOT used up by a placeholder in the message pattern it is returned
-     * in ParameterizedMessage.getThrowable() and won't be contained in the created String[].<br/>
-     * If it is used up ParameterizedMessage.getThrowable() will return null even if the last argument was a
-     * Throwable!</p>
+     * in {@link #getThrowable()} and won't be contained in the created String[].
+     * If it is used up {@link #getThrowable()} will return null even if the last argument was a Throwable!</p>
      *
      * @param messagePattern the message pattern that to be checked for placeholders.
      * @param arguments      the argument array to be converted.
      */
     public ParameterizedMessage(final String messagePattern, final Object[] arguments) {
         this.messagePattern = messagePattern;
-        this.stringArgs = parseArguments(arguments);
+        this.stringArgs = argumentsToStrings(arguments);
     }
 
     /**
@@ -136,22 +135,18 @@ public class ParameterizedMessage implements Message {
         this(messagePattern, new Object[]{arg1, arg2});
     }
 
-    private String[] parseArguments(final Object[] arguments) {
+    private String[] argumentsToStrings(final Object[] arguments) {
         if (arguments == null) {
             return null;
         }
         final int argsCount = countArgumentPlaceholders(messagePattern);
         int resultArgCount = arguments.length;
-        if (argsCount < arguments.length) {
-            if (throwable == null && arguments[arguments.length - 1] instanceof Throwable) {
-                throwable = (Throwable) arguments[arguments.length - 1];
-                resultArgCount--;
-            }
+        if (argsCount < arguments.length && throwable == null && arguments[arguments.length - 1] instanceof Throwable) {
+            throwable = (Throwable) arguments[arguments.length - 1];
+            resultArgCount--;
         }
         argArray = new Object[resultArgCount];
-        for (int i = 0; i < resultArgCount; ++i) {
-            argArray[i] = arguments[i];
-        }
+        System.arraycopy(arguments, 0, argArray, 0, resultArgCount);
 
         String[] strArgs;
         if (argsCount == 1 && throwable == null && arguments.length > 1) {
@@ -267,34 +262,31 @@ public class ParameterizedMessage implements Message {
             if (curChar == ESCAPE_CHAR) {
                 escapeCounter++;
             } else {
-                if (curChar == DELIM_START) {
-                    if (i < messagePattern.length() - 1) {
-                        if (messagePattern.charAt(i + 1) == DELIM_STOP) {
-                            // write escaped escape chars
-                            final int escapedEscapes = escapeCounter / 2;
-                            for (int j = 0; j < escapedEscapes; j++) {
-                                result.append(ESCAPE_CHAR);
-                            }
-
-                            if (escapeCounter % 2 == 1) {
-                                // i.e. escaped
-                                // write escaped escape chars
-                                result.append(DELIM_START);
-                                result.append(DELIM_STOP);
-                            } else {
-                                // unescaped
-                                if (currentArgument < arguments.length) {
-                                    result.append(arguments[currentArgument]);
-                                } else {
-                                    result.append(DELIM_START).append(DELIM_STOP);
-                                }
-                                currentArgument++;
-                            }
-                            i++;
-                            escapeCounter = 0;
-                            continue;
-                        }
+                if (curChar == DELIM_START && i < messagePattern.length() - 1
+                        && messagePattern.charAt(i + 1) == DELIM_STOP) {
+                    // write escaped escape chars
+                    final int escapedEscapes = escapeCounter / 2;
+                    for (int j = 0; j < escapedEscapes; j++) {
+                        result.append(ESCAPE_CHAR);
                     }
+
+                    if (escapeCounter % 2 == 1) {
+                        // i.e. escaped
+                        // write escaped escape chars
+                        result.append(DELIM_START);
+                        result.append(DELIM_STOP);
+                    } else {
+                        // unescaped
+                        if (currentArgument < arguments.length) {
+                            result.append(arguments[currentArgument]);
+                        } else {
+                            result.append(DELIM_START).append(DELIM_STOP);
+                        }
+                        currentArgument++;
+                    }
+                    i++;
+                    escapeCounter = 0;
+                    continue;
                 }
                 // any other char beside ESCAPE or DELIM_START/STOP-combo
                 // write unescaped escape chars
@@ -334,13 +326,9 @@ public class ParameterizedMessage implements Message {
             if (curChar == ESCAPE_CHAR) {
                 isEscaped = !isEscaped;
             } else if (curChar == DELIM_START) {
-                if (!isEscaped) {
-                    if (i < messagePattern.length() - 1) {
-                        if (messagePattern.charAt(i + 1) == DELIM_STOP) {
-                            result++;
-                            i++;
-                        }
-                    }
+                if (!isEscaped && i < messagePattern.length() - 1 && messagePattern.charAt(i + 1) == DELIM_STOP) {
+                    result++;
+                    i++;
                 }
                 isEscaped = false;
             } else {
@@ -355,14 +343,16 @@ public class ParameterizedMessage implements Message {
      * Primitive arrays are converted using their respective Arrays.toString methods while
      * special handling is implemented for "container types", i.e. Object[], Map and Collection because those could
      * contain themselves.
-     * <p/>
+     * <p>
      * It should be noted that neither AbstractMap.toString() nor AbstractCollection.toString() implement such a
      * behavior. They only check if the container is directly contained in itself, but not if a contained container
      * contains the original one. Because of that, Arrays.toString(Object[]) isn't safe either.
      * Confusing? Just read the last paragraph again and check the respective toString() implementation.
-     * <p/>
+     * </p>
+     * <p>
      * This means, in effect, that logging would produce a usable output even if an ordinary System.out.println(o)
      * would produce a relatively hard-to-debug StackOverflowError.
+     * </p>
      * @param o The object.
      * @return The String representation.
      */
@@ -384,17 +374,20 @@ public class ParameterizedMessage implements Message {
      * Primitive arrays are converted using their respective Arrays.toString methods while
      * special handling is implemented for "container types", i.e. Object[], Map and Collection because those could
      * contain themselves.
-     * <p/>
+     * <p>
      * dejaVu is used in case of those container types to prevent an endless recursion.
-     * <p/>
+     * </p>
+     * <p>
      * It should be noted that neither AbstractMap.toString() nor AbstractCollection.toString() implement such a
      * behavior.
      * They only check if the container is directly contained in itself, but not if a contained container contains the
      * original one. Because of that, Arrays.toString(Object[]) isn't safe either.
      * Confusing? Just read the last paragraph again and check the respective toString() implementation.
-     * <p/>
+     * </p>
+     * <p>
      * This means, in effect, that logging would produce a usable output even if an ordinary System.out.println(o)
      * would produce a relatively hard-to-debug StackOverflowError.
+     * </p>
      *
      * @param o      the Object to convert into a String
      * @param str    the StringBuilder that o will be appended to
@@ -436,7 +429,7 @@ public class ParameterizedMessage implements Message {
                 } else {
                     dejaVu.add(id);
                     final Object[] oArray = (Object[]) o;
-                    str.append("[");
+                    str.append('[');
                     boolean first = true;
                     for (final Object current : oArray) {
                         if (first) {
@@ -446,7 +439,7 @@ public class ParameterizedMessage implements Message {
                         }
                         recursiveDeepToString(current, str, new HashSet<String>(dejaVu));
                     }
-                    str.append("]");
+                    str.append(']');
                 }
                 //str.append(Arrays.deepToString((Object[]) o));
             }
@@ -458,7 +451,7 @@ public class ParameterizedMessage implements Message {
             } else {
                 dejaVu.add(id);
                 final Map<?, ?> oMap = (Map<?, ?>) o;
-                str.append("{");
+                str.append('{');
                 boolean isFirst = true;
                 for (final Object o1 : oMap.entrySet()) {
                     final Map.Entry<?, ?> current = (Map.Entry<?, ?>) o1;
@@ -470,10 +463,10 @@ public class ParameterizedMessage implements Message {
                     final Object key = current.getKey();
                     final Object value = current.getValue();
                     recursiveDeepToString(key, str, new HashSet<String>(dejaVu));
-                    str.append("=");
+                    str.append('=');
                     recursiveDeepToString(value, str, new HashSet<String>(dejaVu));
                 }
-                str.append("}");
+                str.append('}');
             }
         } else if (o instanceof Collection) {
             // special handling of container Collection
@@ -483,7 +476,7 @@ public class ParameterizedMessage implements Message {
             } else {
                 dejaVu.add(id);
                 final Collection<?> oCol = (Collection<?>) o;
-                str.append("[");
+                str.append('[');
                 boolean isFirst = true;
                 for (final Object anOCol : oCol) {
                     if (isFirst) {
@@ -493,7 +486,7 @@ public class ParameterizedMessage implements Message {
                     }
                     recursiveDeepToString(anOCol, str, new HashSet<String>(dejaVu));
                 }
-                str.append("]");
+                str.append(']');
             }
         } else if (o instanceof Date) {
             final Date date = (Date) o;
@@ -523,17 +516,19 @@ public class ParameterizedMessage implements Message {
     /**
      * This method returns the same as if Object.toString() would not have been
      * overridden in obj.
-     * <p/>
+     * <p>
      * Note that this isn't 100% secure as collisions can always happen with hash codes.
-     * <p/>
+     * </p>
+     * <p>
      * Copied from Object.hashCode():
+     * </p>
+     * <blockquote>
      * As much as is reasonably practical, the hashCode method defined by
-     * class <tt>Object</tt> does return distinct integers for distinct
+     * class {@code Object} does return distinct integers for distinct
      * objects. (This is typically implemented by converting the internal
      * address of the object into an integer, but this implementation
-     * technique is not required by the
-     * Java<font size="-2"><sup>TM</sup></font>
-     * programming language.)
+     * technique is not required by the Java&#8482; programming language.)
+     * </blockquote>
      *
      * @param obj the Object that is to be converted into an identity string.
      * @return the identity string as also defined in Object.toString()
@@ -542,12 +537,12 @@ public class ParameterizedMessage implements Message {
         if (obj == null) {
             return null;
         }
-        return obj.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(obj));
+        return obj.getClass().getName() + '@' + Integer.toHexString(System.identityHashCode(obj));
     }
 
     @Override
     public String toString() {
         return "ParameterizedMessage[messagePattern=" + messagePattern + ", stringArgs=" +
-            Arrays.toString(stringArgs) + ", throwable=" + throwable + "]";
+            Arrays.toString(stringArgs) + ", throwable=" + throwable + ']';
     }
 }

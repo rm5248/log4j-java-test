@@ -21,6 +21,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Marker;
+import org.apache.logging.log4j.MarkerManager;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.status.StatusLogger;
@@ -28,12 +30,14 @@ import org.apache.logging.log4j.status.StatusLogger;
 /**
  * Formats the current date or the date in the LogEvent. The "key" is used as the format String.
  */
-@Plugin(name = "date", category = "Lookup")
+@Plugin(name = "date", category = StrLookup.CATEGORY)
 public class DateLookup implements StrLookup {
 
     private static final Logger LOGGER = StatusLogger.getLogger();
+    private static final Marker LOOKUP = MarkerManager.getMarker("LOOKUP");
+
     /**
-     * Get the value of the environment variable.
+     * Looks up the value of the environment variable.
      * @param key the format to use. If null, the default DateFormat will be used.
      * @return The value of the environment variable.
      */
@@ -43,14 +47,14 @@ public class DateLookup implements StrLookup {
     }
 
     /**
-     * Get the value of the environment variable.
+     * Looks up the value of the environment variable.
      * @param event The current LogEvent (is ignored by this StrLookup).
      * @param key the format to use. If null, the default DateFormat will be used.
      * @return The value of the environment variable.
      */
     @Override
     public String lookup(final LogEvent event, final String key) {
-        return formatDate(event.getMillis(), key);
+        return formatDate(event.getTimeMillis(), key);
     }
 
     private String formatDate(final long date, final String format) {
@@ -59,7 +63,7 @@ public class DateLookup implements StrLookup {
             try {
                 dateFormat = new SimpleDateFormat(format);
             } catch (final Exception ex) {
-                LOGGER.error("Invalid date format: \"" + format + "\", using default", ex);
+                LOGGER.error(LOOKUP, "Invalid date format: [{}], using default", format, ex);
             }
         }
         if (dateFormat == null) {

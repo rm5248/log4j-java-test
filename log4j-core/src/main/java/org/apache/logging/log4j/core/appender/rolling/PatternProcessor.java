@@ -16,11 +16,13 @@
  */
 package org.apache.logging.log4j.core.appender.rolling;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.core.lookup.StrSubstitutor;
@@ -29,12 +31,14 @@ import org.apache.logging.log4j.core.pattern.DatePatternConverter;
 import org.apache.logging.log4j.core.pattern.FormattingInfo;
 import org.apache.logging.log4j.core.pattern.PatternConverter;
 import org.apache.logging.log4j.core.pattern.PatternParser;
+import org.apache.logging.log4j.status.StatusLogger;
 
 /**
  * Parse the rollover pattern.
  */
 public class PatternProcessor {
 
+    protected static final Logger LOGGER = StatusLogger.getLogger();
     private static final String KEY = "FileConverter";
 
     private static final char YEAR_CHAR = 'y';
@@ -62,7 +66,7 @@ public class PatternProcessor {
         final PatternParser parser = createPatternParser();
         final List<PatternConverter> converters = new ArrayList<PatternConverter>();
         final List<FormattingInfo> fields = new ArrayList<FormattingInfo>();
-        parser.parse(pattern, converters, fields);
+        parser.parse(pattern, converters, fields, false, false);
         final FormattingInfo[] infoArray = new FormattingInfo[fields.size()];
         patternFields = fields.toArray(infoArray);
         final ArrayPatternConverter[] converterArray = new ArrayPatternConverter[converters.size()];
@@ -100,21 +104,24 @@ public class PatternProcessor {
             nextTime = cal.getTimeInMillis();
             cal.add(Calendar.YEAR, -1);
             nextFileTime = cal.getTimeInMillis();
-            return nextTime;
+            return debugGetNextTime(nextTime);
         }
+        cal.set(Calendar.MONTH, currentCal.get(Calendar.MONTH));
         if (frequency == RolloverFrequency.MONTHLY) {
             increment(cal, Calendar.MONTH, increment, modulus);
             nextTime = cal.getTimeInMillis();
             cal.add(Calendar.MONTH, -1);
             nextFileTime = cal.getTimeInMillis();
-            return nextTime;
+            return debugGetNextTime(nextTime);
         }
         if (frequency == RolloverFrequency.WEEKLY) {
+            cal.set(Calendar.WEEK_OF_YEAR, currentCal.get(Calendar.WEEK_OF_YEAR));
             increment(cal, Calendar.WEEK_OF_YEAR, increment, modulus);
+            cal.set(Calendar.DAY_OF_WEEK, currentCal.getFirstDayOfWeek());
             nextTime = cal.getTimeInMillis();
             cal.add(Calendar.WEEK_OF_YEAR, -1);
             nextFileTime = cal.getTimeInMillis();
-            return nextTime;
+            return debugGetNextTime(nextTime);
         }
         cal.set(Calendar.DAY_OF_YEAR, currentCal.get(Calendar.DAY_OF_YEAR));
         if (frequency == RolloverFrequency.DAILY) {
@@ -122,15 +129,15 @@ public class PatternProcessor {
             nextTime = cal.getTimeInMillis();
             cal.add(Calendar.DAY_OF_YEAR, -1);
             nextFileTime = cal.getTimeInMillis();
-            return nextTime;
+            return debugGetNextTime(nextTime);
         }
-        cal.set(Calendar.HOUR, currentCal.get(Calendar.HOUR));
+        cal.set(Calendar.HOUR_OF_DAY, currentCal.get(Calendar.HOUR_OF_DAY));
         if (frequency == RolloverFrequency.HOURLY) {
-            increment(cal, Calendar.HOUR, increment, modulus);
+            increment(cal, Calendar.HOUR_OF_DAY, increment, modulus);
             nextTime = cal.getTimeInMillis();
-            cal.add(Calendar.HOUR, -1);
+            cal.add(Calendar.HOUR_OF_DAY, -1);
             nextFileTime = cal.getTimeInMillis();
-            return nextTime;
+            return debugGetNextTime(nextTime);
         }
         cal.set(Calendar.MINUTE, currentCal.get(Calendar.MINUTE));
         if (frequency == RolloverFrequency.EVERY_MINUTE) {
@@ -138,7 +145,7 @@ public class PatternProcessor {
             nextTime = cal.getTimeInMillis();
             cal.add(Calendar.MINUTE, -1);
             nextFileTime = cal.getTimeInMillis();
-            return nextTime;
+            return debugGetNextTime(nextTime);
         }
         cal.set(Calendar.SECOND, currentCal.get(Calendar.SECOND));
         if (frequency == RolloverFrequency.EVERY_SECOND) {
@@ -146,13 +153,30 @@ public class PatternProcessor {
             nextTime = cal.getTimeInMillis();
             cal.add(Calendar.SECOND, -1);
             nextFileTime = cal.getTimeInMillis();
-            return nextTime;
+            return debugGetNextTime(nextTime);
         }
+        cal.set(Calendar.MILLISECOND, currentCal.get(Calendar.MILLISECOND));
         increment(cal, Calendar.MILLISECOND, increment, modulus);
         nextTime = cal.getTimeInMillis();
         cal.add(Calendar.MILLISECOND, -1);
         nextFileTime = cal.getTimeInMillis();
+        return debugGetNextTime(nextTime);
+    }
+
+    public void updateTime() {
+        prevFileTime = nextFileTime;
+    }
+
+    private long debugGetNextTime(final long nextTime) {
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("PatternProcessor.getNextTime returning {}, nextFileTime={}, prevFileTime={}, current={}, freq={}", //
+                    format(nextTime), format(nextFileTime), format(prevFileTime), format(System.currentTimeMillis()), frequency);
+        }
         return nextTime;
+    }
+
+    private String format(final long time) {
+        return new SimpleDateFormat("yyyy/MM/dd-HH:mm:ss.SSS").format(new Date(time));
     }
 
     private void increment(final Calendar cal, final int type, final int increment, final boolean modulate) {
@@ -177,10 +201,12 @@ public class PatternProcessor {
      * @param obj object to be evaluated in formatting, may not be null.
      */
     public final void formatFileName(final StrSubstitutor subst, final StringBuilder buf, final Object obj) {
+        // LOG4J2-628: we deliberately use System time, not the log4j.Clock time
+        // for creating the file name of rolled-over files. 
         final long time = prevFileTime == 0 ? System.currentTimeMillis() : prevFileTime;
         formatFileName(buf, new Date(time), obj);
-        LogEvent event = new Log4jLogEvent(time);
-        String fileName = subst.replace(event, buf);
+        final LogEvent event = new Log4jLogEvent(time);
+        final String fileName = subst.replace(event, buf);
         buf.setLength(0);
         buf.append(fileName);
     }

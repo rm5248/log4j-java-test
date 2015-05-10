@@ -26,7 +26,6 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.ThreadContext;
 import org.apache.logging.log4j.samples.dto.AuditEvent;
 import org.apache.logging.log4j.samples.dto.RequestContext;
-
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -61,14 +60,14 @@ public class LoggingController {
         if (threadCount != null && threadCount.length() > 0) {
             try {
                 numThreads = Integer.parseInt(threadCount);
-            } catch (Exception ex) {
+            } catch (final Exception ex) {
                 System.out.println("Invalid threadCount specified: " + threadCount);
             }
         }
         if (interval != null && interval.length() > 0) {
             try {
                 timeBase = Integer.parseInt(interval);
-            } catch (Exception ex) {
+            } catch (final Exception ex) {
                 System.out.println("Invalid interval specified: " + interval);
             }
         }
@@ -85,7 +84,7 @@ public class LoggingController {
 
                 @Override
                 public void run() {
-                    ThreadContext.clear();
+                    ThreadContext.clearMap();
 
                     RequestContext.setSessionId("session1234");
                     RequestContext.setIpAddress("127.0.0.1");

@@ -22,44 +22,62 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.junit.InitialLoggerContext;
 import org.apache.logging.log4j.message.MapMessage;
+import org.apache.logging.log4j.test.appender.ListAppender;
+import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 /**
- * Work in progress.
+ * TODO: Work in progress.
  */
 public class CollectionLoggingTest {
 
+    private static final String CONFIG = "log4j-collectionLogging.xml";
+    private ListAppender app;
+
+    @ClassRule
+    public static InitialLoggerContext context = new InitialLoggerContext(CONFIG);
+
+    @Before
+    public void before() {
+        app = context.getListAppender("List").clear();
+    }
+
     @Test
     public void testSystemProperties() {
-        final Logger logger = LogManager.getLogger(CollectionLoggingTest.class.getName());
+        final Logger logger = context.getLogger(CollectionLoggingTest.class.getName());
         logger.error(System.getProperties());
         // logger.error(new MapMessage(System.getProperties()));
+        // TODO: some assertions
     }
 
     @Test
     public void testSimpleMap() {
-        final Logger logger = LogManager.getLogger(CollectionLoggingTest.class.getName());
+        final Logger logger = context.getLogger(CollectionLoggingTest.class.getName());
         logger.error(System.getProperties());
         final Map<String, String> map = new HashMap<String, String>();
         map.put("MyKey1", "MyValue1");
         map.put("MyKey2", "MyValue2");
         logger.error(new MapMessage(map));
         logger.error(map);
+        // TODO: some assertions
     }
 
     @Test
     public void testNetworkInterfaces() throws SocketException {
-        final Logger logger = LogManager.getLogger(CollectionLoggingTest.class.getName());
+        final Logger logger = context.getLogger(CollectionLoggingTest.class.getName());
         logger.error(NetworkInterface.getNetworkInterfaces());
+        // TODO: some assertions
     }
 
     @Test
     public void testAvailableCharsets() throws SocketException {
-        final Logger logger = LogManager.getLogger(CollectionLoggingTest.class.getName());
+        final Logger logger = context.getLogger(CollectionLoggingTest.class.getName());
         logger.error(Charset.availableCharsets());
+        // TODO: some assertions
     }
 
 }

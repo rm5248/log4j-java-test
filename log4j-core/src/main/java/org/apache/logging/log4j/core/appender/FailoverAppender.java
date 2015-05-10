@@ -27,12 +27,13 @@ import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.config.AppenderControl;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
+import org.apache.logging.log4j.core.config.plugins.PluginAliases;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.Booleans;
-import org.apache.logging.log4j.core.helpers.Constants;
+import org.apache.logging.log4j.core.util.Booleans;
+import org.apache.logging.log4j.core.util.Constants;
 
 /**
  * The FailoverAppender will capture exceptions in an Appender and then route the event
@@ -41,6 +42,8 @@ import org.apache.logging.log4j.core.helpers.Constants;
  */
 @Plugin(name = "Failover", category = "Core", elementType = "appender", printObject = true)
 public final class FailoverAppender extends AbstractAppender {
+
+    private static final long serialVersionUID = 1L;
 
     private static final int DEFAULT_INTERVAL_SECONDS = 60;
 
@@ -56,9 +59,7 @@ public final class FailoverAppender extends AbstractAppender {
 
     private final long intervalMillis;
 
-    private long nextCheckMillis = 0;
-
-    private volatile boolean failure = false;
+    private volatile long nextCheckMillis = 0;
 
     private FailoverAppender(final String name, final Filter filter, final String primary, final String[] failovers,
                              final int intervalMillis, final Configuration config, final boolean ignoreExceptions) {
@@ -87,7 +88,7 @@ public final class FailoverAppender extends AbstractAppender {
                 LOGGER.error("Failover appender " + name + " is not configured");
             }
         }
-        if (failoverAppenders.size() == 0) {
+        if (failoverAppenders.isEmpty()) {
             LOGGER.error("No failover appenders are available");
             ++errors;
         }
@@ -106,24 +107,20 @@ public final class FailoverAppender extends AbstractAppender {
             error("FailoverAppender " + getName() + " did not start successfully");
             return;
         }
-        if (!failure) {
+        final long localCheckMillis = nextCheckMillis;
+        if (localCheckMillis == 0 || System.currentTimeMillis() > localCheckMillis) {
             callAppender(event);
         } else {
-            final long currentMillis = System.currentTimeMillis();
-            if (currentMillis >= nextCheckMillis) {
-                callAppender(event);
-            } else {
-                failover(event, null);
-            }
+            failover(event, null);
         }
     }
 
     private void callAppender(final LogEvent event) {
         try {
             primary.callAppender(event);
+            nextCheckMillis = 0;
         } catch (final Exception ex) {
             nextCheckMillis = System.currentTimeMillis() + intervalMillis;
-            failure = true;
             failover(event, ex);
         }
     }
@@ -147,9 +144,8 @@ public final class FailoverAppender extends AbstractAppender {
         if (!written && !ignoreExceptions()) {
             if (re != null) {
                 throw re;
-            } else {
-                throw new LoggingException("Unable to write to failover appenders", failoverException);
             }
+            throw new LoggingException("Unable to write to failover appenders", failoverException);
         }
     }
 
@@ -165,7 +161,7 @@ public final class FailoverAppender extends AbstractAppender {
             sb.append(str);
             first = false;
         }
-        sb.append("}");
+        sb.append('}');
         return sb.toString();
     }
 
@@ -174,7 +170,7 @@ public final class FailoverAppender extends AbstractAppender {
      * @param name The name of the Appender (required).
      * @param primary The name of the primary Appender (required).
      * @param failovers The name of one or more Appenders to fail over to (at least one is required).
-     * @param retryIntervalString The retry intervalMillis.
+     * @param retryIntervalSeconds The retry interval in seconds.
      * @param config The current Configuration (passed by the Configuration when the appender is created).
      * @param filter A Filter (optional).
      * @param ignore If {@code "true"} (default) exceptions encountered when appending events are logged; otherwise
@@ -186,9 +182,10 @@ public final class FailoverAppender extends AbstractAppender {
             @PluginAttribute("name") final String name,
             @PluginAttribute("primary") final String primary,
             @PluginElement("Failovers") final String[] failovers,
-            @PluginAttribute("retryInterval") final String retryIntervalString,
+            @PluginAliases("retryInterval") // deprecated
+            @PluginAttribute("retryIntervalSeconds") final String retryIntervalSeconds,
             @PluginConfiguration final Configuration config,
-            @PluginElement("Filters") final Filter filter,
+            @PluginElement("Filter") final Filter filter,
             @PluginAttribute("ignoreExceptions") final String ignore) {
         if (name == null) {
             LOGGER.error("A name for the Appender must be specified");
@@ -203,12 +200,12 @@ public final class FailoverAppender extends AbstractAppender {
             return null;
         }
 
-        final int seconds = parseInt(retryIntervalString, DEFAULT_INTERVAL_SECONDS);
+        final int seconds = parseInt(retryIntervalSeconds, DEFAULT_INTERVAL_SECONDS);
         int retryIntervalMillis;
         if (seconds >= 0) {
             retryIntervalMillis = seconds * Constants.MILLIS_IN_SECONDS;
         } else {
-            LOGGER.warn("Interval " + retryIntervalString + " is less than zero. Using default");
+            LOGGER.warn("Interval " + retryIntervalSeconds + " is less than zero. Using default");
             retryIntervalMillis = DEFAULT_INTERVAL_SECONDS * Constants.MILLIS_IN_SECONDS;
         }
 

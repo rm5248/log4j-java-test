@@ -26,22 +26,22 @@ import java.lang.management.ThreadInfo;
  */
 class ExtendedThreadInformation implements ThreadInformation {
 
-    private final ThreadInfo info;
+    private final ThreadInfo threadInfo;
 
 
     public ExtendedThreadInformation(final ThreadInfo thread) {
-        this.info = thread;
+        this.threadInfo = thread;
     }
 
     @Override
     public void printThreadInfo(final StringBuilder sb) {
-        sb.append("\"").append(info.getThreadName()).append("\"");
-        sb.append(" Id=").append(info.getThreadId()).append(" ");
-        formatState(sb, info);
-        if (info.isSuspended()) {
+        sb.append('"').append(threadInfo.getThreadName()).append('"');
+        sb.append(" Id=").append(threadInfo.getThreadId()).append(' ');
+        formatState(sb, threadInfo);
+        if (threadInfo.isSuspended()) {
             sb.append(" (suspended)");
         }
-        if (info.isInNative()) {
+        if (threadInfo.isInNative()) {
             sb.append(" (in native)");
         }
         sb.append('\n');
@@ -53,29 +53,29 @@ class ExtendedThreadInformation implements ThreadInformation {
         for (final StackTraceElement element : stack) {
             sb.append("\tat ").append(element.toString());
             sb.append('\n');
-            if (i == 0 && info.getLockInfo() != null) {
-                final Thread.State ts = info.getThreadState();
+            if (i == 0 && threadInfo.getLockInfo() != null) {
+                final Thread.State ts = threadInfo.getThreadState();
                 switch (ts) {
                     case BLOCKED:
                         sb.append("\t-  blocked on ");
-                        formatLock(sb, info.getLockInfo());
+                        formatLock(sb, threadInfo.getLockInfo());
                         sb.append('\n');
                         break;
                     case WAITING:
                         sb.append("\t-  waiting on ");
-                        formatLock(sb, info.getLockInfo());
+                        formatLock(sb, threadInfo.getLockInfo());
                         sb.append('\n');
                         break;
                     case TIMED_WAITING:
                         sb.append("\t-  waiting on ");
-                        formatLock(sb, info.getLockInfo());
+                        formatLock(sb, threadInfo.getLockInfo());
                         sb.append('\n');
                         break;
                     default:
                 }
             }
 
-            for (final MonitorInfo mi : info.getLockedMonitors()) {
+            for (final MonitorInfo mi : threadInfo.getLockedMonitors()) {
                 if (mi.getLockedStackDepth() == i) {
                     sb.append("\t-  locked ");
                     formatLock(sb, mi);
@@ -85,7 +85,7 @@ class ExtendedThreadInformation implements ThreadInformation {
             ++i;
         }
 
-        final LockInfo[] locks = info.getLockedSynchronizers();
+        final LockInfo[] locks = threadInfo.getLockedSynchronizers();
         if (locks.length > 0) {
             sb.append("\n\tNumber of locked synchronizers = ").append(locks.length).append('\n');
             for (final LockInfo li : locks) {
@@ -97,8 +97,8 @@ class ExtendedThreadInformation implements ThreadInformation {
     }
 
     private void formatLock(final StringBuilder sb, final LockInfo lock) {
-        sb.append("<").append(lock.getIdentityHashCode()).append("> (a ");
-        sb.append(lock.getClassName()).append(")");
+        sb.append('<').append(lock.getIdentityHashCode()).append("> (a ");
+        sb.append(lock.getClassName()).append(')');
     }
 
     private void formatState(final StringBuilder sb, final ThreadInfo info) {
@@ -107,7 +107,7 @@ class ExtendedThreadInformation implements ThreadInformation {
         switch (state) {
             case BLOCKED: {
                 sb.append(" (on object monitor owned by \"");
-                sb.append(info.getLockOwnerName()).append("\" Id=").append(info.getLockOwnerId()).append(")");
+                sb.append(info.getLockOwnerName()).append("\" Id=").append(info.getLockOwnerId()).append(')');
                 break;
             }
             case WAITING: {
@@ -120,16 +120,16 @@ class ExtendedThreadInformation implements ThreadInformation {
                         sb.append(" owned by \"");
                         sb.append(info.getLockOwnerName()).append("\" Id=").append(info.getLockOwnerId());
                     }
-                    sb.append(")");
+                    sb.append(')');
                 } else if (className.equals("java.lang.Thread") && method.equals("join")) {
-                    sb.append(" (on completion of thread ").append(info.getLockOwnerId()).append(")");
+                    sb.append(" (on completion of thread ").append(info.getLockOwnerId()).append(')');
                 } else {
                     sb.append(" (parking for lock");
                     if (info.getLockOwnerName() != null) {
                         sb.append(" owned by \"");
                         sb.append(info.getLockOwnerName()).append("\" Id=").append(info.getLockOwnerId());
                     }
-                    sb.append(")");
+                    sb.append(')');
                 }
                 break;
             }
@@ -143,18 +143,18 @@ class ExtendedThreadInformation implements ThreadInformation {
                         sb.append(" owned by \"");
                         sb.append(info.getLockOwnerName()).append("\" Id=").append(info.getLockOwnerId());
                     }
-                    sb.append(")");
+                    sb.append(')');
                 } else if (className.equals("java.lang.Thread") && method.equals("sleep")) {
                     sb.append(" (sleeping)");
                 } else if (className.equals("java.lang.Thread") && method.equals("join")) {
-                    sb.append(" (on completion of thread ").append(info.getLockOwnerId()).append(")");
+                    sb.append(" (on completion of thread ").append(info.getLockOwnerId()).append(')');
                 } else {
                     sb.append(" (parking for lock");
                     if (info.getLockOwnerName() != null) {
                         sb.append(" owned by \"");
                         sb.append(info.getLockOwnerName()).append("\" Id=").append(info.getLockOwnerId());
                     }
-                    sb.append(")");
+                    sb.append(')');
                 }
                 break;
             }

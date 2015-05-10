@@ -26,7 +26,7 @@ import org.apache.logging.log4j.status.StatusLogger;
 /**
  * Represents a key/value pair in the configuration.
  */
-@Plugin(name = "property", category = "Core", printObject = true)
+@Plugin(name = "property", category = Node.CATEGORY, printObject = true)
 public final class Property {
 
     private static final Logger LOGGER = StatusLogger.getLogger();
@@ -56,23 +56,24 @@ public final class Property {
     }
 
     /**
-     * Create a Property.
-     * @param key The key.
+     * Creates a Property.
+     * 
+     * @param name The key.
      * @param value The value.
      * @return A Property.
      */
     @PluginFactory
     public static Property createProperty(
-            @PluginAttribute("name") final String key,
+            @PluginAttribute("name") final String name,
             @PluginValue("value") final String value) {
-        if (key == null) {
-            LOGGER.error("Property key cannot be null");
+        if (name == null) {
+            LOGGER.error("Property name cannot be null");
         }
-        return new Property(key, value);
+        return new Property(name, value);
     }
 
     @Override
     public String toString() {
-        return name + "=" + value;
+        return name + '=' + value;
     }
 }

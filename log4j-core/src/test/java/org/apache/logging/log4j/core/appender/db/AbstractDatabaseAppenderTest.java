@@ -22,6 +22,7 @@ import org.junit.After;
 import org.junit.Test;
 
 import static org.easymock.EasyMock.*;
+
 import static org.junit.Assert.*;
 
 public class AbstractDatabaseAppenderTest {
@@ -70,7 +71,7 @@ public class AbstractDatabaseAppenderTest {
     public void testStartAndStop() throws Exception {
         this.setUp("name");
 
-        this.manager.connectInternal();
+        this.manager.startupInternal();
         expectLastCall();
         replay(this.manager, this.appender);
 
@@ -102,7 +103,7 @@ public class AbstractDatabaseAppenderTest {
         final LocalAbstractDatabaseManager newManager = createMockBuilder(LocalAbstractDatabaseManager.class)
                 .withConstructor(String.class, int.class).withArgs("name", 0).addMockedMethod("release")
                 .createStrictMock();
-        newManager.connectInternal();
+        newManager.startupInternal();
         expectLastCall();
         replay(this.manager, this.appender, newManager);
 
@@ -126,7 +127,11 @@ public class AbstractDatabaseAppenderTest {
         final LogEvent event1 = createStrictMock(LogEvent.class);
         final LogEvent event2 = createStrictMock(LogEvent.class);
 
+        this.manager.connectAndStart();
+        expectLastCall();
         this.manager.writeInternal(same(event1));
+        expectLastCall();
+        this.manager.commitAndClose();
         expectLastCall();
         replay(this.manager, this.appender);
 
@@ -134,7 +139,11 @@ public class AbstractDatabaseAppenderTest {
 
         verify(this.manager, this.appender);
         reset(this.manager, this.appender);
+        this.manager.connectAndStart();
+        expectLastCall();
         this.manager.writeInternal(same(event2));
+        expectLastCall();
+        this.manager.commitAndClose();
         expectLastCall();
         replay(this.manager, this.appender);
 
@@ -149,6 +158,9 @@ public class AbstractDatabaseAppenderTest {
 
     private static abstract class LocalAbstractDatabaseAppender extends
             AbstractDatabaseAppender<LocalAbstractDatabaseManager> {
+
+        private static final long serialVersionUID = 1L;
+
         public LocalAbstractDatabaseAppender(final String name, final Filter filter, final boolean exceptionSuppressed,
                                              final LocalAbstractDatabaseManager manager) {
             super(name, filter, exceptionSuppressed, manager);

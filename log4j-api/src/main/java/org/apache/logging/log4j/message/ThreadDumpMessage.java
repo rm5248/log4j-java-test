@@ -26,6 +26,8 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.logging.log4j.util.Strings;
+
 /**
  * Captures information about all running Threads.
  */
@@ -58,22 +60,22 @@ public class ThreadDumpMessage implements Message {
      * @param title The title.
      */
     public ThreadDumpMessage(final String title) {
-        this.title = title == null ? "" : title;
+        this.title = title == null ? Strings.EMPTY : title;
         threads = FACTORY.createThreadInfo();
     }
 
     private ThreadDumpMessage(final String formattedMsg, final String title) {
         this.formattedMessage = formattedMsg;
-        this.title = title == null ? "" : title;
+        this.title = title == null ? Strings.EMPTY : title;
     }
 
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("ThreadDumpMessage[");
         if (this.title.length() > 0) {
-            sb.append("Title=\"").append(this.title).append("\"");
+            sb.append("Title=\"").append(this.title).append('"');
         }
-        sb.append("]");
+        sb.append(']');
         return sb.toString();
     }
 
@@ -88,13 +90,13 @@ public class ThreadDumpMessage implements Message {
         }
         final StringBuilder sb = new StringBuilder(title);
         if (title.length() > 0) {
-            sb.append("\n");
+            sb.append('\n');
         }
         for (final Map.Entry<ThreadInformation, StackTraceElement[]> entry : threads.entrySet()) {
             final ThreadInformation info = entry.getKey();
             info.printThreadInfo(sb);
             info.printStack(sb, entry.getValue());
-            sb.append("\n");
+            sb.append('\n');
         }
         return sb.toString();
     }
@@ -105,7 +107,7 @@ public class ThreadDumpMessage implements Message {
      */
     @Override
     public String getFormat() {
-        return title == null ? "" : title;
+        return title == null ? Strings.EMPTY : title;
     }
 
     /**

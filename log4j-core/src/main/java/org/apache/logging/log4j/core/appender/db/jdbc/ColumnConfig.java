@@ -22,10 +22,10 @@ import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.Booleans;
-import org.apache.logging.log4j.core.helpers.Strings;
 import org.apache.logging.log4j.core.layout.PatternLayout;
+import org.apache.logging.log4j.core.util.Booleans;
 import org.apache.logging.log4j.status.StatusLogger;
+import org.apache.logging.log4j.util.Strings;
 
 /**
  * A configuration element used to configure which event properties are logged to which columns in the database table.
@@ -129,10 +129,13 @@ public final class ColumnConfig {
             return new ColumnConfig(name, null, literalValue, false, false, false);
         }
         if (isPattern) {
-            return new ColumnConfig(
-                    name, PatternLayout.createLayout(pattern, config, null, null, "false"), null, false, isUnicode,
-                    isClob
-            );
+            final PatternLayout layout =
+                PatternLayout.newBuilder()
+                    .withPattern(pattern)
+                    .withConfiguration(config)
+                    .withAlwaysWriteExceptions(false)
+                    .build();
+            return new ColumnConfig(name, layout, null, false, isUnicode, isClob);
         }
 
         LOGGER.error("To configure a column you must specify a pattern or literal or set isEventDate to true.");

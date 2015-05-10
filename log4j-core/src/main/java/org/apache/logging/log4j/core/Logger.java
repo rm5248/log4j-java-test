@@ -16,6 +16,7 @@
  */
 package org.apache.logging.log4j.core;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -30,20 +31,31 @@ import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.message.MessageFactory;
 import org.apache.logging.log4j.message.SimpleMessage;
 import org.apache.logging.log4j.spi.AbstractLogger;
+import org.apache.logging.log4j.util.Strings;
 
 /**
- * @doubt All the isEnabled methods could be pushed into a filter interface.  Not sure of the utility of having
+ * The core implementation of the {@link org.apache.logging.log4j.Logger} interface. Besides providing an
+ * implementation of all the Logger methods, this class also provides some convenience methods for Log4j 1.x
+ * compatibility as well as access to the {@link org.apache.logging.log4j.core.Filter Filters} and
+ * {@link org.apache.logging.log4j.core.Appender Appenders} associated with this Logger. Note that access to these
+ * underlying objects is provided primarily for use in unit tests or bridging legacy Log4j 1.x code. Future versions
+ * of this class may or may not include the various methods that are noted as not being part of the public API.
+ *
+ * TODO All the isEnabled methods could be pushed into a filter interface.  Not sure of the utility of having
  * isEnabled be able to examine the message pattern and parameters. (RG) Moving the isEnabled methods out of
  * Logger noticeably impacts performance. The message pattern and parameters are required so that they can be
  * used in global filters.
  */
 public class Logger extends AbstractLogger {
 
+    private static final long serialVersionUID = 1L;
+
     /**
-     * config should be consistent across threads.
+     * Config should be consistent across threads.
      */
     protected volatile PrivateConfig config;
 
+    // FIXME: ditto to the above
     private final LoggerContext context;
 
     /**
@@ -93,46 +105,36 @@ public class Logger extends AbstractLogger {
         }
     }
 
-    /**
-     * Returns the Level associated with the Logger.
-     * @return the Level associate with the Logger.
-     */
-    public Level getLevel() {
-        return config.level;
-    }
-
     @Override
-    public void log(final Marker marker, final String fqcn, final Level level, Message data, final Throwable t) {
-        if (data == null) {
-            data = new SimpleMessage("");
-        }
+    public void logMessage(final String fqcn, final Level level, final Marker marker, final Message message, final Throwable t) {
+        final Message msg = message == null ? new SimpleMessage(Strings.EMPTY) : message;
         config.config.getConfigurationMonitor().checkConfiguration();
-        config.loggerConfig.log(getName(), marker, fqcn, level, data, t);
+        config.loggerConfig.log(getName(), fqcn, marker, level, msg, t);
     }
 
     @Override
-    public boolean isEnabled(final Level level, final Marker marker, final String msg) {
-        return config.filter(level, marker, msg);
+    public boolean isEnabled(final Level level, final Marker marker, final String message, final Throwable t) {
+        return config.filter(level, marker, message, t);
     }
 
     @Override
-    public boolean isEnabled(final Level level, final Marker marker, final String msg, final Throwable t) {
-        return config.filter(level, marker, msg, t);
+    public boolean isEnabled(final Level level, final Marker marker, final String message) {
+        return config.filter(level, marker, message);
     }
 
     @Override
-    public boolean isEnabled(final Level level, final Marker marker, final String msg, final Object... p1) {
-        return config.filter(level, marker, msg, p1);
+    public boolean isEnabled(final Level level, final Marker marker, final String message, final Object... params) {
+        return config.filter(level, marker, message, params);
     }
 
     @Override
-    public boolean isEnabled(final Level level, final Marker marker, final Object msg, final Throwable t) {
-        return config.filter(level, marker, msg, t);
+    public boolean isEnabled(final Level level, final Marker marker, final Object message, final Throwable t) {
+        return config.filter(level, marker, message, t);
     }
 
     @Override
-    public boolean isEnabled(final Level level, final Marker marker, final Message msg, final Throwable t) {
-        return config.filter(level, marker, msg, t);
+    public boolean isEnabled(final Level level, final Marker marker, final Message message, final Throwable t) {
+        return config.filter(level, marker, message, t);
     }
 
     /**
@@ -163,6 +165,7 @@ public class Logger extends AbstractLogger {
      * This method is not exposed through the public API and is used primarily for unit testing.
      * @return An Iterator over all the Filters associated with the Logger.
      */
+    // FIXME: this really ought to be an Iterable instead of an Iterator
     public Iterator<Filter> getFilters() {
         final Filter filter = config.loggerConfig.getFilter();
         if (filter == null) {
@@ -174,6 +177,16 @@ public class Logger extends AbstractLogger {
             filters.add(filter);
             return filters.iterator();
         }
+    }
+
+    /**
+     * Gets the Level associated with the Logger.
+     *
+     * @return the Level associate with the Logger.
+     */
+    @Override
+    public Level getLevel() {
+        return config.level;
     }
 
     /**
@@ -235,7 +248,9 @@ public class Logger extends AbstractLogger {
     /**
      * The binding between a Logger and its configuration.
      */
-    protected class PrivateConfig {
+    // TODO: Should not be Serializable per EJ item 74 (2nd Ed)?
+    protected class PrivateConfig implements Serializable {
+        private static final long serialVersionUID = 1L;
         // config fields are public to make them visible to Logger subclasses
         public final LoggerConfig loggerConfig;
         public final Configuration config;
@@ -282,8 +297,7 @@ public class Logger extends AbstractLogger {
                     return r == Filter.Result.ACCEPT;
                 }
             }
-
-            return intLevel >= level.intLevel();
+            return level != null && intLevel >= level.intLevel();
         }
 
         boolean filter(final Level level, final Marker marker, final String msg, final Throwable t) {
@@ -295,8 +309,7 @@ public class Logger extends AbstractLogger {
                     return r == Filter.Result.ACCEPT;
                 }
             }
-
-            return intLevel >= level.intLevel();
+            return level != null && intLevel >= level.intLevel();
         }
 
         boolean filter(final Level level, final Marker marker, final String msg, final Object... p1) {
@@ -308,8 +321,7 @@ public class Logger extends AbstractLogger {
                     return r == Filter.Result.ACCEPT;
                 }
             }
-
-            return intLevel >= level.intLevel();
+            return level != null && intLevel >= level.intLevel();
         }
 
         boolean filter(final Level level, final Marker marker, final Object msg, final Throwable t) {
@@ -321,8 +333,7 @@ public class Logger extends AbstractLogger {
                     return r == Filter.Result.ACCEPT;
                 }
             }
-
-            return intLevel >= level.intLevel();
+            return level != null && intLevel >= level.intLevel();
         }
 
         boolean filter(final Level level, final Marker marker, final Message msg, final Throwable t) {
@@ -334,8 +345,7 @@ public class Logger extends AbstractLogger {
                     return r == Filter.Result.ACCEPT;
                 }
             }
-
-            return intLevel >= level.intLevel();
+            return level != null && intLevel >= level.intLevel();
         }
     }
 
@@ -345,7 +355,7 @@ public class Logger extends AbstractLogger {
      */
     @Override
     public String toString() {
-        final String nameLevel = "" + getName() + ":" + getLevel();
+        final String nameLevel = Strings.EMPTY + getName() + ':' + getLevel();
         if (context == null) {
             return nameLevel;
         }

@@ -30,8 +30,8 @@ import org.apache.logging.log4j.message.MapMessage;
  * java.util.Hashtable.toString(), or to output the value of a specific key
  * within the Map.
  */
-@Plugin(name = "MapPatternConverter", category = "Converter")
-@ConverterKeys({"K", "map", "MAP" })
+@Plugin(name = "MapPatternConverter", category = PatternConverter.CATEGORY)
+@ConverterKeys({ "K", "map", "MAP" })
 public final class MapPatternConverter extends LogEventPatternConverter {
     /**
      * Name of property to output.
@@ -44,7 +44,7 @@ public final class MapPatternConverter extends LogEventPatternConverter {
      * @param options options, may be null.
      */
     private MapPatternConverter(final String[] options) {
-        super(options != null && options.length > 0 ? "MAP{" + options[0] + "}" : "MAP", "map");
+        super(options != null && options.length > 0 ? "MAP{" + options[0] + '}' : "MAP", "map");
         key = options != null && options.length > 0 ? options[0] : null;
     }
 
@@ -73,7 +73,7 @@ public final class MapPatternConverter extends LogEventPatternConverter {
         // if there is no additional options, we output every single
         // Key/Value pair for the Map in a similar format to Hashtable.toString()
         if (key == null) {
-            if (map.size() == 0) {
+            if (map.isEmpty()) {
                 toAppendTo.append("{}");
                 return;
             }
@@ -83,10 +83,10 @@ public final class MapPatternConverter extends LogEventPatternConverter {
                 if (sb.length() > 1) {
                     sb.append(", ");
                 }
-                sb.append(key).append("=").append(map.get(key));
+                sb.append(key).append('=').append(map.get(key));
 
             }
-            sb.append("}");
+            sb.append('}');
             toAppendTo.append(sb);
         } else {
             // otherwise they just want a single key output

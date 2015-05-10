@@ -17,7 +17,7 @@
 package org.apache.log4j;
 
 import org.apache.log4j.spi.LoggingEvent;
-import org.apache.logging.log4j.core.helpers.Constants;
+import org.apache.logging.log4j.core.util.Constants;
 
 /**
  *
@@ -25,7 +25,7 @@ import org.apache.logging.log4j.core.helpers.Constants;
 public abstract class Layout {
 
     /** Note that the line.separator property can be looked up even by applets. */
-    public static final int LINE_SEP_LEN = Constants.LINE_SEP.length();
+    public static final int LINE_SEP_LEN = Constants.LINE_SEPARATOR.length();
 
     /**
      * Implement this method to create your own layout format.
@@ -69,10 +69,15 @@ public abstract class Layout {
      * object, then the layout should return {@code true}.
      * If ignoresThrowable is true, the appender is responsible for
      * rendering the throwable.
-     * <p/>
-     * <p>The {@link SimpleLayout}, {@link TTCCLayout}, {@link
-     * PatternLayout} all return {@code true}. The {@link
-     * org.apache.log4j.xml.XMLLayout} returns {@code false}.
+     * <p>
+     * The <a href="/log4j/1.2/apidocs/org/apache/log4j/SimpleLayout.html">SimpleLayout</a>,
+     * <a href="/log4j/1.2/apidocs/org/apache/log4j/TTCCLayout.html">TTCCLayout</a>,
+     * <a href="/log4j/1.2/apidocs/org/apache/log4j/PatternLayout.html">PatternLayout</a>
+     * all return {@code true}. The
+     * <a href="/log4j/1.2/apidocs/org/apache/log4j/xml/XMLLayout.html">XMLLayout</a>
+     * returns {@code false}.
+     * </p>
+     *
      * @return true if the Layout ignores Throwables.
      *
      * @since 0.8.4

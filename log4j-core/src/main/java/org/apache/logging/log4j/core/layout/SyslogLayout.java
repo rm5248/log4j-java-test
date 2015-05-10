@@ -16,8 +16,6 @@
  */
 package org.apache.logging.log4j.core.layout;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -27,20 +25,25 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.config.Node;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.Charsets;
 import org.apache.logging.log4j.core.net.Facility;
 import org.apache.logging.log4j.core.net.Priority;
+import org.apache.logging.log4j.core.util.NetUtils;
 
 
 /**
  * Formats a log event as a BSD Log record.
  */
-@Plugin(name = "SyslogLayout", category = "Core", elementType = "layout", printObject = true)
-public class SyslogLayout extends AbstractStringLayout {
+@Plugin(name = "SyslogLayout", category = Node.CATEGORY, elementType = Layout.ELEMENT_TYPE, printObject = true)
+public final class SyslogLayout extends AbstractStringLayout {
+
+    private static final long serialVersionUID = 1L;
+
     /**
      * Match newlines in a platform-independent manner.
      */
@@ -57,7 +60,7 @@ public class SyslogLayout extends AbstractStringLayout {
     /**
      * Host name used to identify messages from this appender.
      */
-    private final String localHostname = getLocalHostname();
+    private final String localHostname = NetUtils.getLocalHostname();
 
 
 
@@ -78,13 +81,13 @@ public class SyslogLayout extends AbstractStringLayout {
     public String toSerializable(final LogEvent event) {
         final StringBuilder buf = new StringBuilder();
 
-        buf.append("<");
+        buf.append('<');
         buf.append(Priority.getPriority(facility, event.getLevel()));
-        buf.append(">");
-        addDate(event.getMillis(), buf);
-        buf.append(" ");
+        buf.append('>');
+        addDate(event.getTimeMillis(), buf);
+        buf.append(' ');
         buf.append(localHostname);
-        buf.append(" ");
+        buf.append(' ');
 
         String message = event.getMessage().getFormattedMessage();
         if (null != escapeNewLine) {
@@ -93,26 +96,9 @@ public class SyslogLayout extends AbstractStringLayout {
         buf.append(message);
 
         if (includeNewLine) {
-            buf.append("\n");
+            buf.append('\n');
         }
         return buf.toString();
-    }
-
-    /**
-     * This method gets the network name of the machine we are running on.
-     * Returns "UNKNOWN_LOCALHOST" in the unlikely case where the host name
-     * cannot be found.
-     *
-     * @return String the name of the local host
-     */
-    private String getLocalHostname() {
-        try {
-            final InetAddress addr = InetAddress.getLocalHost();
-            return addr.getHostName();
-        } catch (final UnknownHostException uhe) {
-            LOGGER.error("Could not determine local host name", uhe);
-            return "UNKNOWN_LOCALHOST";
-        }
     }
 
     private synchronized void addDate(final long timestamp, final StringBuilder buf) {
@@ -125,16 +111,19 @@ public class SyslogLayout extends AbstractStringLayout {
     }
 
     /**
-     * SyslogLayout's content format is specified by:<p/>
-     * Key: "structured" Value: "false"<p/>
-     * Key: "dateFormat" Value: "MMM dd HH:mm:ss "<p/>
-     * Key: "format" Value: "<LEVEL>TIMESTAMP PROP(HOSTNAME) MESSAGE"<p/>
-     * Key: "formatType" Value: "logfilepatternreceiver" (format uses the keywords supported by LogFilePatternReceiver)
+     * Gets this SyslogLayout's content format. Specified by:
+     * <ul>
+     * <li>Key: "structured" Value: "false"</li>
+     * <li>Key: "dateFormat" Value: "MMM dd HH:mm:ss "</li>
+     * <li>Key: "format" Value: "&lt;LEVEL&gt;TIMESTAMP PROP(HOSTNAME) MESSAGE"</li>
+     * <li>Key: "formatType" Value: "logfilepatternreceiver" (format uses the keywords supported by
+     * LogFilePatternReceiver)</li>
+     * </ul>
+     * 
      * @return Map of content format keys supporting SyslogLayout
      */
     @Override
-    public Map<String, String> getContentFormat()
-    {
+    public Map<String, String> getContentFormat() {
         final Map<String, String> result = new HashMap<String, String>();
         result.put("structured", "false");
         result.put("formatType", "logfilepatternreceiver");
@@ -146,20 +135,17 @@ public class SyslogLayout extends AbstractStringLayout {
     /**
      * Create a SyslogLayout.
      * @param facility The Facility is used to try to classify the message.
-     * @param includeNL If true a newline will be appended to the result.
+     * @param includeNewLine If true a newline will be appended to the result.
      * @param escapeNL Pattern to use for replacing newlines.
-     * @param charsetName The character set.
+     * @param charset The character set.
      * @return A SyslogLayout.
      */
     @PluginFactory
     public static SyslogLayout createLayout(
-            @PluginAttribute("facility") final String facility,
-            @PluginAttribute("newLine") final String includeNL,
+            @PluginAttribute(value = "facility", defaultString = "LOCAL0") final Facility facility,
+            @PluginAttribute(value = "newLine", defaultBoolean = false) final boolean includeNewLine,
             @PluginAttribute("newLineEscape") final String escapeNL,
-            @PluginAttribute("charset") final String charsetName) {
-        final Charset charset = Charsets.getSupportedCharset(charsetName);
-        final boolean includeNewLine = Boolean.parseBoolean(includeNL);
-        final Facility f = Facility.toFacility(facility, Facility.LOCAL0);
-        return new SyslogLayout(f, includeNewLine, escapeNL, charset);
+            @PluginAttribute(value = "charset", defaultString = "UTF-8") final Charset charset) {
+        return new SyslogLayout(facility, includeNewLine, escapeNL, charset);
     }
 }

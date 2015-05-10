@@ -16,22 +16,22 @@
  */
 package org.apache.logging.log4j.core.lookup;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 /**
  *
  */
 public class StrSubstitutorTest {
 
-     private static final String TESTKEY = "TestKey";
+    private static final String TESTKEY = "TestKey";
     private static final String TESTVAL = "TestValue";
 
 
@@ -57,5 +57,12 @@ public class StrSubstitutorTest {
         assertEquals("TestValue-TestValue-TestValue", value);
         value = subst.replace("${BadKey}");
         assertEquals("${BadKey}", value);
+
+        value = subst.replace("${BadKey:-Unknown}-${ctx:BadKey:-Unknown}-${sys:BadKey:-Unknown}");
+        assertEquals("Unknown-Unknown-Unknown", value);
+        value = subst.replace("${BadKey:-Unknown}-${ctx:BadKey}-${sys:BadKey:-Unknown}");
+        assertEquals("Unknown-${ctx:BadKey}-Unknown", value);
+        value = subst.replace("${BadKey:-Unknown}-${ctx:BadKey:-}-${sys:BadKey:-Unknown}");
+        assertEquals("Unknown--Unknown", value);
     }
 }

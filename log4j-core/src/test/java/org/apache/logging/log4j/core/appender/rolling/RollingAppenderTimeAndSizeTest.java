@@ -16,66 +16,55 @@
  */
 package org.apache.logging.log4j.core.appender.rolling;
 
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.core.config.ConfigurationFactory;
-import org.apache.logging.log4j.status.StatusLogger;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.junit.InitialLoggerContext;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+
+import static org.apache.logging.log4j.hamcrest.FileMatchers.hasName;
+import static org.apache.logging.log4j.hamcrest.Descriptors.that;
+import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.hasItemInArray;
+import static org.junit.Assert.*;
 
 /**
  *
  */
 public class RollingAppenderTimeAndSizeTest {
 
-    private static final String CONFIG = "log4j-rolling3.xml";
     private static final String DIR = "target/rolling3/test";
 
-    org.apache.logging.log4j.Logger logger = LogManager.getLogger(RollingAppenderTimeAndSizeTest.class.getName());
+    @Rule
+    public InitialLoggerContext init = new InitialLoggerContext("log4j-rolling3.xml");
 
-    @BeforeClass
-    public static void setupClass() {
+    private Logger logger;
+
+    @Before
+    public void setUp() throws Exception {
+        this.logger = this.init.getLogger(RollingAppenderTimeAndSizeTest.class.getName());
         deleteDir();
-        System.setProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY, CONFIG);
-        final LoggerContext ctx = (LoggerContext) LogManager.getContext();
-        final Configuration config = ctx.getConfiguration();
     }
 
-    @AfterClass
-    public static void cleanupClass() {
-        //deleteDir();
-        System.clearProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY);
-        final LoggerContext ctx = (LoggerContext) LogManager.getContext();
-        ctx.reconfigure();
-        StatusLogger.getLogger().reset();
+    @After
+    public void tearDown() throws Exception {
+        deleteDir();
     }
 
     @Test
     public void testAppender() throws Exception {
         for (int i=0; i < 100; ++i) {
-            if (i % 11 == 0) {
-                Thread.sleep(1000);
-            }
             logger.debug("This is test message number " + i);
         }
+        Thread.sleep(50);
         final File dir = new File(DIR);
         assertTrue("Directory not created", dir.exists() && dir.listFiles().length > 0);
         final File[] files = dir.listFiles();
-        assertTrue("No files created", files.length > 0);
-        boolean found = false;
-        for (final File file : files) {
-            if (file.getName().endsWith(".gz")) {
-                found = true;
-                break;
-            }
-        }
-        assertTrue("No compressed files found", found);
+        assertNotNull(files);
+        assertThat(files, hasItemInArray(that(hasName(that(endsWith(".gz"))))));
     }
 
     private static void deleteDir() {

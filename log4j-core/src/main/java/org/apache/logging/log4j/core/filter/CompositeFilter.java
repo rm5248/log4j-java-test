@@ -24,10 +24,11 @@ import java.util.List;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
+import org.apache.logging.log4j.core.AbstractLifeCycle;
 import org.apache.logging.log4j.core.Filter;
-import org.apache.logging.log4j.core.LifeCycle;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.config.Node;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
@@ -36,39 +37,43 @@ import org.apache.logging.log4j.message.Message;
 /**
  * Composes and invokes one or more filters.
  */
-@Plugin(name = "filters", category = "Core", printObject = true)
-public final class CompositeFilter implements Iterable<Filter>, Filter, LifeCycle {
+@Plugin(name = "filters", category = Node.CATEGORY, printObject = true)
+public final class CompositeFilter extends AbstractLifeCycle implements Iterable<Filter>, Filter {
+
+    private static final long serialVersionUID = 1L;
 
     private final List<Filter> filters;
-    private final boolean hasFilters;
-
-    private boolean isStarted;
 
     private CompositeFilter() {
         this.filters = new ArrayList<Filter>();
-        this.hasFilters = false;
     }
 
     private CompositeFilter(final List<Filter> filters) {
         if (filters == null) {
             this.filters = Collections.unmodifiableList(new ArrayList<Filter>());
-            this.hasFilters = false;
             return;
         }
         this.filters = Collections.unmodifiableList(filters);
-        this.hasFilters = this.filters.size() > 0;
     }
 
     public CompositeFilter addFilter(final Filter filter) {
-        final List<Filter> filters = new ArrayList<Filter>(this.filters);
-        filters.add(filter);
-        return new CompositeFilter(Collections.unmodifiableList(filters));
+        if (filter == null) {
+            // null does nothing
+            return this;
+        }
+        final List<Filter> filterList = new ArrayList<Filter>(this.filters);
+        filterList.add(filter);
+        return new CompositeFilter(Collections.unmodifiableList(filterList));
     }
 
     public CompositeFilter removeFilter(final Filter filter) {
-        final List<Filter> filters = new ArrayList<Filter>(this.filters);
-        filters.remove(filter);
-        return new CompositeFilter(Collections.unmodifiableList(filters));
+        if (filter == null) {
+            // null does nothing
+            return this;
+        }
+        final List<Filter> filterList = new ArrayList<Filter>(this.filters);
+        filterList.remove(filter);
+        return new CompositeFilter(Collections.unmodifiableList(filterList));
     }
 
     @Override
@@ -80,8 +85,13 @@ public final class CompositeFilter implements Iterable<Filter>, Filter, LifeCycl
         return filters;
     }
 
-    public boolean hasFilters() {
-        return hasFilters;
+    /**
+     * Returns whether this composite contains any filters.
+     *
+     * @return whether this composite contains any filters.
+     */
+    public boolean isEmpty() {
+        return this.filters.isEmpty();
     }
 
     public int size() {
@@ -90,27 +100,20 @@ public final class CompositeFilter implements Iterable<Filter>, Filter, LifeCycl
 
     @Override
     public void start() {
+        this.setStarting();
         for (final Filter filter : filters) {
-            if (filter instanceof LifeCycle) {
-                ((LifeCycle) filter).start();
-            }
+            filter.start();
         }
-        isStarted = true;
+        this.setStarted();
     }
 
     @Override
     public void stop() {
+        this.setStopping();
         for (final Filter filter : filters) {
-            if (filter instanceof LifeCycle) {
-                ((LifeCycle) filter).stop();
-            }
+            filter.stop();
         }
-        isStarted = false;
-    }
-
-    @Override
-    public boolean isStarted() {
-        return isStarted;
+        this.setStopped();
     }
 
     /**
@@ -241,14 +244,14 @@ public final class CompositeFilter implements Iterable<Filter>, Filter, LifeCycl
         final StringBuilder sb = new StringBuilder();
         for (final Filter filter : filters) {
             if (sb.length() == 0) {
-                sb.append("{");
+                sb.append('{');
             } else {
                 sb.append(", ");
             }
             sb.append(filter.toString());
         }
         if (sb.length() > 0) {
-            sb.append("}");
+            sb.append('}');
         }
         return sb.toString();
     }
@@ -262,9 +265,9 @@ public final class CompositeFilter implements Iterable<Filter>, Filter, LifeCycl
      */
     @PluginFactory
     public static CompositeFilter createFilters(@PluginElement("Filters") final Filter[] filters) {
-        final List<Filter> f = filters == null || filters.length == 0 ?
+        final List<Filter> filterList = filters == null || filters.length == 0 ?
             new ArrayList<Filter>() : Arrays.asList(filters);
-        return new CompositeFilter(f);
+        return new CompositeFilter(filterList);
     }
 
 }

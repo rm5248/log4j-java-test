@@ -19,10 +19,10 @@ package org.apache.logging.log4j.message;
 /**
  * Creates {@link org.apache.logging.log4j.message.MessageFormatMessage} instances for
  * {@link #newMessage(String, Object...)}.
- *
- * @version $Id: MessageFormatMessageFactory.java 1435776 2013-01-20 02:30:24Z rgoers $
  */
 public class MessageFormatMessageFactory extends AbstractMessageFactory {
+
+    private static final long serialVersionUID = 1L;
 
     /**
      * Creates {@link org.apache.logging.log4j.message.StringFormattedMessage} instances.

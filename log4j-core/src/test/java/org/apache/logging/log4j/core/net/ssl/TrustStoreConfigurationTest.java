@@ -16,38 +16,38 @@
  */
 package org.apache.logging.log4j.core.net.ssl;
 
+import java.security.KeyStore;
+
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.security.KeyStore;
 
 public class TrustStoreConfigurationTest {
     @Test(expected = StoreConfigurationException.class)
     public void loadEmptyConfiguration() throws StoreConfigurationException {
-        TrustStoreConfiguration ksc = new TrustStoreConfiguration(null, null);
-        KeyStore ks = ksc.getTrustStore();
+        final TrustStoreConfiguration ksc = new TrustStoreConfiguration(null, null, null, null);
+        final KeyStore ks = ksc.getKeyStore();
         Assert.assertTrue(ks == null);
     }
 
     @Test
     public void loadConfiguration() throws StoreConfigurationException {
-        TrustStoreConfiguration ksc = new TrustStoreConfiguration(TestConstants.TRUSTSTORE_FILE, TestConstants.TRUSTSTORE_PWD);
-        KeyStore ks = ksc.getTrustStore();
+        final TrustStoreConfiguration ksc = new TrustStoreConfiguration(TestConstants.TRUSTSTORE_FILE, TestConstants.TRUSTSTORE_PWD, null, null);
+        final KeyStore ks = ksc.getKeyStore();
         Assert.assertNotNull(ks);
     }
 
     @Test
     public void returnTheSameKeyStoreAfterMultipleLoads() throws StoreConfigurationException {
-        TrustStoreConfiguration ksc = new TrustStoreConfiguration(TestConstants.TRUSTSTORE_FILE, TestConstants.TRUSTSTORE_PWD);
-        KeyStore ks = ksc.getTrustStore();
-        KeyStore ks2 = ksc.getTrustStore();
+        final TrustStoreConfiguration ksc = new TrustStoreConfiguration(TestConstants.TRUSTSTORE_FILE, TestConstants.TRUSTSTORE_PWD, null, null);
+        final KeyStore ks = ksc.getKeyStore();
+        final KeyStore ks2 = ksc.getKeyStore();
         Assert.assertTrue(ks == ks2);
     }
 
     @Test(expected = StoreConfigurationException.class)
     public void wrongPassword() throws StoreConfigurationException {
-        TrustStoreConfiguration ksc = new TrustStoreConfiguration(TestConstants.TRUSTSTORE_FILE, "wrongPassword!");
-        KeyStore ks = ksc.getTrustStore();
+        final TrustStoreConfiguration ksc = new TrustStoreConfiguration(TestConstants.TRUSTSTORE_FILE, "wrongPassword!", null, null);
+        final KeyStore ks = ksc.getKeyStore();
         Assert.assertTrue(false);
     }
 }

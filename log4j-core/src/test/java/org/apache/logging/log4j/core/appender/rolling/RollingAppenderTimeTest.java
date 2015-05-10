@@ -16,18 +16,21 @@
  */
 package org.apache.logging.log4j.core.appender.rolling;
 
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.core.config.ConfigurationFactory;
-import org.apache.logging.log4j.status.StatusLogger;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.junit.InitialLoggerContext;
+import org.hamcrest.Matcher;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExternalResource;
+import org.junit.rules.RuleChain;
+
+import static org.apache.logging.log4j.hamcrest.FileMatchers.hasName;
+import static org.apache.logging.log4j.hamcrest.Descriptors.that;
+import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.hasItemInArray;
+import static org.junit.Assert.*;
 
 /**
  *
@@ -37,45 +40,39 @@ public class RollingAppenderTimeTest {
     private static final String CONFIG = "log4j-rolling2.xml";
     private static final String DIR = "target/rolling2";
 
-    org.apache.logging.log4j.Logger logger = LogManager.getLogger(RollingAppenderTimeTest.class.getName());
+    private final InitialLoggerContext ctx = new InitialLoggerContext(CONFIG);
 
-    @BeforeClass
-    public static void setupClass() {
-        deleteDir();
-        System.setProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY, CONFIG);
-        final LoggerContext ctx = (LoggerContext) LogManager.getContext();
-        final Configuration config = ctx.getConfiguration();
-    }
-
-    @AfterClass
-    public static void cleanupClass() {
-        deleteDir();
-        System.clearProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY);
-        final LoggerContext ctx = (LoggerContext) LogManager.getContext();
-        ctx.reconfigure();
-        StatusLogger.getLogger().reset();
-    }
+    @Rule
+    public RuleChain chain = RuleChain.outerRule(new ExternalResource() {
+        @Override
+        protected void before() throws Throwable {
+            deleteDir();
+        }
+    }).around(ctx);
 
     @Test
     public void testAppender() throws Exception {
-        for (int i=0; i < 100; ++i) {
-            if (i % 11 == 0) {
-                Thread.sleep(1000);
-            }
-            logger.debug("This is test message number " + i);
+        final Logger logger = ctx.getLogger();
+        logger.debug("This is test message number 1");
+        Thread.sleep(1500);
+        // Trigger the rollover
+        for (int i = 0; i < 16; ++i) {
+            logger.debug("This is test message number " + i + 1);
         }
         final File dir = new File(DIR);
         assertTrue("Directory not created", dir.exists() && dir.listFiles().length > 0);
-        final File[] files = dir.listFiles();
-        assertTrue("No files created", files.length > 0);
-        boolean found = false;
-        for (final File file : files) {
-            if (file.getName().endsWith(".gz")) {
-                found = true;
-                break;
+
+        final int MAX_TRIES = 20;
+        final Matcher<File[]> hasGzippedFile = hasItemInArray(that(hasName(that(endsWith(".gz")))));
+        for (int i = 0; i < MAX_TRIES; i++) {
+            final File[] files = dir.listFiles();
+            if (hasGzippedFile.matches(files)) {
+                return; // test succeeded
             }
+            logger.debug("Adding additional event " + i);
+            Thread.sleep(100); // Allow time for rollover to complete
         }
-        assertTrue("No compressed files found", found);
+        fail("No compressed files found");
     }
 
     private static void deleteDir() {

@@ -16,15 +16,14 @@
  */
 package org.apache.logging.log4j.core.impl;
 
-import org.apache.logging.log4j.core.helpers.Constants;
-
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.logging.log4j.core.util.Constants;
+import org.apache.logging.log4j.util.Strings;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
 /**
  * Unit tests for {@code ThrowableFormatOptions}.
@@ -56,7 +55,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testNull() {
-        test(null, Integer.MAX_VALUE, Constants.LINE_SEP, null);
+        test(null, Integer.MAX_VALUE, Constants.LINE_SEPARATOR, null);
     }
 
     /**
@@ -64,7 +63,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testEmpty() {
-        test(new String[]{}, Integer.MAX_VALUE, Constants.LINE_SEP, null);
+        test(new String[]{}, Integer.MAX_VALUE, Constants.LINE_SEPARATOR, null);
     }
 
     /**
@@ -72,7 +71,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testOneNullElement() {
-        test(new String[]{null}, Integer.MAX_VALUE, Constants.LINE_SEP, null);
+        test(new String[]{null}, Integer.MAX_VALUE, Constants.LINE_SEPARATOR, null);
     }
 
     /**
@@ -80,7 +79,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testOneEmptyElement() {
-        test(new String[]{""}, Integer.MAX_VALUE, Constants.LINE_SEP, null);
+        test(new String[]{""}, Integer.MAX_VALUE, Constants.LINE_SEPARATOR, null);
     }
 
     /**
@@ -88,7 +87,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testFull() {
-        test(new String[]{"full"}, Integer.MAX_VALUE, Constants.LINE_SEP, null);
+        test(new String[]{"full"}, Integer.MAX_VALUE, Constants.LINE_SEPARATOR, null);
     }
 
     /**
@@ -96,7 +95,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testNone() {
-        test(new String[]{"none"}, 0, Constants.LINE_SEP, null);
+        test(new String[]{"none"}, 0, Constants.LINE_SEPARATOR, null);
     }
 
     /**
@@ -104,7 +103,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testShort() {
-        test(new String[]{"short"}, 2, Constants.LINE_SEP, null);
+        test(new String[]{"short"}, 2, Constants.LINE_SEPARATOR, null);
     }
 
     /**
@@ -112,7 +111,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testDepth() {
-        test(new String[]{"10"}, 10, Constants.LINE_SEP, null);
+        test(new String[]{"10"}, 10, Constants.LINE_SEPARATOR, null);
     }
 
     /**
@@ -128,7 +127,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testSeparatorAsEmpty() {
-        test(new String[]{"separator()"}, Integer.MAX_VALUE, "", null);
+        test(new String[]{"separator()"}, Integer.MAX_VALUE, Strings.EMPTY, null);
     }
 
     /**
@@ -136,7 +135,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testSeparatorAsDefaultLineSeparator() {
-        test(new String[]{"separator(" + Constants.LINE_SEP + ")"}, Integer.MAX_VALUE, Constants.LINE_SEP, null);
+        test(new String[]{"separator(" + Constants.LINE_SEPARATOR + ')'}, Integer.MAX_VALUE, Constants.LINE_SEPARATOR, null);
     }
 
     /**
@@ -184,7 +183,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testFilters() {
-        test(new String[]{"filters(packages)"}, Integer.MAX_VALUE, Constants.LINE_SEP, Arrays.asList("packages"));
+        test(new String[]{"filters(packages)"}, Integer.MAX_VALUE, Constants.LINE_SEPARATOR, Arrays.asList("packages"));
     }
 
     /**
@@ -192,7 +191,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testFiltersAsEmpty() {
-        test(new String[]{"filters()"}, Integer.MAX_VALUE, Constants.LINE_SEP, null);
+        test(new String[]{"filters()"}, Integer.MAX_VALUE, Constants.LINE_SEPARATOR, null);
     }
 
     /**
@@ -200,7 +199,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testFiltersAsMultiplePackages() {
-        test(new String[]{"filters(package1,package2)"}, Integer.MAX_VALUE, Constants.LINE_SEP, Arrays.asList("package1","package2"));
+        test(new String[]{"filters(package1,package2)"}, Integer.MAX_VALUE, Constants.LINE_SEPARATOR, Arrays.asList("package1","package2"));
     }
 
     /**
@@ -208,7 +207,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testFullAndFilters() {
-        test(new String[]{"full","filters(packages)"}, Integer.MAX_VALUE, Constants.LINE_SEP, Arrays.asList("packages"));
+        test(new String[]{"full","filters(packages)"}, Integer.MAX_VALUE, Constants.LINE_SEPARATOR, Arrays.asList("packages"));
     }
 
     /**
@@ -216,7 +215,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testNoneAndFilters() {
-        test(new String[]{"none","filters(packages)"}, 0, Constants.LINE_SEP, Arrays.asList("packages"));
+        test(new String[]{"none","filters(packages)"}, 0, Constants.LINE_SEPARATOR, Arrays.asList("packages"));
     }
 
     /**
@@ -224,7 +223,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testShortAndFilters() {
-        test(new String[]{"short","filters(packages)"}, 2, Constants.LINE_SEP, Arrays.asList("packages"));
+        test(new String[]{"short","filters(packages)"}, 2, Constants.LINE_SEPARATOR, Arrays.asList("packages"));
     }
 
     /**
@@ -232,7 +231,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testDepthAndFilters() {
-        test(new String[]{"10","filters(packages)"}, 10, Constants.LINE_SEP, Arrays.asList("packages"));
+        test(new String[]{"10","filters(packages)"}, 10, Constants.LINE_SEPARATOR, Arrays.asList("packages"));
     }
 
     /**
@@ -272,7 +271,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testSingleOptionFullAndFilters() {
-        test(new String[]{"full,filters(packages)"}, Integer.MAX_VALUE, Constants.LINE_SEP, Arrays.asList("packages"));
+        test(new String[]{"full,filters(packages)"}, Integer.MAX_VALUE, Constants.LINE_SEPARATOR, Arrays.asList("packages"));
     }
 
     /**
@@ -280,7 +279,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testSingleOptionNoneAndFilters() {
-        test(new String[]{"none,filters(packages)"}, 0, Constants.LINE_SEP, Arrays.asList("packages"));
+        test(new String[]{"none,filters(packages)"}, 0, Constants.LINE_SEPARATOR, Arrays.asList("packages"));
     }
 
     /**
@@ -288,7 +287,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testSingleOptionShortAndFilters() {
-        test(new String[]{"short,filters(packages)"}, 2, Constants.LINE_SEP, Arrays.asList("packages"));
+        test(new String[]{"short,filters(packages)"}, 2, Constants.LINE_SEPARATOR, Arrays.asList("packages"));
     }
 
     /**
@@ -296,7 +295,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testSingleOptionDepthAndFilters() {
-        test(new String[]{"10,filters(packages)"}, 10, Constants.LINE_SEP, Arrays.asList("packages"));
+        test(new String[]{"10,filters(packages)"}, 10, Constants.LINE_SEPARATOR, Arrays.asList("packages"));
     }
 
     /**
@@ -304,7 +303,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testSingleOptionFullAndMultipleFilters() {
-        test(new String[]{"full,filters(package1,package2)"}, Integer.MAX_VALUE, Constants.LINE_SEP, Arrays.asList("package1","package2"));
+        test(new String[]{"full,filters(package1,package2)"}, Integer.MAX_VALUE, Constants.LINE_SEPARATOR, Arrays.asList("package1","package2"));
     }
 
     /**
@@ -312,7 +311,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testSingleOptionNoneAndMultipleFilters() {
-        test(new String[]{"none,filters(package1,package2)"}, 0, Constants.LINE_SEP, Arrays.asList("package1","package2"));
+        test(new String[]{"none,filters(package1,package2)"}, 0, Constants.LINE_SEPARATOR, Arrays.asList("package1","package2"));
     }
 
     /**
@@ -320,7 +319,7 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testSingleOptionShortAndMultipleFilters() {
-        test(new String[]{"short,filters(package1,package2)"}, 2, Constants.LINE_SEP, Arrays.asList("package1","package2"));
+        test(new String[]{"short,filters(package1,package2)"}, 2, Constants.LINE_SEPARATOR, Arrays.asList("package1","package2"));
     }
 
     /**
@@ -328,6 +327,6 @@ public final class ThrowableFormatOptionsTest {
      */
     @Test
     public void testSingleOptionDepthAndMultipleFilters() {
-        test(new String[]{"10,filters(package1,package2)"}, 10, Constants.LINE_SEP, Arrays.asList("package1","package2"));
+        test(new String[]{"10,filters(package1,package2)"}, 10, Constants.LINE_SEPARATOR, Arrays.asList("package1","package2"));
     }
 }

@@ -44,13 +44,13 @@ public class PatternFormatter {
     public FormattingInfo getFormattingInfo() {
         return field;
     }
-    
+
     /**
-     * Normally pattern formatters are not meant to handle Exceptions although
-     * few pattern formatters might.
-     * <p/>
-     * By examining the return values for this method, the containing layout will
-     * determine whether it handles throwables or not.
+     * Normally pattern formatters are not meant to handle Exceptions although few pattern formatters might.
+     * <p>
+     * By examining the return values for this method, the containing layout will determine whether it handles
+     * throwables or not.
+     * </p>
      *
      * @return true if this PatternConverter handles throwables
      */
@@ -60,18 +60,18 @@ public class PatternFormatter {
 
     /**
      * Returns a String suitable for debugging.
-     * 
+     *
      * @return a String suitable for debugging.
      */
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
+        final StringBuilder sb = new StringBuilder();
         sb.append(super.toString());
         sb.append("[converter=");
         sb.append(converter);
         sb.append(", field=");
         sb.append(field);
-        sb.append("]");
+        sb.append(']');
         return sb.toString();
     }
 }

@@ -16,14 +16,8 @@
  */
 package org.apache.logging.log4j.taglib;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-
 import java.io.Writer;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import javax.servlet.jsp.tagext.BodyTag;
@@ -42,6 +36,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.springframework.mock.web.MockBodyContent;
 import org.springframework.mock.web.MockPageContext;
+
+import static org.junit.Assert.*;
 
 /**
  *
@@ -300,8 +296,7 @@ public class LoggingMessageTagSupportTest {
     @SuppressWarnings("unchecked")
     private void verify(final String expected) {
         final LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-        final Map<String, Appender> list = ctx.getConfiguration().getAppenders();
-        final Appender listApp = list.get("List");
+        final Appender listApp = ctx.getConfiguration().getAppender("List");
         assertNotNull("Missing Appender", listApp);
         assertTrue("Not a ListAppender", listApp instanceof ListAppender);
         final List<String> events = ((ListAppender) listApp).getMessages();

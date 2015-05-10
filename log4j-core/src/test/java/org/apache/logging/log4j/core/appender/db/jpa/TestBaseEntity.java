@@ -18,12 +18,11 @@ package org.apache.logging.log4j.core.appender.db.jpa;
 
 import java.util.Date;
 import java.util.Map;
+
 import javax.persistence.Basic;
 import javax.persistence.Column;
 import javax.persistence.Convert;
 import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -36,8 +35,10 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.ThreadContext;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.appender.db.jpa.converter.LevelAttributeConverter;
 import org.apache.logging.log4j.core.appender.db.jpa.converter.MessageAttributeConverter;
 import org.apache.logging.log4j.core.appender.db.jpa.converter.ThrowableAttributeConverter;
+import org.apache.logging.log4j.core.impl.ThrowableProxy;
 import org.apache.logging.log4j.message.Message;
 
 @Entity
@@ -70,7 +71,7 @@ public class TestBaseEntity extends AbstractLogEventWrapperEntity {
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "eventDate")
     public Date getEventDate() {
-        return new Date(this.getMillis());
+        return new Date(this.getTimeMillis());
     }
 
     public void setEventDate(final Date date) {
@@ -78,7 +79,7 @@ public class TestBaseEntity extends AbstractLogEventWrapperEntity {
     }
 
     @Override
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = LevelAttributeConverter.class)
     @Column(name = "level")
     public Level getLevel() {
         return this.getWrappedEvent().getLevel();
@@ -118,8 +119,8 @@ public class TestBaseEntity extends AbstractLogEventWrapperEntity {
 
     @Override
     @Transient
-    public long getMillis() {
-        return this.getWrappedEvent().getMillis();
+    public long getTimeMillis() {
+        return this.getWrappedEvent().getTimeMillis();
     }
 
     @Override
@@ -127,6 +128,12 @@ public class TestBaseEntity extends AbstractLogEventWrapperEntity {
     @Column(name = "exception")
     public Throwable getThrown() {
         return this.getWrappedEvent().getThrown();
+    }
+
+    @Override
+    @Transient
+    public ThrowableProxy getThrownProxy() {
+        return this.getWrappedEvent().getThrownProxy();
     }
 
     @Override
@@ -143,7 +150,7 @@ public class TestBaseEntity extends AbstractLogEventWrapperEntity {
 
     @Override
     @Transient
-    public String getFQCN() {
-        return this.getWrappedEvent().getFQCN();
+    public String getLoggerFqcn() {
+        return this.getWrappedEvent().getLoggerFqcn();
     }
 }

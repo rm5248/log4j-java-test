@@ -33,7 +33,10 @@ import org.apache.logging.log4j.core.appender.ManagerFactory;
  * I/O.
  */
 public class RollingRandomAccessFileManager extends RollingFileManager {
-    static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
+    /**
+     * The default buffer size
+     */
+    public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 
     private static final RollingRandomAccessFileManagerFactory FACTORY = new RollingRandomAccessFileManagerFactory();
 
@@ -44,23 +47,42 @@ public class RollingRandomAccessFileManager extends RollingFileManager {
 
     public RollingRandomAccessFileManager(final RandomAccessFile raf, final String fileName,
             final String pattern, final OutputStream os, final boolean append,
-            final boolean immediateFlush, final long size, final long time,
+            final boolean immediateFlush, final int bufferSize, final long size, final long time,
             final TriggeringPolicy policy, final RolloverStrategy strategy,
             final String advertiseURI, final Layout<? extends Serializable> layout) {
-        super(fileName, pattern, os, append, size, time, policy, strategy, advertiseURI, layout);
+        super(fileName, pattern, os, append, size, time, policy, strategy, advertiseURI, layout, bufferSize);
         this.isImmediateFlush = immediateFlush;
         this.randomAccessFile = raf;
         isEndOfBatch.set(Boolean.FALSE);
-
-        // TODO make buffer size configurable?
-        buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+        this.buffer = ByteBuffer.allocate(bufferSize);
+        writeHeader();
     }
 
-    public static RollingRandomAccessFileManager getRollingRandomAccessFileManager(final String fileName, final String filePattern,
-            final boolean isAppend, final boolean immediateFlush, final TriggeringPolicy policy,
-            final RolloverStrategy strategy, final String advertiseURI, final Layout<? extends Serializable> layout) {
-        return (RollingRandomAccessFileManager) getManager(fileName, new FactoryData(filePattern, isAppend, immediateFlush,
-            policy, strategy, advertiseURI, layout), FACTORY);
+    /**
+     * Writes the layout's header to the file if it exists.
+     */
+    private void writeHeader() {
+        if (layout == null) {
+            return;
+        }
+        final byte[] header = layout.getHeader();
+        if (header == null) {
+            return;
+        }
+        try {
+            // write to the file, not to the buffer: the buffer may not be empty
+            randomAccessFile.write(header, 0, header.length);
+        } catch (final IOException ioe) {
+            LOGGER.error("Unable to write header", ioe);
+        }
+    }
+
+    public static RollingRandomAccessFileManager getRollingRandomAccessFileManager(final String fileName,
+            final String filePattern, final boolean isAppend, final boolean immediateFlush, final int bufferSize, 
+            final TriggeringPolicy policy, final RolloverStrategy strategy, final String advertiseURI, 
+            final Layout<? extends Serializable> layout) {
+        return (RollingRandomAccessFileManager) getManager(fileName, new FactoryData(filePattern, isAppend, 
+                immediateFlush, bufferSize, policy, strategy, advertiseURI, layout), FACTORY);
     }
 
     public Boolean isEndOfBatch() {
@@ -73,7 +95,7 @@ public class RollingRandomAccessFileManager extends RollingFileManager {
 
     @Override
     protected synchronized void write(final byte[] bytes, int offset, int length) {
-        super.write(bytes, offset, length); // writes to dummy output stream
+        super.write(bytes, offset, length); // writes to dummy output stream, needed to track file size
 
         int chunk = 0;
         do {
@@ -97,6 +119,7 @@ public class RollingRandomAccessFileManager extends RollingFileManager {
         if (isAppend()) {
             randomAccessFile.seek(randomAccessFile.length());
         }
+        writeHeader();
     }
 
     @Override
@@ -120,6 +143,15 @@ public class RollingRandomAccessFileManager extends RollingFileManager {
             LOGGER.error("Unable to close RandomAccessFile " + getName() + ". "
                     + ex);
         }
+    }
+    
+    /**
+     * Returns the buffer capacity.
+     * @return the buffer size
+     */
+    @Override
+    public int getBufferSize() {
+        return buffer.capacity();
     }
 
     /**
@@ -160,13 +192,14 @@ public class RollingRandomAccessFileManager extends RollingFileManager {
                     raf.setLength(0);
                 }
                 return new RollingRandomAccessFileManager(raf, name, data.pattern, new DummyOutputStream(), data.append,
-                        data.immediateFlush, size, time, data.policy, data.strategy, data.advertiseURI, data.layout);
+                        data.immediateFlush, data.bufferSize, size, time, data.policy, data.strategy, data.advertiseURI,
+                        data.layout);
             } catch (final IOException ex) {
                 LOGGER.error("Cannot access RandomAccessFile {}) " + ex);
                 if (raf != null) {
                     try {
                         raf.close();
-                    } catch (IOException e) {
+                    } catch (final IOException e) {
                         LOGGER.error("Cannot close RandomAccessFile {}", name, e);
                     }
                 }
@@ -193,6 +226,7 @@ public class RollingRandomAccessFileManager extends RollingFileManager {
         private final String pattern;
         private final boolean append;
         private final boolean immediateFlush;
+        private final int bufferSize;
         private final TriggeringPolicy policy;
         private final RolloverStrategy strategy;
         private final String advertiseURI;
@@ -204,13 +238,19 @@ public class RollingRandomAccessFileManager extends RollingFileManager {
          * @param pattern The pattern.
          * @param append The append flag.
          * @param immediateFlush
+         * @param bufferSize
+         * @param policy
+         * @param strategy
+         * @param advertiseURI
+         * @param layout
          */
         public FactoryData(final String pattern, final boolean append, final boolean immediateFlush,
-                           final TriggeringPolicy policy, final RolloverStrategy strategy, final String advertiseURI,
-                           final Layout<? extends Serializable> layout) {
+                final int bufferSize, final TriggeringPolicy policy, final RolloverStrategy strategy,
+                final String advertiseURI, final Layout<? extends Serializable> layout) {
             this.pattern = pattern;
             this.append = append;
             this.immediateFlush = immediateFlush;
+            this.bufferSize = bufferSize;
             this.policy = policy;
             this.strategy = strategy;
             this.advertiseURI = advertiseURI;

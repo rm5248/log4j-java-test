@@ -16,15 +16,16 @@
  */
 package org.apache.logging.log4j;
 
+import java.util.List;
+import java.util.Locale;
+
 import org.apache.logging.log4j.message.StructuredDataMessage;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.List;
-import java.util.Locale;
+import static org.hamcrest.CoreMatchers.*;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  *
@@ -49,10 +50,10 @@ public class EventLoggerTest {
         msg.put("FromAccount", "123457");
         msg.put("Amount", "200.00");
         EventLogger.logEvent(msg);
-        ThreadContext.clear();
+        ThreadContext.clearMap();
         assertEquals(1, results.size());
-        final String expected = " OFF Audit [Transfer@18060 Amount=\"200.00\" FromAccount=\"123457\" ToAccount=\"123456\"] Transfer Complete";
-        assertTrue("Incorrect structured data: " + results.get(0) + ", expected: " ,results.get(0).startsWith(expected));
+        final String expected = "EVENT OFF Audit [Transfer@18060 Amount=\"200.00\" FromAccount=\"123457\" ToAccount=\"123456\"] Transfer Complete";
+        assertThat("Incorrect structured data", results.get(0), startsWith(expected));
     }
 
 }

@@ -34,15 +34,19 @@ import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.Booleans;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.apache.logging.log4j.core.net.Advertiser;
+import org.apache.logging.log4j.core.util.Booleans;
+import org.apache.logging.log4j.core.util.Integers;
 
 /**
  * An appender that writes to files and can roll over at intervals.
  */
 @Plugin(name = "RollingFile", category = "Core", elementType = "appender", printObject = true)
-public final class RollingFileAppender extends AbstractOutputStreamAppender {
+public final class RollingFileAppender extends AbstractOutputStreamAppender<RollingFileManager> {
+
+    private static final int DEFAULT_BUFFER_SIZE = 8192;
+    private static final long serialVersionUID = 1L;
 
     private final String fileName;
     private final String filePattern;
@@ -51,9 +55,8 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender {
 
 
     private RollingFileAppender(final String name, final Layout<? extends Serializable> layout, final Filter filter,
-                                final RollingFileManager manager, final String fileName,
-                                final String filePattern, final boolean ignoreExceptions, final boolean immediateFlush,
-                                final Advertiser advertiser) {
+            final RollingFileManager manager, final String fileName, final String filePattern,
+            final boolean ignoreExceptions, final boolean immediateFlush, final Advertiser advertiser) {
         super(name, layout, filter, ignoreExceptions, immediateFlush, manager);
         if (advertiser != null) {
             final Map<String, String> configuration = new HashMap<String, String>(layout.getContentFormat());
@@ -81,7 +84,7 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender {
      */
     @Override
     public void append(final LogEvent event) {
-        ((RollingFileManager) getManager()).checkRollover(event);
+        getManager().checkRollover(event);
         super.append(event);
     }
 
@@ -109,6 +112,7 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender {
      * is overwritten when opened. Defaults to "true"
      * @param name The name of the Appender (required).
      * @param bufferedIO When true, I/O will be buffered. Defaults to "true".
+     * @param bufferSizeStr buffer size for buffered IO (default is 8192).
      * @param immediateFlush When true, events are immediately flushed. Defaults to "true".
      * @param policy The triggering policy. (required).
      * @param strategy The rollover strategy. Defaults to DefaultRolloverStrategy.
@@ -128,6 +132,7 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender {
             @PluginAttribute("append") final String append,
             @PluginAttribute("name") final String name,
             @PluginAttribute("bufferedIO") final String bufferedIO,
+            @PluginAttribute("bufferSize") final String bufferSizeStr,
             @PluginAttribute("immediateFlush") final String immediateFlush,
             @PluginElement("Policy") final TriggeringPolicy policy,
             @PluginElement("Strategy") RolloverStrategy strategy,
@@ -143,6 +148,10 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender {
         final boolean isBuffered = Booleans.parseBoolean(bufferedIO, true);
         final boolean isFlush = Booleans.parseBoolean(immediateFlush, true);
         final boolean isAdvertise = Boolean.parseBoolean(advertise);
+        final int bufferSize = Integers.parseInt(bufferSizeStr, DEFAULT_BUFFER_SIZE);
+        if (!isBuffered && bufferSize > 0) {
+            LOGGER.warn("The bufferSize is set to {} but bufferedIO is not true: {}", bufferSize, bufferedIO);
+        }
         if (name == null) {
             LOGGER.error("No name provided for FileAppender");
             return null;
@@ -169,11 +178,11 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender {
         }
 
         if (layout == null) {
-            layout = PatternLayout.createLayout(null, null, null, null, null);
+            layout = PatternLayout.createDefaultLayout();
         }
 
         final RollingFileManager manager = RollingFileManager.getFileManager(fileName, filePattern, isAppend,
-            isBuffered, policy, strategy, advertiseURI, layout);
+            isBuffered, policy, strategy, advertiseURI, layout, bufferSize);
         if (manager == null) {
             return null;
         }

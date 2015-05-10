@@ -16,8 +16,6 @@
  */
 package org.apache.logging.log4j.core.appender.rolling;
 
-import static org.junit.Assert.assertTrue;
-
 import java.io.ByteArrayOutputStream;
 
 import org.apache.logging.log4j.Level;
@@ -25,6 +23,8 @@ import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.message.SimpleMessage;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 /**
  *
@@ -52,7 +52,7 @@ public class OnStartupTriggeringPolicyTest {
 
         public MyRollingManager(final TriggeringPolicy policy, final RolloverStrategy strategy) {
             super("testfile", "target/rolling1/test1-%i.log.gz", new ByteArrayOutputStream(),
-                false, 0, System.currentTimeMillis(), policy, strategy, null, null);
+                false, 0, System.currentTimeMillis(), policy, strategy, null, null, 8192);
         }
 
         public void setFileTime(final long timestamp) {

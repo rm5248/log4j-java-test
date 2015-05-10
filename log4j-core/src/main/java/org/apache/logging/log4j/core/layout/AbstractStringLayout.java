@@ -19,30 +19,36 @@ package org.apache.logging.log4j.core.layout;
 import java.nio.charset.Charset;
 
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.util.Charsets;
 
 /**
  * Abstract base class for Layouts that result in a String.
  */
 public abstract class AbstractStringLayout extends AbstractLayout<String> {
 
+    private static final long serialVersionUID = 1L;
+
     /**
-     * The charset of the formatted message.
+     * The charset for the formatted message.
      */
+    // TODO: Charset is not serializable. Implement read/writeObject() ?
     private final Charset charset;
 
     protected AbstractStringLayout(final Charset charset) {
-        this.charset = charset;
+        this(charset, null, null);
     }
 
-    /**
-     * Formats the Log Event as a byte array.
-     *
-     * @param event The Log Event.
-     * @return The formatted event as a byte array.
-     */
-    @Override
-    public byte[] toByteArray(final LogEvent event) {
-        return toSerializable(event).getBytes(charset);
+    protected AbstractStringLayout(final Charset charset, final byte[] header, final byte[] footer) {
+        super(header, footer);
+        this.charset = charset == null ? Charsets.UTF_8 : charset;
+    }
+
+    protected byte[] getBytes(String s) {
+        return s.getBytes(charset);
+    }
+
+    protected Charset getCharset() {
+        return charset;
     }
 
     /**
@@ -53,7 +59,15 @@ public abstract class AbstractStringLayout extends AbstractLayout<String> {
         return "text/plain";
     }
 
-    protected Charset getCharset() {
-        return charset;
+    /**
+     * Formats the Log Event as a byte array.
+     *
+     * @param event
+     *        The Log Event.
+     * @return The formatted event as a byte array.
+     */
+    @Override
+    public byte[] toByteArray(final LogEvent event) {
+        return toSerializable(event).getBytes(charset);
     }
 }

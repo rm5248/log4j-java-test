@@ -20,33 +20,36 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Map;
 
+import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.config.Node;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 
 /**
- * Format a LogEvent in its serialized form.
+ * Formats a {@link LogEvent} in its Java serialized form.
  */
-@Plugin(name = "SerializedLayout", category = "Core", elementType = "layout", printObject = true)
+@Plugin(name = "SerializedLayout", category = Node.CATEGORY, elementType = Layout.ELEMENT_TYPE, printObject = true)
 public final class SerializedLayout extends AbstractLayout<LogEvent> {
 
-    private static byte[] header;
+    private static final long serialVersionUID = 1L;
+
+    private static byte[] serializedHeader;
 
     static {
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             final ObjectOutputStream oos = new ObjectOutputStream(baos);
             oos.close();
-            header = baos.toByteArray();
+            serializedHeader = baos.toByteArray();
         } catch (final Exception ex) {
             LOGGER.error("Unable to generate Object stream header", ex);
         }
     }
 
     private SerializedLayout() {
+        super(null, null);
     }
 
     /**
@@ -84,27 +87,17 @@ public final class SerializedLayout extends AbstractLayout<LogEvent> {
     }
 
     /**
-     * Create a SerializedLayout.
+     * Creates a SerializedLayout.
      * @return A SerializedLayout.
      */
     @PluginFactory
     public static SerializedLayout createLayout() {
-
         return new SerializedLayout();
     }
 
     @Override
     public byte[] getHeader() {
-        return header;
-    }
-
-    /**
-     * SerializedLayout's format is sufficiently specified via the content type, use empty Map/unspecified.
-     * @return empty Map
-     */
-    @Override
-    public Map<String, String> getContentFormat() {
-        return new HashMap<String, String>();
+        return serializedHeader;
     }
 
     /**

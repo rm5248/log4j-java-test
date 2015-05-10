@@ -21,6 +21,9 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import org.apache.logging.log4j.core.util.Patterns;
+import org.apache.logging.log4j.util.EnglishEnums;
+
 /**
  * Converts text into ANSI escape sequences.
  * <p>
@@ -31,9 +34,13 @@ import java.util.Map;
 public enum AnsiEscape {
 
     /**
-     * Escape prefix.
+     * The Control Sequence Introducer (or Control Sequence Initiator).
+     * <p>
+     * Most sequences are more than two characters and start with the characters ESC and [ (the left bracket).
+     * </p>
      */
-    PREFIX("\u001b["),
+    CSI("\u001b["),
+    
     /**
      * Escape suffix.
      */
@@ -209,8 +216,6 @@ public enum AnsiEscape {
      */
     BG_WHITE("47");
 
-    private static final String WHITESPACE_REGEX = "\\s*";
-
     private final String code;
 
     private AnsiEscape(final String code) {
@@ -223,11 +228,7 @@ public enum AnsiEscape {
      * @return the default style
      */
     public static String getDefaultStyle() {
-        return PREFIX.getCode() + SUFFIX.getCode();
-    }
-
-    private static String toRegexSeparator(final String separator) {
-        return WHITESPACE_REGEX + separator + WHITESPACE_REGEX;
+        return CSI.getCode() + SUFFIX.getCode();
     }
 
     /**
@@ -260,7 +261,7 @@ public enum AnsiEscape {
      * @return a new map
      */
     public static Map<String, String> createMap(final String values, final String[] dontEscapeKeys) {
-        return createMap(values.split(toRegexSeparator(",")), dontEscapeKeys);
+        return createMap(values.split(Patterns.COMMA_SEPARATOR), dontEscapeKeys);
     }
 
     /**
@@ -290,7 +291,7 @@ public enum AnsiEscape {
         Arrays.sort(sortedIgnoreKeys);
         final Map<String, String> map = new HashMap<String, String>();
         for (final String string : values) {
-            final String[] keyValue = string.split(toRegexSeparator("="));
+            final String[] keyValue = string.split(Patterns.toWhitespaceSeparator("="));
             if (keyValue.length > 1) {
                 final String key = keyValue[0].toUpperCase(Locale.ENGLISH);
                 final String value = keyValue[1];
@@ -312,11 +313,11 @@ public enum AnsiEscape {
         if (names == null) {
             return getDefaultStyle();
         }
-        final StringBuilder sb = new StringBuilder(AnsiEscape.PREFIX.getCode());
+        final StringBuilder sb = new StringBuilder(AnsiEscape.CSI.getCode());
         boolean first = true;
         for (final String name : names) {
             try {
-                final AnsiEscape escape = AnsiEscape.valueOf(name.trim().toUpperCase(Locale.ENGLISH));
+                final AnsiEscape escape = EnglishEnums.valueOf(AnsiEscape.class, name.trim());
                 if (!first) {
                     sb.append(AnsiEscape.SEPARATOR.getCode());
                 }

@@ -18,8 +18,10 @@ package org.apache.logging.log4j.core.filter;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
+import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.config.Node;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
@@ -30,8 +32,10 @@ import org.apache.logging.log4j.message.Message;
  * configured marker as a parent.
  *
  */
-@Plugin(name = "MarkerFilter", category = "Core", elementType = "filter", printObject = true)
+@Plugin(name = "MarkerFilter", category = Node.CATEGORY, elementType = Filter.ELEMENT_TYPE, printObject = true)
 public final class MarkerFilter extends AbstractFilter {
+
+    private static final long serialVersionUID = 1L;
 
     private final String name;
 
@@ -82,16 +86,14 @@ public final class MarkerFilter extends AbstractFilter {
     @PluginFactory
     public static MarkerFilter createFilter(
             @PluginAttribute("marker") final String marker,
-            @PluginAttribute("onMatch") final String match,
-            @PluginAttribute("onMismatch") final String mismatch) {
+            @PluginAttribute("onMatch") final Result match,
+            @PluginAttribute("onMismatch") final Result mismatch) {
 
         if (marker == null) {
             LOGGER.error("A marker must be provided for MarkerFilter");
             return null;
         }
-        final Result onMatch = Result.toResult(match);
-        final Result onMismatch = Result.toResult(mismatch);
-        return new MarkerFilter(marker, onMatch, onMismatch);
+        return new MarkerFilter(marker, match, mismatch);
     }
 
 }

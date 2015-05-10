@@ -26,27 +26,28 @@ import java.util.ResourceBundle;
 import org.apache.logging.log4j.status.StatusLogger;
 
 /**
- * This class is not the recommended way to Localize messages. It is provided to provide some level
- * of compatibility with Log4j 1.x.
- *
- * The recommended way to localize messages is to simply log a message id. Log events should
- * then be recorded without formatting into some kind of data store. The application that is
- * used to read the events and display them to the user should also localize and format the
- * messages for the end user.
+ * Provides some level of compatibility with Log4j 1.x and convenience but is not the recommended way to Localize
+ * messages.
+ * <p>
+ * The recommended way to localize messages is to log a message id. Log events should then be recorded without
+ * formatting into a data store. The application that is used to read the events and display them to the user can then
+ * localize and format the messages for the end user.
+ * </p>
  */
 public class LocalizedMessage implements Message, LoggerNameAwareMessage {
     private static final long serialVersionUID = 3893703791567290742L;
 
-    private String bundleId;
+    private String baseName;
 
-    private transient ResourceBundle bundle;
+    // ResourceBundle is not Serializable.
+    private transient ResourceBundle resourceBundle;
 
-    private Locale locale;
+    private final Locale locale;
 
     private transient StatusLogger logger = StatusLogger.getLogger();
 
     private String loggerName;
-    private String messagePattern;
+    private String key;
     private String[] stringArgs;
     private transient Object[] argArray;
     private String formattedMessage;
@@ -62,27 +63,31 @@ public class LocalizedMessage implements Message, LoggerNameAwareMessage {
         this((ResourceBundle) null, (Locale) null, messagePattern, arguments);
     }
 
-    public LocalizedMessage(final String bundleId, final String key, final Object[] arguments) {
-        this(bundleId, (Locale) null, key, arguments);
+    public LocalizedMessage(final String baseName, final String key, final Object[] arguments) {
+        this(baseName, (Locale) null, key, arguments);
     }
 
     public LocalizedMessage(final ResourceBundle bundle, final String key, final Object[] arguments) {
         this(bundle, (Locale) null, key, arguments);
     }
 
-    public LocalizedMessage(final String bundleId, final Locale locale, final String key, final Object[] arguments) {
-        this.messagePattern = key;
+    public LocalizedMessage(final String baseName, final Locale locale, final String key, final Object[] arguments) {
+        this.key = key;
         this.argArray = arguments;
         this.throwable = null;
-        setup(bundleId, null, locale);
+        this.baseName = baseName;
+        this.resourceBundle = null;
+        this.locale = locale;
     }
 
     public LocalizedMessage(final ResourceBundle bundle, final Locale locale, final String key,
                             final Object[] arguments) {
-        this.messagePattern = key;
+        this.key = key;
         this.argArray = arguments;
         this.throwable = null;
-        setup(null, bundle, locale);
+        this.baseName = null;
+        this.resourceBundle = bundle;
+        this.locale = locale;
     }
 
     public LocalizedMessage(final Locale locale, final String key, final Object[] arguments) {
@@ -93,16 +98,16 @@ public class LocalizedMessage implements Message, LoggerNameAwareMessage {
         this((ResourceBundle) null, (Locale) null, messagePattern, new Object[] {arg});
     }
 
-    public LocalizedMessage(final String bundleId, final String key, final Object arg) {
-        this(bundleId, (Locale) null, key, new Object[] {arg});
+    public LocalizedMessage(final String baseName, final String key, final Object arg) {
+        this(baseName, (Locale) null, key, new Object[] {arg});
     }
 
     public LocalizedMessage(final ResourceBundle bundle, final String key, final Object arg) {
         this(bundle, (Locale) null, key, new Object[] {arg});
     }
 
-    public LocalizedMessage(final String bundleId, final Locale locale, final String key, final Object arg) {
-        this(bundleId, locale, key, new Object[] {arg});
+    public LocalizedMessage(final String baseName, final Locale locale, final String key, final Object arg) {
+        this(baseName, locale, key, new Object[] {arg});
     }
 
     public LocalizedMessage(final ResourceBundle bundle, final Locale locale, final String key, final Object arg) {
@@ -117,17 +122,17 @@ public class LocalizedMessage implements Message, LoggerNameAwareMessage {
         this((ResourceBundle) null, (Locale) null, messagePattern, new Object[] {arg1, arg2});
     }
 
-    public LocalizedMessage(final String bundleId, final String key, final Object arg1, final Object arg2) {
-        this(bundleId, (Locale) null, key, new Object[] {arg1, arg2});
+    public LocalizedMessage(final String baseName, final String key, final Object arg1, final Object arg2) {
+        this(baseName, (Locale) null, key, new Object[] {arg1, arg2});
     }
 
     public LocalizedMessage(final ResourceBundle bundle, final String key, final Object arg1, final Object arg2) {
         this(bundle, (Locale) null, key, new Object[] {arg1, arg2});
     }
 
-    public LocalizedMessage(final String bundleId, final Locale locale, final String key, final Object arg1,
+    public LocalizedMessage(final String baseName, final Locale locale, final String key, final Object arg1,
                             final Object arg2) {
-        this(bundleId, locale, key, new Object[] {arg1, arg2});
+        this(baseName, locale, key, new Object[] {arg1, arg2});
     }
 
     public LocalizedMessage(final ResourceBundle bundle, final Locale locale, final String key, final Object arg1,
@@ -157,12 +162,6 @@ public class LocalizedMessage implements Message, LoggerNameAwareMessage {
         return this.loggerName;
     }
 
-    private void setup(final String bundleId, final ResourceBundle bundle, final Locale locale) {
-        this.bundleId = bundleId;
-        this.bundle = bundle;
-        this.locale = locale;
-    }
-
     /**
      * Returns the formatted message after looking up the format in the resource bundle.
      * @return The formatted message String.
@@ -172,17 +171,17 @@ public class LocalizedMessage implements Message, LoggerNameAwareMessage {
         if (formattedMessage != null) {
             return formattedMessage;
         }
-        ResourceBundle bundle = this.bundle;
+        ResourceBundle bundle = this.resourceBundle;
         if (bundle == null) {
-            if (bundleId != null) {
-                bundle = getBundle(bundleId, locale, false);
+            if (baseName != null) {
+                bundle = getResourceBundle(baseName, locale, false);
             } else {
-                bundle = getBundle(loggerName, locale, true);
+                bundle = getResourceBundle(loggerName, locale, true);
             }
         }
-        final String messagePattern = getFormat();
-        final String msgPattern = (bundle == null || !bundle.containsKey(messagePattern)) ?
-            messagePattern : bundle.getString(messagePattern);
+        final String myKey = getFormat();
+        final String msgPattern = (bundle == null || !bundle.containsKey(myKey)) ?
+            myKey : bundle.getString(myKey);
         final Object[] array = argArray == null ? stringArgs : argArray;
         final FormattedMessage msg = new FormattedMessage(msgPattern, array);
         formattedMessage = msg.getFormattedMessage();
@@ -192,7 +191,7 @@ public class LocalizedMessage implements Message, LoggerNameAwareMessage {
 
     @Override
     public String getFormat() {
-        return messagePattern;
+        return key;
     }
 
     @Override
@@ -210,38 +209,39 @@ public class LocalizedMessage implements Message, LoggerNameAwareMessage {
 
     /**
      * Override this to use a ResourceBundle.Control in Java 6
-     * @param key The key to the bundle.
-     * @param locale The locale to use when formatting the message.
+     * 
+     * @param rbBaseName The base name of the resource bundle, a fully qualified class name.
+     * @param resourceBundleLocale The locale to use when formatting the message.
      * @param loop If true the key will be treated as a package or class name and a resource bundle will
      * be located based on all or part of the package name. If false the key is expected to be the exact bundle id.
      * @return The ResourceBundle.
      */
-    protected ResourceBundle getBundle(final String key, final Locale locale, final boolean loop) {
+    protected ResourceBundle getResourceBundle(final String rbBaseName, final Locale resourceBundleLocale, final boolean loop) {
         ResourceBundle rb = null;
 
-        if (key == null) {
+        if (rbBaseName == null) {
             return null;
         }
         try {
-            if (locale != null) {
-                rb = ResourceBundle.getBundle(key, locale);
+            if (resourceBundleLocale != null) {
+                rb = ResourceBundle.getBundle(rbBaseName, resourceBundleLocale);
             } else {
-                rb = ResourceBundle.getBundle(key);
+                rb = ResourceBundle.getBundle(rbBaseName);
             }
         } catch (final MissingResourceException ex) {
             if (!loop) {
-                logger.debug("Unable to locate ResourceBundle " + key);
+                logger.debug("Unable to locate ResourceBundle " + rbBaseName);
                 return null;
             }
         }
 
-        String substr = key;
+        String substr = rbBaseName;
         int i;
         while (rb == null && (i = substr.lastIndexOf('.')) > 0) {
             substr = substr.substring(0, i);
             try {
-                if (locale != null) {
-                    rb = ResourceBundle.getBundle(substr, locale);
+                if (resourceBundleLocale != null) {
+                    rb = ResourceBundle.getBundle(substr, resourceBundleLocale);
                 } else {
                     rb = ResourceBundle.getBundle(substr);
                 }
@@ -256,8 +256,8 @@ public class LocalizedMessage implements Message, LoggerNameAwareMessage {
         out.defaultWriteObject();
         getFormattedMessage();
         out.writeUTF(formattedMessage);
-        out.writeUTF(messagePattern);
-        out.writeUTF(bundleId);
+        out.writeUTF(key);
+        out.writeUTF(baseName);
         out.writeInt(argArray.length);
         stringArgs = new String[argArray.length];
         int i = 0;
@@ -265,20 +265,18 @@ public class LocalizedMessage implements Message, LoggerNameAwareMessage {
             stringArgs[i] = obj.toString();
             ++i;
         }
+        out.writeObject(stringArgs);
     }
 
     private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
         formattedMessage = in.readUTF();
-        messagePattern = in.readUTF();
-        bundleId = in.readUTF();
+        key = in.readUTF();
+        baseName = in.readUTF();
         final int length = in.readInt();
-        stringArgs = new String[length];
-        for (int i = 0; i < length; ++i) {
-            stringArgs[i] = in.readUTF();
-        }
+        stringArgs = (String[]) in.readObject();
         logger = StatusLogger.getLogger();
-        bundle = null;
+        resourceBundle = null;
         argArray = null;
     }
 }

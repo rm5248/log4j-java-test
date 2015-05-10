@@ -16,53 +16,28 @@
  */
 package org.apache.logging.log4j.jcl;
 
-import java.util.Map;
-import java.util.WeakHashMap;
+import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogConfigurationException;
 import org.apache.commons.logging.LogFactory;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.spi.AbstractLogger;
-import org.apache.logging.log4j.spi.LoggerContext;
+import org.apache.logging.log4j.spi.LoggerAdapter;
 
 /**
- *
+ * Log4j binding for Commons Logging.
+ * {@inheritDoc}
  */
 public class LogFactoryImpl extends LogFactory {
 
-    private final Map<LoggerContext, ConcurrentMap<String, Log>> contextMap =
-        new WeakHashMap<LoggerContext, ConcurrentMap<String, Log>>();
+    private final LoggerAdapter<Log> adapter = new LogAdapter();
 
     private final ConcurrentMap<String, Object> attributes = new ConcurrentHashMap<String, Object>();
 
     @Override
     public Log getInstance(final String name) throws LogConfigurationException {
-        final ConcurrentMap<String, Log> loggers = getLoggersMap();
-        if (loggers.containsKey(name)) {
-            return loggers.get(name);
-        }
-        final org.apache.logging.log4j.Logger logger = PrivateManager.getLogger(name);
-        if (logger instanceof AbstractLogger) {
-            loggers.putIfAbsent(name, new Log4jLog((AbstractLogger) logger, name));
-            return loggers.get(name);
-        }
-        throw new LogConfigurationException(
-            "Commons Logging Adapter requires base logging system to extend Log4j AbstractLogger");
-    }
-
-    private ConcurrentMap<String, Log> getLoggersMap() {
-        final LoggerContext context = PrivateManager.getContext();
-        synchronized (contextMap) {
-            ConcurrentMap<String, Log> map = contextMap.get(context);
-            if (map == null) {
-                map = new ConcurrentHashMap<String, Log>();
-                contextMap.put(context, map);
-            }
-            return map;
-        }
+        return adapter.getLogger(name);
     }
 
     @Override
@@ -86,7 +61,10 @@ public class LogFactoryImpl extends LogFactory {
      */
     @Override
     public void release() {
-        getLoggersMap().clear();
+        try {
+            adapter.close();
+        } catch (final IOException ignored) {
+        }
     }
 
     @Override
@@ -100,21 +78,6 @@ public class LogFactoryImpl extends LogFactory {
             attributes.put(name, value);
         } else {
             removeAttribute(name);
-        }
-    }
-
-    /**
-     * The real bridge between commons logging and Log4j.
-     */
-    private static class PrivateManager extends LogManager {
-        private static final String FQCN = LogFactory.class.getName();
-
-        public static LoggerContext getContext() {
-            return getContext(FQCN, false);
-        }
-
-        public static org.apache.logging.log4j.Logger getLogger(final String name) {
-            return getLogger(FQCN, name);
         }
     }
 

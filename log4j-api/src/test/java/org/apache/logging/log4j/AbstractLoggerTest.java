@@ -43,6 +43,8 @@ public class AbstractLoggerTest extends AbstractLogger {
         }
     }
 
+    private static final long serialVersionUID = 1L;
+
     private static Level currentLevel;
 
     private LogEvent currentEvent;
@@ -84,7 +86,12 @@ public class AbstractLoggerTest extends AbstractLogger {
     };
 
     @Override
-    protected boolean isEnabled(final Level level, final Marker marker, final Message data, final Throwable t) {
+    public Level getLevel() {
+        return currentLevel;
+    }
+
+    @Override
+    public boolean isEnabled(final Level level, final Marker marker, final Message data, final Throwable t) {
         assertTrue("Incorrect Level. Expected " + currentLevel + ", actual " + level, level.equals(currentLevel));
         if (marker == null) {
             if (currentEvent.markerName != null) {
@@ -129,27 +136,27 @@ public class AbstractLoggerTest extends AbstractLogger {
     }
 
     @Override
-    protected boolean isEnabled(final Level level, final Marker marker, final Object data, final Throwable t) {
+    public boolean isEnabled(final Level level, final Marker marker, final Object data, final Throwable t) {
         return isEnabled(level, marker, new ObjectMessage(data), t);
     }
 
     @Override
-    protected boolean isEnabled(final Level level, final Marker marker, final String data) {
+    public boolean isEnabled(final Level level, final Marker marker, final String data) {
         return isEnabled(level, marker, new SimpleMessage(data), null);
     }
 
     @Override
-    protected boolean isEnabled(final Level level, final Marker marker, final String data, final Object... p1) {
+    public boolean isEnabled(final Level level, final Marker marker, final String data, final Object... p1) {
         return isEnabled(level, marker, new ParameterizedMessage(data, p1), null);
     }
 
     @Override
-    protected boolean isEnabled(final Level level, final Marker marker, final String data, final Throwable t) {
+    public boolean isEnabled(final Level level, final Marker marker, final String data, final Throwable t) {
         return isEnabled(level, marker, new SimpleMessage(data), t);
     }
 
     @Override
-    public void log(final Marker marker, final String fqcn, final Level level, final Message data, final Throwable t) {
+    public void logMessage(final String fqcn, final Level level, final Marker marker, final Message data, final Throwable t) {
         assertTrue("Incorrect Level. Expected " + currentLevel + ", actual " + level, level.equals(currentLevel));
         if (marker == null) {
             if (currentEvent.markerName != null) {
@@ -695,4 +702,5 @@ public class AbstractLoggerTest extends AbstractLogger {
         currentEvent = events[14];
         warn(MarkerManager.getMarker("TEST"), simple);
     }
+
 }

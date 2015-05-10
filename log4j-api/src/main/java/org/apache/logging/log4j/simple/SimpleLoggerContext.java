@@ -19,14 +19,13 @@ package org.apache.logging.log4j.simple;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.MessageFactory;
 import org.apache.logging.log4j.spi.AbstractLogger;
+import org.apache.logging.log4j.spi.ExtendedLogger;
 import org.apache.logging.log4j.spi.LoggerContext;
 import org.apache.logging.log4j.util.PropertiesUtil;
 
@@ -40,9 +39,6 @@ public class SimpleLoggerContext implements LoggerContext {
 
     /** All system properties used by <code>SimpleLog</code> start with this */
     protected static final String SYSTEM_PREFIX = "org.apache.logging.log4j.simplelog.";
-
-    /** Properties loaded from simplelog.properties */
-    private final Properties simpleLogProps = new Properties();
 
     private final PropertiesUtil props;
 
@@ -64,7 +60,7 @@ public class SimpleLoggerContext implements LoggerContext {
 
     private final PrintStream stream;
 
-    private final ConcurrentMap<String, Logger> loggers = new ConcurrentHashMap<String, Logger>();
+    private final ConcurrentMap<String, ExtendedLogger> loggers = new ConcurrentHashMap<String, ExtendedLogger>();
 
     public SimpleLoggerContext() {
         props = new PropertiesUtil("log4j2.simplelog.properties");
@@ -97,14 +93,14 @@ public class SimpleLoggerContext implements LoggerContext {
     }
 
     @Override
-    public Logger getLogger(final String name) {
+    public ExtendedLogger getLogger(final String name) {
         return getLogger(name, null);
     }
 
     @Override
-    public Logger getLogger(final String name, final MessageFactory messageFactory) {
+    public ExtendedLogger getLogger(final String name, final MessageFactory messageFactory) {
         if (loggers.containsKey(name)) {
-            final Logger logger = loggers.get(name);
+            final ExtendedLogger logger = loggers.get(name);
             AbstractLogger.checkMessageFactory(logger, messageFactory);
             return logger;
         }

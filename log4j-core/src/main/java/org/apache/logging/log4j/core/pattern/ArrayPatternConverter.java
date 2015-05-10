@@ -17,12 +17,12 @@
 package org.apache.logging.log4j.core.pattern;
 
 /**
- * Interface implemented by PatternConverters that accept an array of objects when formatting.
+ * {@link PatternConverter}s implement this interface to accept an array of objects when formatting.
  */
 public interface ArrayPatternConverter extends PatternConverter {
 
     /**
-     * Format an array of Objects.
+     * Formats an array of Objects.
      * @param toAppendTo The StringBuilder to add the content to.
      * @param objects The Object array.
      */

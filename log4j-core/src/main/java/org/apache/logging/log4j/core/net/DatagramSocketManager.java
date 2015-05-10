@@ -16,16 +16,16 @@
  */
 package org.apache.logging.log4j.core.net;
 
-import org.apache.logging.log4j.core.Layout;
-import org.apache.logging.log4j.core.appender.ManagerFactory;
-import org.apache.logging.log4j.core.helpers.Strings;
-
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.apache.logging.log4j.core.Layout;
+import org.apache.logging.log4j.core.appender.ManagerFactory;
+import org.apache.logging.log4j.util.Strings;
 
 /**
  * Socket Manager for UDP connections.
@@ -38,14 +38,14 @@ public class DatagramSocketManager extends AbstractSocketManager {
      * The Constructor.
      * @param name The unique name of the connection.
      * @param os The OutputStream.
-     * @param address
+     * @param inetAddress
      * @param host The host to connect to.
      * @param port The port on the host.
      * @param layout The layout
      */
-    protected DatagramSocketManager(final String name, final OutputStream os, final InetAddress address, final String host,
+    protected DatagramSocketManager(final String name, final OutputStream os, final InetAddress inetAddress, final String host,
                 final int port, final Layout<? extends Serializable> layout) {
-        super(name, os, address, host, port, layout);
+        super(name, os, inetAddress, host, port, layout);
     }
 
     /**
@@ -62,23 +62,24 @@ public class DatagramSocketManager extends AbstractSocketManager {
         if (port <= 0) {
             throw new IllegalArgumentException("A port value is required");
         }
-        return (DatagramSocketManager) getManager("UDP:" + host + ":" + port, new FactoryData(host, port, layout),
+        return (DatagramSocketManager) getManager("UDP:" + host + ':' + port, new FactoryData(host, port, layout),
             FACTORY);
     }
 
     /**
-     * DatagramSocketManager's content format is specified by:<p/>
-     * Key: "protocol" Value: "udp"<p/>
-     * Key: "direction" Value: "out"
+     * Gets this DatagramSocketManager's content format. Specified by:
+     * <ul>
+     * <li>Key: "protocol" Value: "udp"</li>
+     * <li>Key: "direction" Value: "out"</li>
+     * </ul>
+     * 
      * @return Map of content format keys supporting DatagramSocketManager
      */
     @Override
-    public Map<String, String> getContentFormat()
-    {
+    public Map<String, String> getContentFormat() {
         final Map<String, String> result = new HashMap<String, String>(super.getContentFormat());
         result.put("protocol", "udp");
         result.put("direction", "out");
-
         return result;
     }
 
@@ -104,16 +105,16 @@ public class DatagramSocketManager extends AbstractSocketManager {
 
         @Override
         public DatagramSocketManager createManager(final String name, final FactoryData data) {
-            InetAddress address;
-            final OutputStream os = new DatagramOutputStream(data.host, data.port, data.layout.getHeader(),
-                data.layout.getFooter());
+            InetAddress inetAddress;
             try {
-                address = InetAddress.getByName(data.host);
+                inetAddress = InetAddress.getByName(data.host);
             } catch (final UnknownHostException ex) {
                 LOGGER.error("Could not find address of " + data.host, ex);
                 return null;
             }
-            return new DatagramSocketManager(name, os, address, data.host, data.port, data.layout);
+            final OutputStream os = new DatagramOutputStream(data.host, data.port, data.layout.getHeader(),
+                    data.layout.getFooter());
+            return new DatagramSocketManager(name, os, inetAddress, data.host, data.port, data.layout);
         }
     }
 }

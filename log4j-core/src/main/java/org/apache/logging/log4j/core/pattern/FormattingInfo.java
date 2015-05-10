@@ -48,7 +48,7 @@ public final class FormattingInfo {
 
     /**
      * Creates new instance.
-     * 
+     *
      * @param leftAlign
      *            left align if true.
      * @param minLength
@@ -64,7 +64,7 @@ public final class FormattingInfo {
 
     /**
      * Gets default instance.
-     * 
+     *
      * @return default instance.
      */
     public static FormattingInfo getDefault() {
@@ -73,7 +73,7 @@ public final class FormattingInfo {
 
     /**
      * Determine if left aligned.
-     * 
+     *
      * @return true if left aligned.
      */
     public boolean isLeftAligned() {
@@ -82,7 +82,7 @@ public final class FormattingInfo {
 
     /**
      * Get minimum length.
-     * 
+     *
      * @return minimum length.
      */
     public int getMinLength() {
@@ -91,7 +91,7 @@ public final class FormattingInfo {
 
     /**
      * Get maximum length.
-     * 
+     *
      * @return maximum length.
      */
     public int getMaxLength() {
@@ -100,7 +100,7 @@ public final class FormattingInfo {
 
     /**
      * Adjust the content of the buffer based on the specified lengths and alignment.
-     * 
+     *
      * @param fieldStart
      *            start of field in buffer.
      * @param buffer
@@ -133,12 +133,12 @@ public final class FormattingInfo {
 
     /**
      * Returns a String suitable for debugging.
-     * 
+     *
      * @return a String suitable for debugging.
      */
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
+        final StringBuilder sb = new StringBuilder();
         sb.append(super.toString());
         sb.append("[leftAlign=");
         sb.append(leftAlign);
@@ -146,7 +146,7 @@ public final class FormattingInfo {
         sb.append(maxLength);
         sb.append(", minLength=");
         sb.append(minLength);
-        sb.append("]");
+        sb.append(']');
         return sb.toString();
     }
 

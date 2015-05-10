@@ -21,14 +21,14 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 @Ignore
-public class StoreConfigurationTest<T extends StoreConfiguration> {
+public class StoreConfigurationTest<T extends StoreConfiguration<?>> {
 
     @Test
     public void equalsWithNotNullValues() {
-        String location = "/to/the/file.jks";
-        String password = "changeit";
-        StoreConfiguration a = new StoreConfiguration(location, password);
-        StoreConfiguration b = new StoreConfiguration(location, password);
+        final String location = "/to/the/file.jks";
+        final String password = "changeit";
+        final StoreConfiguration<Object> a = new StoreConfiguration<Object>(location, password);
+        final StoreConfiguration<Object> b = new StoreConfiguration<Object>(location, password);
 
         Assert.assertTrue(a.equals(b));
         Assert.assertTrue(b.equals(a));
@@ -36,10 +36,10 @@ public class StoreConfigurationTest<T extends StoreConfiguration> {
 
     @Test
     public void equalsWithNullAndNotNullValues() {
-        String location = "/to/the/file.jks";
-        String password = "changeit";
-        StoreConfiguration a = new StoreConfiguration(location, password);
-        StoreConfiguration b = new StoreConfiguration(null, null);
+        final String location = "/to/the/file.jks";
+        final String password = "changeit";
+        final StoreConfiguration<Object> a = new StoreConfiguration<Object>(location, password);
+        final StoreConfiguration<Object> b = new StoreConfiguration<Object>(null, null);
 
         Assert.assertTrue(a.equals(b));
         Assert.assertTrue(b.equals(a));
@@ -47,8 +47,8 @@ public class StoreConfigurationTest<T extends StoreConfiguration> {
 
     @Test
     public void equalsWithNullValues() {
-        StoreConfiguration a = new StoreConfiguration(null, null);
-        StoreConfiguration b = new StoreConfiguration(null, null);
+        final StoreConfiguration<Object> a = new StoreConfiguration<Object>(null, null);
+        final StoreConfiguration<Object> b = new StoreConfiguration<Object>(null, null);
 
         Assert.assertTrue(a.equals(b));
         Assert.assertTrue(b.equals(a));

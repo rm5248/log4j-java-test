@@ -21,12 +21,11 @@ import org.apache.logging.log4j.status.StatusLogger;
 
 
 /**
- * <p>AbstractPatternConverter is an abstract class that provides the
- * formatting functionality that derived classes need.
- * <p/>
- * <p>Conversion specifiers in a conversion patterns are parsed to
- * individual PatternConverters. Each of which is responsible for
- * converting an object in a converter specific manner.
+ * AbstractPatternConverter is an abstract class that provides the formatting functionality that derived classes need.
+ * <p>
+ * Conversion specifiers in a conversion patterns are parsed to individual PatternConverters. Each of which is
+ * responsible for converting an object in a converter specific manner.
+ * </p>
  */
 public abstract class AbstractPatternConverter implements PatternConverter {
     /**
@@ -57,8 +56,9 @@ public abstract class AbstractPatternConverter implements PatternConverter {
 
     /**
      * This method returns the name of the conversion pattern.
-     * <p/>
-     * The name can be useful to certain Layouts such as HTMLLayout.
+     * <p>
+     * The name can be useful to certain Layouts such as HtmlLayout.
+     * </p>
      *
      * @return the name of the conversion pattern
      */
@@ -68,12 +68,14 @@ public abstract class AbstractPatternConverter implements PatternConverter {
     }
 
     /**
-     * This method returns the CSS style class that should be applied to
-     * the LoggingEvent passed as parameter, which can be null.
-     * <p/>
-     * This information is currently used only by HTMLLayout.
+     * This method returns the CSS style class that should be applied to the LoggingEvent passed as parameter, which can
+     * be null.
+     * <p>
+     * This information is currently used only by HtmlLayout.
+     * </p>
      *
-     * @param e null values are accepted
+     * @param e
+     *        null values are accepted
      * @return the name of the conversion pattern
      */
     @Override

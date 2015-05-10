@@ -22,9 +22,15 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.apache.logging.log4j.util.EnglishEnums;
+import org.apache.logging.log4j.util.Strings;
 
 /**
  * Represents a Message that consists of a Map.
+ * <p>
+ * Thread-safety note: the contents of this message can be modified after construction.
+ * When using asynchronous loggers and appenders it is not recommended to modify this message after the message is
+ * logged, because it is undefined whether the logged message string will contain the old values or the modified
+ * values.
  */
 public class MapMessage implements MultiformatMessage {
     /**
@@ -84,7 +90,7 @@ public class MapMessage implements MultiformatMessage {
      */
     @Override
     public String getFormat() {
-        return "";
+        return Strings.EMPTY;
     }
 
     /**
@@ -174,11 +180,11 @@ public class MapMessage implements MultiformatMessage {
         } else {
             switch (format) {
                 case XML : {
-                    asXML(sb);
+                    asXml(sb);
                     break;
                 }
                 case JSON : {
-                    asJSON(sb);
+                    asJson(sb);
                     break;
                 }
                 case JAVA : {
@@ -193,7 +199,7 @@ public class MapMessage implements MultiformatMessage {
         return sb.toString();
     }
 
-    public void asXML(final StringBuilder sb) {
+    public void asXml(final StringBuilder sb) {
         sb.append("<Map>\n");
         for (final Map.Entry<String, String> entry : data.entrySet()) {
             sb.append("  <Entry key=\"").append(entry.getKey()).append("\">").append(entry.getValue())
@@ -239,39 +245,39 @@ public class MapMessage implements MultiformatMessage {
         boolean first = true;
         for (final Map.Entry<String, String> entry : data.entrySet()) {
             if (!first) {
-                sb.append(" ");
+                sb.append(' ');
             }
             first = false;
-            sb.append(entry.getKey()).append("=\"").append(entry.getValue()).append("\"");
+            sb.append(entry.getKey()).append("=\"").append(entry.getValue()).append('"');
         }
     }
 
-    protected void asJSON(final StringBuilder sb) {
+    protected void asJson(final StringBuilder sb) {
         boolean first = true;
-        sb.append("{");
+        sb.append('{');
         for (final Map.Entry<String, String> entry : data.entrySet()) {
             if (!first) {
                 sb.append(", ");
             }
             first = false;
-            sb.append("\"").append(entry.getKey()).append("\":");
-            sb.append("\"").append(entry.getValue()).append("\"");
+            sb.append('"').append(entry.getKey()).append("\":");
+            sb.append('"').append(entry.getValue()).append('"');
         }
-        sb.append("}");
+        sb.append('}');
     }
 
 
     protected void asJava(final StringBuilder sb) {
         boolean first = true;
-        sb.append("{");
+        sb.append('{');
         for (final Map.Entry<String, String> entry : data.entrySet()) {
             if (!first) {
                 sb.append(", ");
             }
             first = false;
-            sb.append(entry.getKey()).append("=\"").append(entry.getValue()).append("\"");
+            sb.append(entry.getKey()).append("=\"").append(entry.getValue()).append('"');
         }
-        sb.append("}");
+        sb.append('}');
     }
 
     public MapMessage newInstance(final Map<String, String> map) {

@@ -18,9 +18,9 @@ package org.apache.logging.log4j.core.pattern;
 
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
-import org.apache.logging.log4j.core.helpers.Constants;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.core.impl.ThrowableProxy;
+import org.apache.logging.log4j.core.util.Constants;
 
 /**
  * Outputs the Throwable portion of the LoggingEvent as a full stacktrace
@@ -30,8 +30,8 @@ import org.apache.logging.log4j.core.impl.ThrowableProxy;
  * The extended stack trace will also include the location of where the class was loaded from and the
  * version of the jar if available.
  */
-@Plugin(name = "ExtendedThrowablePatternConverter", category = "Converter")
-@ConverterKeys({"xEx", "xThrowable", "xException" })
+@Plugin(name = "ExtendedThrowablePatternConverter", category = PatternConverter.CATEGORY)
+@ConverterKeys({ "xEx", "xThrowable", "xException" })
 public final class ExtendedThrowablePatternConverter extends ThrowablePatternConverter {
 
     /**
@@ -69,14 +69,14 @@ public final class ExtendedThrowablePatternConverter extends ThrowablePatternCon
                 super.format(event, toAppendTo);
                 return;
             }
-            final String trace = proxy.getExtendedStackTrace(options.getPackages());
+            final String trace = proxy.getExtendedStackTraceAsString(options.getPackages());
             final int len = toAppendTo.length();
             if (len > 0 && !Character.isWhitespace(toAppendTo.charAt(len - 1))) {
-                toAppendTo.append(" ");
+                toAppendTo.append(' ');
             }
-            if (!options.allLines() || !Constants.LINE_SEP.equals(options.getSeparator())) {
+            if (!options.allLines() || !Constants.LINE_SEPARATOR.equals(options.getSeparator())) {
                 final StringBuilder sb = new StringBuilder();
-                final String[] array = trace.split(Constants.LINE_SEP);
+                final String[] array = trace.split(Constants.LINE_SEPARATOR);
                 final int limit = options.minLines(array.length) - 1;
                 for (int i = 0; i <= limit; ++i) {
                     sb.append(array[i]);

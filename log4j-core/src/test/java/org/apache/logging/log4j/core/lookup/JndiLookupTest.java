@@ -16,9 +16,6 @@
  */
 package org.apache.logging.log4j.core.lookup;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -28,6 +25,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockejb.jndi.MockContextFactory;
 
+import static org.junit.Assert.*;
+
 /**
  * JndiLookupTest
  */
@@ -36,15 +35,21 @@ public class JndiLookupTest {
     private static final String TEST_CONTEXT_RESOURCE_NAME = "logging/context-name";
     private static final String TEST_CONTEXT_NAME = "app-1";
 
+    private Context context;
+
     @Before
     public void before() throws NamingException {
         MockContextFactory.setAsInitial();
-        Context context = new InitialContext();
+        context = new InitialContext();
         context.bind(JndiLookup.CONTAINER_JNDI_RESOURCE_PATH_PREFIX + TEST_CONTEXT_RESOURCE_NAME, TEST_CONTEXT_NAME);
     }
 
     @After
     public void after() {
+        try {
+            context.close();
+        } catch (final NamingException ignored) {
+        }
         MockContextFactory.revertSetAsInitial();
     }
 
@@ -58,7 +63,7 @@ public class JndiLookupTest {
         contextName = lookup.lookup(JndiLookup.CONTAINER_JNDI_RESOURCE_PATH_PREFIX + TEST_CONTEXT_RESOURCE_NAME);
         assertEquals(TEST_CONTEXT_NAME, contextName);
 
-        String nonExistingResource = lookup.lookup("logging/non-existing-resource");
+        final String nonExistingResource = lookup.lookup("logging/non-existing-resource");
         assertNull(nonExistingResource);
     }
 }

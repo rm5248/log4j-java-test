@@ -16,26 +16,27 @@
  */
 package org.apache.logging.log4j.core.filter;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
+import java.util.Map;
+
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.ThreadContext;
 import org.apache.logging.log4j.core.Filter;
+import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.helpers.KeyValuePair;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
-import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.util.KeyValuePair;
 import org.apache.logging.log4j.message.SimpleMessage;
 import org.apache.logging.log4j.status.StatusLogger;
 import org.junit.After;
 import org.junit.Test;
-
-import java.util.Map;
-
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertNotNull;
-
 
 /**
  *
@@ -53,21 +54,23 @@ public class DynamicThresholdFilterTest {
     public void testFilter() {
         ThreadContext.put("userid", "testuser");
         ThreadContext.put("organization", "apache");
-        final KeyValuePair[] pairs = new KeyValuePair[] { new KeyValuePair("testuser", "DEBUG"),
-                                                    new KeyValuePair("JohnDoe", "warn")};
-        final DynamicThresholdFilter filter = DynamicThresholdFilter.createFilter("userid", pairs, "ERROR", null, null);
+        final KeyValuePair[] pairs = new KeyValuePair[] {
+                new KeyValuePair("testuser", "DEBUG"),
+                new KeyValuePair("JohnDoe", "warn") };
+        final DynamicThresholdFilter filter = DynamicThresholdFilter.createFilter("userid", pairs, Level.ERROR, null,
+                null);
         filter.start();
         assertTrue(filter.isStarted());
-        assertTrue(filter.filter(null, Level.DEBUG, null, null, (Throwable)null) == Filter.Result.NEUTRAL);
-        assertTrue(filter.filter(null, Level.ERROR, null, null, (Throwable)null) == Filter.Result.NEUTRAL);
-        ThreadContext.clear();
+        assertSame(Filter.Result.NEUTRAL, filter.filter(null, Level.DEBUG, null, null, (Throwable) null));
+        assertSame(Filter.Result.NEUTRAL, filter.filter(null, Level.ERROR, null, null, (Throwable) null));
+        ThreadContext.clearMap();
         ThreadContext.put("userid", "JohnDoe");
         ThreadContext.put("organization", "apache");
         LogEvent event = new Log4jLogEvent(null, null, null, Level.DEBUG, new SimpleMessage("Test"), null);
-        assertTrue(filter.filter(event) == Filter.Result.DENY);
+        assertSame(Filter.Result.DENY, filter.filter(event));
         event = new Log4jLogEvent(null, null, null, Level.ERROR, new SimpleMessage("Test"), null);
-        assertTrue(filter.filter(event) == Filter.Result.NEUTRAL);
-        ThreadContext.clear();
+        assertSame(Filter.Result.NEUTRAL, filter.filter(event));
+        ThreadContext.clearMap();
     }
 
     @Test
@@ -80,9 +83,9 @@ public class DynamicThresholdFilterTest {
         final DynamicThresholdFilter dynamic = (DynamicThresholdFilter) filter;
         final String key = dynamic.getKey();
         assertNotNull("Key is null", key);
-        assertTrue("Incorrect key value", key.equals("loginId"));
+        assertEquals("Incorrect key value", "loginId", key);
         final Map<String, Level> map = dynamic.getLevelMap();
         assertNotNull("Map is null", map);
-        assertTrue("Incorrect number of map elements", map.size() == 1);
+        assertEquals("Incorrect number of map elements", 1, map.size());
     }
 }

@@ -16,8 +16,6 @@
  */
 package org.apache.logging.log4j.core.pattern;
 
-import static org.junit.Assert.assertEquals;
-
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
@@ -25,12 +23,14 @@ import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.message.SimpleMessage;
 import org.junit.Test;
 
+import static org.junit.Assert.*;
+
 /**
  *
  */
 public class LevelPatternConverterTest {
 
-    private void testLevelLength(int length, String debug, String warn) {
+    private void testLevelLength(final int length, final String debug, final String warn) {
         final Message msg = new SimpleMessage("Hello");
         LogEvent event = new Log4jLogEvent("MyLogger", null, null, Level.DEBUG, msg, null);
         final StringBuilder sb = new StringBuilder();

@@ -16,7 +16,6 @@
  */
 package org.apache.logging.log4j.core.appender.rewrite;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -32,13 +31,16 @@ import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.Booleans;
+import org.apache.logging.log4j.core.util.Booleans;
 
 /**
  * This Appender allows the logging event to be manipulated before it is processed by other Appenders.
  */
 @Plugin(name = "Rewrite", category = "Core", elementType = "appender", printObject = true)
 public final class RewriteAppender extends AbstractAppender {
+    
+    private static final long serialVersionUID = 1L;
+
     private final Configuration config;
     private final ConcurrentMap<String, AppenderControl> appenders = new ConcurrentHashMap<String, AppenderControl>();
     private final RewritePolicy rewritePolicy;
@@ -55,10 +57,9 @@ public final class RewriteAppender extends AbstractAppender {
 
     @Override
     public void start() {
-        final Map<String, Appender> map = config.getAppenders();
         for (final AppenderRef ref : appenderRefs) {
             final String name = ref.getRef();
-            final Appender appender = map.get(name);
+            final Appender appender = config.getAppender(name);
             if (appender != null) {
                 final Filter filter = appender instanceof AbstractAppender ?
                     ((AbstractAppender) appender).getFilter() : null;

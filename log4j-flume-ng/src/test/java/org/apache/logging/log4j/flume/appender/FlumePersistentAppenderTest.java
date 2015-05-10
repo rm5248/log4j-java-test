@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +52,7 @@ import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
 import org.apache.logging.log4j.message.StructuredDataMessage;
 import org.apache.logging.log4j.status.StatusLogger;
+import org.apache.logging.log4j.test.AvailablePortFinder;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -97,11 +97,12 @@ public class FlumePersistentAppenderTest {
         * Clear out all other appenders associated with this logger to ensure we're
         * only hitting the Avro appender.
         */
-        final int[] ports = findFreePorts(2);
-        System.setProperty("primaryPort", Integer.toString(ports[0]));
-        System.setProperty("alternatePort", Integer.toString(ports[1]));
-        primary = new EventCollector(ports[0]);
-        alternate = new EventCollector(ports[1]);
+        final int primaryPort = AvailablePortFinder.getNextAvailable();
+        final int altPort = AvailablePortFinder.getNextAvailable();
+        System.setProperty("primaryPort", Integer.toString(primaryPort));
+        System.setProperty("alternatePort", Integer.toString(altPort));
+        primary = new EventCollector(primaryPort);
+        alternate = new EventCollector(altPort);
         System.setProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY, CONFIG);
         ctx = (LoggerContext) LogManager.getContext(false);
         ctx.reconfigure();
@@ -127,7 +128,7 @@ public class FlumePersistentAppenderTest {
     }
 
     @Test
-    public void testLog4Event() throws InterruptedException, IOException {
+    public void testLog4Event() throws IOException {
 
         final StructuredDataMessage msg = new StructuredDataMessage("Test", "Test Log4j", "Test");
         EventLogger.logEvent(msg);
@@ -140,7 +141,7 @@ public class FlumePersistentAppenderTest {
     }
 
     @Test
-    public void testMultiple() throws InterruptedException, IOException {
+    public void testMultiple() {
 
         for (int i = 0; i < 10; ++i) {
             final StructuredDataMessage msg = new StructuredDataMessage("Test", "Test Multiple " + i, "Test");
@@ -167,7 +168,7 @@ public class FlumePersistentAppenderTest {
 
 
     @Test
-    public void testFailover() throws InterruptedException, IOException {
+    public void testFailover() throws InterruptedException {
         final Logger logger = LogManager.getLogger("testFailover");
         logger.debug("Starting testFailover");
         for (int i = 0; i < 10; ++i) {
@@ -221,7 +222,7 @@ public class FlumePersistentAppenderTest {
     }
 
     @Test
-    public void testSingle() throws InterruptedException, IOException {
+    public void testSingle() throws IOException {
 
         final Logger logger = LogManager.getLogger("EventLogger");
         final Marker marker = MarkerManager.getMarker("EVENT");
@@ -235,14 +236,14 @@ public class FlumePersistentAppenderTest {
     }
 
     @Test
-    public void testMultipleConcurrent() throws InterruptedException, IOException {
+    public void testMultipleConcurrent() throws InterruptedException {
 
         final int eventsCount = 10000;
 
-        Thread writer1 = new WriterThread(0, eventsCount / 4);
-        Thread writer2 = new WriterThread(eventsCount / 4, eventsCount / 2);
-        Thread writer3 = new WriterThread(eventsCount / 2, (3 * eventsCount) / 4);
-        Thread writer4 = new WriterThread((3 * eventsCount) / 4, eventsCount);
+        final Thread writer1 = new WriterThread(0, eventsCount / 4);
+        final Thread writer2 = new WriterThread(eventsCount / 4, eventsCount / 2);
+        final Thread writer3 = new WriterThread(eventsCount / 2, (3 * eventsCount) / 4);
+        final Thread writer4 = new WriterThread((3 * eventsCount) / 4, eventsCount);
         writer1.start();
         writer2.start();
         writer3.start();
@@ -250,10 +251,10 @@ public class FlumePersistentAppenderTest {
 
 
         final boolean[] fields = new boolean[eventsCount];
-        Thread reader1 = new ReaderThread(0, eventsCount / 4, fields);
-        Thread reader2 = new ReaderThread(eventsCount / 4, eventsCount / 2, fields);
-        Thread reader3 = new ReaderThread(eventsCount / 2, (eventsCount * 3) / 4, fields);
-        Thread reader4 = new ReaderThread((eventsCount * 3) / 4, eventsCount, fields);
+        final Thread reader1 = new ReaderThread(0, eventsCount / 4, fields);
+        final Thread reader2 = new ReaderThread(eventsCount / 4, eventsCount / 2, fields);
+        final Thread reader3 = new ReaderThread(eventsCount / 2, (eventsCount * 3) / 4, fields);
+        final Thread reader4 = new ReaderThread((eventsCount * 3) / 4, eventsCount, fields);
 
         reader1.start();
         reader2.start();
@@ -275,17 +276,31 @@ public class FlumePersistentAppenderTest {
                 fields[i]);
         }
     }
+    
+    @Test
+    public void testRFC5424Layout() throws IOException {
+
+        final StructuredDataMessage msg = new StructuredDataMessage("Test", "Test Log4j", "Test");
+        EventLogger.logEvent(msg);
+
+        final Event event = primary.poll();
+        Assert.assertNotNull(event);
+        final String body = getBody(event);
+        Assert.assertTrue("Structured message does not contain @EID: " + body,
+            body.contains("Test@18060"));
+    }
 
     private class WriterThread extends Thread {
 
         private final int start;
         private final int stop;
 
-        public WriterThread(int start, int stop) {
+        public WriterThread(final int start, final int stop) {
             this.start = start;
             this.stop = stop;
         }
 
+        @Override
         public void run() {
             for (int i = start; i < stop; ++i) {
                 final StructuredDataMessage msg = new StructuredDataMessage(
@@ -301,11 +316,12 @@ public class FlumePersistentAppenderTest {
         private final int stop;
         private final boolean[] fields;
 
-        private ReaderThread(int start, int stop, boolean[] fields) {
+        private ReaderThread(final int start, final int stop, final boolean[] fields) {
             this.start = start;
             this.stop = stop;
             this.fields = fields;
         }
+        @Override
         public void run() {
 
             for (int i = start; i < stop; ++i) {
@@ -396,11 +412,9 @@ public class FlumePersistentAppenderTest {
                 // Ignore the exception.
             }
             if (avroEvent != null) {
-                return EventBuilder.withBody(avroEvent.getBody().array(),
-                    toStringMap(avroEvent.getHeaders()));
-            } else {
-                System.out.println("No Event returned");
+                return EventBuilder.withBody(avroEvent.getBody().array(), toStringMap(avroEvent.getHeaders()));
             }
+            System.out.println("No Event returned");
             return null;
         }
 
@@ -427,27 +441,5 @@ public class FlumePersistentAppenderTest {
             stringMap.put(entry.getKey().toString(), entry.getValue().toString());
         }
         return stringMap;
-    }
-
-    private static int[] findFreePorts(final int count) throws IOException {
-        final int[] ports = new int[count];
-        final ServerSocket[] sockets = new ServerSocket[count];
-        try {
-            for (int i = 0; i < count; ++i) {
-                sockets[i] = new ServerSocket(0);
-                ports[i] = sockets[i].getLocalPort();
-            }
-        } finally {
-            for (int i = 0; i < count; ++i) {
-                if (sockets[i] != null) {
-                    try {
-                        sockets[i].close();
-                    } catch (final Exception ex) {
-                        // Ignore the error.
-                    }
-                }
-            }
-        }
-        return ports;
     }
 }

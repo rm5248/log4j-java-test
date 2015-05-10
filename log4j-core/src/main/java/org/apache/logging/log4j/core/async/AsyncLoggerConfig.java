@@ -21,20 +21,21 @@ import java.util.List;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.config.AppenderRef;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.config.Node;
 import org.apache.logging.log4j.core.config.Property;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.Booleans;
-import org.apache.logging.log4j.status.StatusLogger;
+import org.apache.logging.log4j.core.jmx.RingBufferAdmin;
+import org.apache.logging.log4j.core.util.Booleans;
+import org.apache.logging.log4j.util.Strings;
 
 /**
  * Asynchronous Logger object that is created via configuration and can be
@@ -64,8 +65,10 @@ import org.apache.logging.log4j.status.StatusLogger;
  * with immediateFlush=false, there will never be any items left in the buffer;
  * all log events will all be written to disk in a very efficient manner.
  */
-@Plugin(name = "asyncLogger", category = "Core", printObject = true)
+@Plugin(name = "asyncLogger", category = Node.CATEGORY, printObject = true)
 public class AsyncLoggerConfig extends LoggerConfig {
+
+    private static final long serialVersionUID = 1L;
 
     private AsyncLoggerConfigHelper helper;
 
@@ -108,7 +111,9 @@ public class AsyncLoggerConfig extends LoggerConfig {
         event.getThreadName();
 
         // pass on the event to a separate thread
-        helper.callAppendersFromAnotherThread(event);
+        if (!helper.callAppendersFromAnotherThread(event)) {
+            super.callAppenders(event);
+        }
     }
 
     /** Called by AsyncLoggerConfigHelper.RingBufferLog4jEventHandler. */
@@ -116,20 +121,38 @@ public class AsyncLoggerConfig extends LoggerConfig {
         super.callAppenders(event);
     }
 
+    private String displayName() {
+        return LogManager.ROOT_LOGGER_NAME.equals(getName()) ? "root" : getName();
+    }
+
     @Override
-    public void startFilter() {
+    public void start() {
+        LOGGER.trace("AsyncLoggerConfig[{}] starting...", displayName());
+        this.setStarting();
         if (helper == null) {
             helper = new AsyncLoggerConfigHelper(this);
         } else {
             AsyncLoggerConfigHelper.claim(); // LOG4J2-336
         }
-        super.startFilter();
+        super.start();
     }
 
     @Override
-    public void stopFilter() {
+    public void stop() {
+        LOGGER.trace("AsyncLoggerConfig[{}] stopping...", displayName());
+        this.setStopping();
         AsyncLoggerConfigHelper.release();
-        super.stopFilter();
+        super.stop();
+    }
+
+    /**
+     * Creates and returns a new {@code RingBufferAdmin} that instruments the
+     * ringbuffer of this {@code AsyncLoggerConfig}.
+     *
+     * @param contextName name of the {@code LoggerContext}
+     */
+    public RingBufferAdmin createRingBufferAdmin(final String contextName) {
+        return helper.createRingBufferAdmin(contextName, getName());
     }
 
     /**
@@ -154,7 +177,7 @@ public class AsyncLoggerConfig extends LoggerConfig {
             @PluginElement("AppenderRef") final AppenderRef[] refs,
             @PluginElement("Properties") final Property[] properties,
             @PluginConfiguration final Configuration config,
-            @PluginElement("Filters") final Filter filter) {
+            @PluginElement("Filter") final Filter filter) {
         if (loggerName == null) {
             LOGGER.error("Loggers cannot be configured without a name");
             return null;
@@ -170,7 +193,7 @@ public class AsyncLoggerConfig extends LoggerConfig {
                     levelName);
             level = Level.ERROR;
         }
-        final String name = loggerName.equals("root") ? "" : loggerName;
+        final String name = loggerName.equals("root") ? Strings.EMPTY : loggerName;
         final boolean additive = Booleans.parseBoolean(additivity, true);
 
         return new AsyncLoggerConfig(name, appenderRefs, filter, level,
@@ -188,6 +211,8 @@ public class AsyncLoggerConfig extends LoggerConfig {
     @Plugin(name = "asyncRoot", category = "Core", printObject = true)
     public static class RootLogger extends LoggerConfig {
 
+        private static final long serialVersionUID = 1L;
+
         @PluginFactory
         public static LoggerConfig createLogger(
                 @PluginAttribute("additivity") final String additivity,
@@ -196,7 +221,7 @@ public class AsyncLoggerConfig extends LoggerConfig {
                 @PluginElement("AppenderRef") final AppenderRef[] refs,
                 @PluginElement("Properties") final Property[] properties,
                 @PluginConfiguration final Configuration config,
-                @PluginElement("Filters") final Filter filter) {
+                @PluginElement("Filter") final Filter filter) {
             final List<AppenderRef> appenderRefs = Arrays.asList(refs);
             Level level;
             try {

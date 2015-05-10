@@ -31,7 +31,9 @@ import org.apache.logging.log4j.util.PropertiesUtil;
  * specify the property, Log4j uses the ERROR Level. Log Events will be printed using the basic formatting provided
  * by each Message.
  */
-public class DefaultConfiguration extends BaseConfiguration {
+public class DefaultConfiguration extends AbstractConfiguration {
+
+    private static final long serialVersionUID = 1L;
 
     /**
      * The name of the default configuration.
@@ -41,17 +43,23 @@ public class DefaultConfiguration extends BaseConfiguration {
      * The System Property used to specify the logging level.
      */
     public static final String DEFAULT_LEVEL = "org.apache.logging.log4j.level";
+    /**
+     * The default Pattern used for the default Layout.
+     */
+    public static final String DEFAULT_PATTERN = "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n";
 
     /**
      * Constructor to create the default configuration.
      */
     public DefaultConfiguration() {
-
+        super(ConfigurationSource.NULL_SOURCE);
+        
         setName(DEFAULT_NAME);
-        final Layout<? extends Serializable> layout =
-                PatternLayout.createLayout("%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n", null, null, null, null);
-        final Appender appender =
-                ConsoleAppender.createAppender(layout, null, "SYSTEM_OUT", "Console", "false", "true");
+        final Layout<? extends Serializable> layout = PatternLayout.newBuilder()
+            .withPattern(DEFAULT_PATTERN)
+            .withConfiguration(this)
+            .build();
+        final Appender appender = ConsoleAppender.createDefaultAppenderForLayout(layout);
         appender.start();
         addAppender(appender);
         final LoggerConfig root = getRootLogger();

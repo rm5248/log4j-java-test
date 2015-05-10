@@ -24,36 +24,31 @@ import java.io.Writer;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-import org.apache.logging.log4j.core.config.ConfigurationFactory;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.apache.logging.log4j.categories.PerformanceTests;
+import org.apache.logging.log4j.junit.InitialLoggerContext;
+import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 /**
  * Use this class to analyze Log4j-only performance.
- * <p/>
+ * <p>
  * See {@linkplain PerformanceComparison} to compare performance with other logging frameworks.
- *
- * @version $Id: PerformanceRun.java 1514275 2013-08-15 13:47:57Z ggregory $
+ * </p>
  */
+@Category(PerformanceTests.class)
 public class PerformanceRun {
-
-    private final Logger logger = LogManager.getLogger(PerformanceRun.class.getName());
-
-    // How many times should we try to log:
-    private static final int COUNT = 1000000;
 
     private static final String CONFIG = "log4j2-perf.xml";
 
-    @BeforeClass
-    public static void setupClass() {
-        System.setProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY, CONFIG);
-    }
+    @ClassRule
+    public static InitialLoggerContext context = new InitialLoggerContext(CONFIG);
 
-    @AfterClass
-    public static void cleanupClass() {
-        System.clearProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY);
-    }
+    private final Logger logger = context.getLogger(PerformanceRun.class.getName());
+
+    // How many times should we try to log:
+    private static final int COUNT = 1000000;
 
     @Test
     public void testPerformance() throws Exception {
@@ -65,7 +60,8 @@ public class PerformanceRun {
         System.out.println("###############################################");
     }
 
-    // @Test
+    @Test
+    @Ignore("Why was this test disabled?")
     public void testRawPerformance() throws Exception {
         final OutputStream os = new FileOutputStream("target/testos.log", true);
         final long result1 = writeToStream(COUNT, os);
