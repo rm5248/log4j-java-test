@@ -28,7 +28,6 @@
 pom.xml --has-package-version
 log4j-api/pom.xml --has-package-version --java-lib
 log4j-core/pom.xml --has-package-version --java-lib
-log4j-osgi/pom.xml --ignore
 log4j-1.2-api/pom.xml --has-package-version --java-lib
 log4j-slf4j-impl/pom.xml --ignore
 log4j-to-slf4j/pom.xml --has-package-version --java-lib
