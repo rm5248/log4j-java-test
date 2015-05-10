@@ -37,3 +37,4 @@ log4j-taglib/pom.xml --ignore
 log4j-jmx-gui/pom.xml --ignore
 log4j-samples/pom.xml --ignore
 log4j-bom/pom.xml --ignore
+log4j-nosql/pom.xml --has-package-version --java-lib
