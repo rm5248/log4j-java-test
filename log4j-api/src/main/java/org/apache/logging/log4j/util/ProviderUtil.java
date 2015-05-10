@@ -18,88 +18,119 @@ package org.apache.logging.log4j.util;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Enumeration;
-import java.util.Iterator;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Properties;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.spi.Provider;
 import org.apache.logging.log4j.status.StatusLogger;
 
 /**
- *
+ * <em>Consider this class private.</em>
+ * Utility class for Log4j {@link Provider}s. When integrating with an application container framework, any Log4j
+ * Providers not accessible through standard classpath scanning should {@link #loadProvider(java.net.URL, ClassLoader)}
+ * a classpath accordingly.
  */
 public final class ProviderUtil {
 
-    private static final String PROVIDER_RESOURCE = "META-INF/log4j-provider.properties";
+    /**
+     * Resource name for a Log4j 2 provider properties file.
+     */
+    protected static final String PROVIDER_RESOURCE = "META-INF/log4j-provider.properties";
     private static final String API_VERSION = "Log4jAPIVersion";
 
     private static final String[] COMPATIBLE_API_VERSIONS = {
-        "2.0.0"
+        "2.0.0", "2.1.0"
     };
 
     private static final Logger LOGGER = StatusLogger.getLogger();
 
-    private static final List<Provider> PROVIDERS = new ArrayList<Provider>();
+    protected static final Collection<Provider> PROVIDERS = new HashSet<Provider>();
+
+    /**
+     * Guards the ProviderUtil singleton instance from lazy initialization. This is primarily used for OSGi support.
+     *
+     * @since 2.1
+     */
+    protected static final Lock STARTUP_LOCK = new ReentrantLock();
+    // STARTUP_LOCK guards INSTANCE for lazy initialization; this allows the OSGi Activator to pause the startup and
+    // wait for a Provider to be installed. See LOG4J2-373
+    private static volatile ProviderUtil INSTANCE;
 
     private ProviderUtil() {
+        for (final LoaderUtil.UrlResource resource : LoaderUtil.findUrlResources(PROVIDER_RESOURCE)) {
+            loadProvider(resource.getUrl(), resource.getClassLoader());
+        }
     }
 
-    static {
-        final ClassLoader cl = findClassLoader();
-        Enumeration<URL> enumResources = null;
+    /**
+     * Loads an individual Provider implementation. This method is really only useful for the OSGi bundle activator
+     * and this class itself.
+     *
+     * @param url the URL to the provider properties file
+     * @param cl the ClassLoader to load the provider classes with
+     */
+    protected static void loadProvider(final URL url, final ClassLoader cl) {
         try {
-            enumResources = cl.getResources(PROVIDER_RESOURCE);
+            final Properties props = PropertiesUtil.loadClose(url.openStream(), url);
+            if (validVersion(props.getProperty(API_VERSION))) {
+                PROVIDERS.add(new Provider(props, url, cl));
+            }
         } catch (final IOException e) {
-            LOGGER.fatal("Unable to locate " + PROVIDER_RESOURCE, e);
+            LOGGER.error("Unable to open {}", url, e);
         }
+    }
 
-        if (enumResources != null) {
-            while (enumResources.hasMoreElements()) {
-                final URL url = enumResources.nextElement();
-                Properties props;
-                try {
-                    props = PropertiesUtil.loadClose(url.openStream(), url);
-                    if (!validVersion(props.getProperty(API_VERSION))) {
-                        continue;
-                    }
-                    PROVIDERS.add(new Provider(props, url));
-                } catch (final IOException ioe) {
-                    LOGGER.error("Unable to open " + url.toString(), ioe);
-                }
+    /**
+     * @deprecated Use {@link #loadProvider(java.net.URL, ClassLoader)} instead. Will be removed in 3.0.
+     */
+    @Deprecated
+    protected static void loadProviders(final Enumeration<URL> urls, final ClassLoader cl) {
+        if (urls != null) {
+            while (urls.hasMoreElements()) {
+                loadProvider(urls.nextElement(), cl);
             }
         }
     }
 
-    public static Iterator<Provider> getProviders() {
-        return PROVIDERS.iterator();
+    public static Iterable<Provider> getProviders() {
+        lazyInit();
+        return PROVIDERS;
     }
 
     public static boolean hasProviders() {
-        return PROVIDERS.size() > 0;
+        lazyInit();
+        return !PROVIDERS.isEmpty();
+    }
+
+    /**
+     * Lazily initializes the ProviderUtil singleton.
+     *
+     * @since 2.1
+     */
+    protected static void lazyInit() {
+        //noinspection DoubleCheckedLocking
+        if (INSTANCE == null) {
+            try {
+                STARTUP_LOCK.lockInterruptibly();
+                if (INSTANCE == null) {
+                    INSTANCE = new ProviderUtil();
+                }
+            } catch (final InterruptedException e) {
+                LOGGER.fatal("Interrupted before Log4j Providers could be loaded.", e);
+                Thread.currentThread().interrupt();
+            } finally {
+                STARTUP_LOCK.unlock();
+            }
+        }
     }
 
     public static ClassLoader findClassLoader() {
-        ClassLoader cl;
-        if (System.getSecurityManager() == null) {
-            cl = Thread.currentThread().getContextClassLoader();
-        } else {
-            cl = java.security.AccessController.doPrivileged(
-                new java.security.PrivilegedAction<ClassLoader>() {
-                    @Override
-                    public ClassLoader run() {
-                        return Thread.currentThread().getContextClassLoader();
-                    }
-                }
-            );
-        }
-        if (cl == null) {
-            cl = ProviderUtil.class.getClassLoader();
-        }
-
-        return cl;
+        return LoaderUtil.getThreadContextClassLoader();
     }
 
     private static boolean validVersion(final String version) {

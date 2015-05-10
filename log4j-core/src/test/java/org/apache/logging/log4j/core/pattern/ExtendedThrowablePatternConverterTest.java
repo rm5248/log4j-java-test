@@ -16,29 +16,22 @@
  */
 package org.apache.logging.log4j.core.pattern;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.message.SimpleMessage;
-import org.junit.Before;
+import org.apache.logging.log4j.util.Strings;
 import org.junit.Test;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  *
  */
 public class ExtendedThrowablePatternConverterTest {
-
-
-
-    @Before
-    public void setup() {
-
-    }
 
     @Test
     public void testFull() {
@@ -53,8 +46,8 @@ public class ExtendedThrowablePatternConverterTest {
         final PrintWriter pw = new PrintWriter(sw);
         parent.printStackTrace(pw);
         String result = sb.toString();
-        result = result.replaceAll(" ~?\\[.*\\]", "");
-        final String expected = sw.toString().replaceAll("\r", "");
+        result = result.replaceAll(" ~?\\[.*\\]", Strings.EMPTY);
+        final String expected = sw.toString().replaceAll("\r", Strings.EMPTY);
         assertEquals(expected, result);
     }
 

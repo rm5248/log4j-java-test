@@ -20,7 +20,7 @@ import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.Integers;
+import org.apache.logging.log4j.core.util.Integers;
 
 /**
  * Triggering Policy that causes a rollover based on time.
@@ -46,6 +46,10 @@ public final class TimeBasedTriggeringPolicy implements TriggeringPolicy {
     @Override
     public void initialize(final RollingFileManager manager) {
         this.manager = manager;
+        
+        // LOG4J2-531: call getNextTime twice to force initialization of both prevFileTime and nextFileTime
+        manager.getPatternProcessor().getNextTime(manager.getFileTime(), interval, modulate);
+        
         nextRollover = manager.getPatternProcessor().getNextTime(manager.getFileTime(), interval, modulate);
     }
 
@@ -59,7 +63,7 @@ public final class TimeBasedTriggeringPolicy implements TriggeringPolicy {
         if (manager.getFileSize() == 0) {
             return false;
         }
-        final long now = System.currentTimeMillis();
+        final long now = event.getTimeMillis();
         if (now > nextRollover) {
             nextRollover = manager.getPatternProcessor().getNextTime(now, interval, modulate);
             return true;

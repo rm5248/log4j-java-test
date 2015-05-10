@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.async.RingBufferLogEvent;
 import org.apache.logging.log4j.core.config.AppenderControl;
 import org.apache.logging.log4j.core.config.AppenderRef;
 import org.apache.logging.log4j.core.config.Configuration;
@@ -37,7 +38,6 @@ import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.Booleans;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 
 /**
@@ -49,10 +49,12 @@ import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 @Plugin(name = "Async", category = "Core", elementType = "appender", printObject = true)
 public final class AsyncAppender extends AbstractAppender {
 
+    private static final long serialVersionUID = 1L;
     private static final int DEFAULT_QUEUE_SIZE = 128;
     private static final String SHUTDOWN = "Shutdown";
 
     private final BlockingQueue<Serializable> queue;
+    private final int queueSize;
     private final boolean blocking;
     private final Configuration config;
     private final AppenderRef[] appenderRefs;
@@ -61,6 +63,7 @@ public final class AsyncAppender extends AbstractAppender {
     private AppenderControl errorAppender;
     private AsyncThread thread;
     private static final AtomicLong threadSequence = new AtomicLong(1);
+    private static ThreadLocal<Boolean> isAppenderThread = new ThreadLocal<Boolean>();
 
 
     private AsyncAppender(final String name, final Filter filter, final AppenderRef[] appenderRefs,
@@ -69,6 +72,7 @@ public final class AsyncAppender extends AbstractAppender {
                            final boolean includeLocation) {
         super(name, filter, null, ignoreExceptions);
         this.queue = new ArrayBlockingQueue<Serializable>(queueSize);
+        this.queueSize = queueSize;
         this.blocking = blocking;
         this.config = config;
         this.appenderRefs = appenderRefs;
@@ -109,44 +113,60 @@ public final class AsyncAppender extends AbstractAppender {
     @Override
     public void stop() {
         super.stop();
+        LOGGER.trace("AsyncAppender stopping. Queue still has {} events.", queue.size());
         thread.shutdown();
         try {
             thread.join();
         } catch (final InterruptedException ex) {
             LOGGER.warn("Interrupted while stopping AsyncAppender {}", getName());
         }
+        LOGGER.trace("AsyncAppender stopped. Queue has {} events.", queue.size());
     }
 
     /**
      * Actual writing occurs here.
-     * <p/>
-     * @param event The LogEvent.
+     * 
+     * @param logEvent
+     *        The LogEvent.
      */
     @Override
-    public void append(final LogEvent event) {
+    public void append(LogEvent logEvent) {
         if (!isStarted()) {
             throw new IllegalStateException("AsyncAppender " + getName() + " is not active");
         }
-        if (event instanceof Log4jLogEvent) {
-            boolean appendSuccessful = false;
-            if (blocking) {
+        if (!(logEvent instanceof Log4jLogEvent)) {
+            if (!(logEvent instanceof RingBufferLogEvent)) {
+                return; // only know how to Serialize Log4jLogEvents and RingBufferLogEvents
+            }
+            logEvent = ((RingBufferLogEvent) logEvent).createMemento();
+        }
+        logEvent.getMessage().getFormattedMessage(); // LOG4J2-763: ask message to freeze parameters
+        final Log4jLogEvent coreEvent = (Log4jLogEvent) logEvent;
+        boolean appendSuccessful = false;
+        if (blocking) {
+            if (isAppenderThread.get() == Boolean.TRUE && queue.remainingCapacity() == 0) {
+                // LOG4J2-485: avoid deadlock that would result from trying
+                // to add to a full queue from appender thread
+                coreEvent.setEndOfBatch(false); // queue is definitely not empty!
+                appendSuccessful = thread.callAppenders(coreEvent);
+            } else {
                 try {
                     // wait for free slots in the queue
-                    queue.put(Log4jLogEvent.serialize((Log4jLogEvent) event, includeLocation));
+                    queue.put(Log4jLogEvent.serialize(coreEvent, includeLocation));
                     appendSuccessful = true;
                 } catch (final InterruptedException e) {
                     LOGGER.warn("Interrupted while waiting for a free slot in the AsyncAppender LogEvent-queue {}",
                             getName());
                 }
-            } else {
-                appendSuccessful = queue.offer(Log4jLogEvent.serialize((Log4jLogEvent) event, includeLocation));
-                if (!appendSuccessful) {
-                    error("Appender " + getName() + " is unable to write primary appenders. queue is full");
-                }
             }
-            if ((!appendSuccessful) && (errorAppender != null)) {
-                errorAppender.callAppender(event);
+        } else {
+            appendSuccessful = queue.offer(Log4jLogEvent.serialize(coreEvent, includeLocation));
+            if (!appendSuccessful) {
+                error("Appender " + getName() + " is unable to write primary appenders. queue is full");
             }
+        }
+        if (!appendSuccessful && errorAppender != null) {
+            errorAppender.callAppender(coreEvent);
         }
     }
 
@@ -160,20 +180,20 @@ public final class AsyncAppender extends AbstractAppender {
      * @param includeLocation whether to include location information. The default is false.
      * @param filter The Filter or null.
      * @param config The Configuration.
-     * @param ignore If {@code "true"} (default) exceptions encountered when appending events are logged; otherwise
-     *               they are propagated to the caller.
+     * @param ignoreExceptions If {@code "true"} (default) exceptions encountered when appending events are logged;
+     *                         otherwise they are propagated to the caller.
      * @return The AsyncAppender.
      */
     @PluginFactory
     public static AsyncAppender createAppender(@PluginElement("AppenderRef") final AppenderRef[] appenderRefs,
             @PluginAttribute("errorRef") @PluginAliases("error-ref") final String errorRef,
-            @PluginAttribute("blocking") final String blocking, 
-            @PluginAttribute("bufferSize") final String size,
+            @PluginAttribute(value = "blocking", defaultBoolean = true) final boolean blocking,
+            @PluginAttribute(value = "bufferSize", defaultInt = DEFAULT_QUEUE_SIZE) final int size,
             @PluginAttribute("name") final String name,
-            @PluginAttribute("includeLocation") final String includeLocation,
-            @PluginElement("Filter") final Filter filter, 
+            @PluginAttribute(value = "includeLocation", defaultBoolean = false) final boolean includeLocation,
+            @PluginElement("Filter") final Filter filter,
             @PluginConfiguration final Configuration config,
-            @PluginAttribute("ignoreExceptions") final String ignore) {
+            @PluginAttribute(value = "ignoreExceptions", defaultBoolean = true) final boolean ignoreExceptions) {
         if (name == null) {
             LOGGER.error("No name provided for AsyncAppender");
             return null;
@@ -182,13 +202,8 @@ public final class AsyncAppender extends AbstractAppender {
             LOGGER.error("No appender references provided to AsyncAppender {}", name);
         }
 
-        final boolean isBlocking = Booleans.parseBoolean(blocking, true);
-        final int queueSize = AbstractAppender.parseInt(size, DEFAULT_QUEUE_SIZE);
-        final boolean isIncludeLocation = Boolean.parseBoolean(includeLocation);
-        final boolean ignoreExceptions = Booleans.parseBoolean(ignore, true);
-
         return new AsyncAppender(name, filter, appenderRefs, errorRef,
-                queueSize, isBlocking, ignoreExceptions, config, isIncludeLocation);
+                size, blocking, ignoreExceptions, config, includeLocation);
     }
 
     /**
@@ -209,6 +224,7 @@ public final class AsyncAppender extends AbstractAppender {
 
         @Override
         public void run() {
+            isAppenderThread.set(Boolean.TRUE); // LOG4J2-485
             while (!shutdown) {
                 Serializable s;
                 try {
@@ -218,20 +234,11 @@ public final class AsyncAppender extends AbstractAppender {
                         continue;
                     }
                 } catch (final InterruptedException ex) {
-                    // No good reason for this.
-                    continue;
+                    break; // LOG4J2-830
                 }
                 final Log4jLogEvent event = Log4jLogEvent.deserialize(s);
                 event.setEndOfBatch(queue.isEmpty());
-                boolean success = false;
-                for (final AppenderControl control : appenders) {
-                    try {
-                        control.callAppender(event);
-                        success = true;
-                    } catch (final Exception ex) {
-                        // If no appender is successful the error appender will get it.
-                    }
-                }
+                final boolean success = callAppenders(event);
                 if (!success && errorAppender != null) {
                     try {
                         errorAppender.callAppender(event);
@@ -241,20 +248,52 @@ public final class AsyncAppender extends AbstractAppender {
                 }
             }
             // Process any remaining items in the queue.
+            LOGGER.trace("AsyncAppender.AsyncThread shutting down. Processing remaining {} queue events.",
+                    queue.size());
+            int count= 0;
+            int ignored = 0;
             while (!queue.isEmpty()) {
                 try {
                     final Serializable s = queue.take();
-                    if (s instanceof Log4jLogEvent) {
+                    if (Log4jLogEvent.canDeserialize(s)) {
                         final Log4jLogEvent event = Log4jLogEvent.deserialize(s);
                         event.setEndOfBatch(queue.isEmpty());
-                        for (final AppenderControl control : appenders) {
-                            control.callAppender(event);
-                        }
+                        callAppenders(event);
+                        count++;
+                    } else {
+                        ignored++;
+                        LOGGER.trace("Ignoring event of class {}", s.getClass().getName());
                     }
                 } catch (final InterruptedException ex) {
                     // May have been interrupted to shut down.
+                    // Here we ignore interrupts and try to process all remaining events.
                 }
             }
+            LOGGER.trace("AsyncAppender.AsyncThread stopped. Queue has {} events remaining. " +
+            		"Processed {} and ignored {} events since shutdown started.",
+            		queue.size(), count, ignored);
+        }
+
+        /**
+         * Calls {@link AppenderControl#callAppender(LogEvent) callAppender} on
+         * all registered {@code AppenderControl} objects, and returns {@code true}
+         * if at least one appender call was successful, {@code false} otherwise.
+         * Any exceptions are silently ignored.
+         *
+         * @param event the event to forward to the registered appenders
+         * @return {@code true} if at least one appender call succeeded, {@code false} otherwise
+         */
+        boolean callAppenders(final Log4jLogEvent event) {
+            boolean success = false;
+            for (final AppenderControl control : appenders) {
+                try {
+                    control.callAppender(event);
+                    success = true;
+                } catch (final Exception ex) {
+                    // If no appender is successful the error appender will get it.
+                }
+            }
+            return success;
         }
 
         public void shutdown() {
@@ -263,5 +302,53 @@ public final class AsyncAppender extends AbstractAppender {
                 queue.offer(SHUTDOWN);
             }
         }
+    }
+
+    /**
+     * Returns the names of the appenders that this asyncAppender delegates to
+     * as an array of Strings.
+     * @return the names of the sink appenders
+     */
+    public String[] getAppenderRefStrings() {
+        final String[] result = new String[appenderRefs.length];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = appenderRefs[i].getRef();
+        }
+        return result;
+    }
+
+    /**
+     * Returns {@code true} if this AsyncAppender will take a snapshot of the stack with
+     * every log event to determine the class and method where the logging call
+     * was made.
+     * @return {@code true} if location is included with every event, {@code false} otherwise
+     */
+    public boolean isIncludeLocation() {
+        return includeLocation;
+    }
+
+    /**
+     * Returns {@code true} if this AsyncAppender will block when the queue is full,
+     * or {@code false} if events are dropped when the queue is full.
+     * @return whether this AsyncAppender will block or drop events when the queue is full.
+     */
+    public boolean isBlocking() {
+        return blocking;
+    }
+
+    /**
+     * Returns the name of the appender that any errors are logged to or {@code null}.
+     * @return the name of the appender that any errors are logged to or {@code null}
+     */
+    public String getErrorRef() {
+        return errorRef;
+    }
+
+    public int getQueueCapacity() {
+        return queueSize;
+    }
+
+    public int getQueueRemainingCapacity() {
+        return queue.remainingCapacity();
     }
 }

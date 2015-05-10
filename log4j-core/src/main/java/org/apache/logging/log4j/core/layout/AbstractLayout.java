@@ -17,6 +17,8 @@
 package org.apache.logging.log4j.core.layout;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.Layout;
@@ -24,41 +26,51 @@ import org.apache.logging.log4j.status.StatusLogger;
 
 /**
  * Abstract base class for Layouts.
- * @param <T> The Class that the Layout will format the LogEvent into.
+ * 
+ * @param <T>
+ *        The Class that the Layout will format the LogEvent into.
  */
-public abstract class AbstractLayout<T extends Serializable> implements Layout<T> {
+public abstract class AbstractLayout<T extends Serializable> implements Layout<T>, Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     /**
      * Allow subclasses access to the status logger without creating another instance.
      */
     protected static final Logger LOGGER = StatusLogger.getLogger();
+
     /**
      * The header to include when the stream is opened. May be null.
      */
-    protected byte[] header;
+    protected final byte[] header;
+
     /**
      * The footer to add when the stream is closed. May be null.
      */
-    protected byte[] footer;
+    protected final byte[] footer;
 
     /**
-     * Returns the header, if one is available.
-     * @return A byte array containing the header.
+     * Constructs a layout with an optional header and footer.
+     * 
+     * @param header
+     *        The header to include when the stream is opened. May be null.
+     * @param footer
+     *        The footer to add when the stream is closed. May be null.
      */
-    @Override
-    public byte[] getHeader() {
-        return header;
+    public AbstractLayout(final byte[] header, final byte[] footer) {
+        super();
+        this.header = header;
+        this.footer = footer;
     }
 
-    /**
-     * Set the header.
-     * @param header The header.
-     */
-    public void setHeader(final byte[] header) {
-        this.header = header;
+    @Override
+    public Map<String, String> getContentFormat() {
+        return new HashMap<String, String>();
     }
 
     /**
      * Returns the footer, if one is available.
+     * 
      * @return A byte array containing the footer.
      */
     @Override
@@ -67,10 +79,12 @@ public abstract class AbstractLayout<T extends Serializable> implements Layout<T
     }
 
     /**
-     * Set the footer.
-     * @param footer The footer.
+     * Returns the header, if one is available.
+     * 
+     * @return A byte array containing the header.
      */
-    public void setFooter(final byte[] footer) {
-        this.footer = footer;
+    @Override
+    public byte[] getHeader() {
+        return header;
     }
 }

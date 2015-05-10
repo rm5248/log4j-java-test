@@ -14,6 +14,7 @@
  * See the license for the specific language governing permissions and
  * limitations under the license.
  */
+
 package org.apache.logging.log4j.message;
 
 import java.util.Map;
@@ -22,6 +23,12 @@ import org.apache.logging.log4j.util.EnglishEnums;
 
 /**
  * Represents a Message that conforms to an RFC 5424 StructuredData element along with the syslog message.
+ * <p>
+ * Thread-safety note: the contents of this message can be modified after construction.
+ * When using asynchronous loggers and appenders it is not recommended to modify this message after the message is
+ * logged, because it is undefined whether the logged message string will contain the old values or the modified
+ * values.
+ * </p>
  *
  * @see <a href="https://tools.ietf.org/html/rfc5424">RFC 5424</a>
  */
@@ -48,7 +55,7 @@ public class StructuredDataMessage extends MapMessage {
     }
 
     /**
-     * Constructor based on a String id.
+     * Creates a StructuredDataMessage using an ID (max 32 characters), message, and type (max 32 characters).
      * @param id The String id.
      * @param msg The message.
      * @param type The message type.
@@ -59,7 +66,8 @@ public class StructuredDataMessage extends MapMessage {
         this.type = type;
     }
     /**
-     * Constructor based on a String id.
+     * Creates a StructuredDataMessage using an ID (max 32 characters), message, type (max 32 characters), and an
+     * initial map of structured data to include.
      * @param id The String id.
      * @param msg The message.
      * @param type The message type.
@@ -74,7 +82,7 @@ public class StructuredDataMessage extends MapMessage {
     }
 
     /**
-     * Constructor based on a StructuredDataId.
+     * Creates a StructuredDataMessage using a StructuredDataId, message, and type (max 32 characters).
      * @param id The StructuredDataId.
      * @param msg The message.
      * @param type The message type.
@@ -86,7 +94,8 @@ public class StructuredDataMessage extends MapMessage {
     }
 
     /**
-     * Constructor based on a StructuredDataId.
+     * Creates a StructuredDataMessage using a StructuredDataId, message, type (max 32 characters), and an initial map
+     * of structured data to include.
      * @param id The StructuredDataId.
      * @param msg The message.
      * @param type The message type.
@@ -136,7 +145,7 @@ public class StructuredDataMessage extends MapMessage {
     }
 
     /**
-     * Returns the id.
+     * Returns this message id.
      * @return the StructuredDataId.
      */
     public StructuredDataId getId() {
@@ -144,7 +153,7 @@ public class StructuredDataMessage extends MapMessage {
     }
 
     /**
-     * Sets the id from a String.
+     * Sets the id from a String. This ID can be at most 32 characters long.
      * @param id The String id.
      */
     protected void setId(final String id) {
@@ -160,7 +169,7 @@ public class StructuredDataMessage extends MapMessage {
     }
 
     /**
-     * Sets the type.
+     * Returns this message type.
      * @return the type.
      */
     public String getType() {
@@ -245,30 +254,30 @@ public class StructuredDataMessage extends MapMessage {
         final StringBuilder sb = new StringBuilder();
         final boolean full = Format.FULL.equals(format);
         if (full) {
-            final String type = getType();
-            if (type == null) {
+            final String myType = getType();
+            if (myType == null) {
                 return sb.toString();
             }
-            sb.append(getType()).append(" ");
+            sb.append(getType()).append(' ');
         }
-        StructuredDataId id = getId();
-        if (id != null) {
-            id = id.makeId(structuredDataId);
+        StructuredDataId sdId = getId();
+        if (sdId != null) {
+            sdId = sdId.makeId(structuredDataId);
         } else {
-            id = structuredDataId;
+            sdId = structuredDataId;
         }
-        if (id == null || id.getName() == null) {
+        if (sdId == null || sdId.getName() == null) {
             return sb.toString();
         }
-        sb.append("[");
-        sb.append(id);
-        sb.append(" ");
+        sb.append('[');
+        sb.append(sdId);
+        sb.append(' ');
         appendMap(sb);
-        sb.append("]");
+        sb.append(']');
         if (full) {
             final String msg = getFormat();
             if (msg != null) {
-                sb.append(" ").append(msg);
+                sb.append(' ').append(msg);
             }
         }
         return sb.toString();
@@ -297,7 +306,7 @@ public class StructuredDataMessage extends MapMessage {
         if (formats != null && formats.length > 0) {
             for (final String format : formats) {
                 if (Format.XML.name().equalsIgnoreCase(format)) {
-                    return asXML();
+                    return asXml();
                 } else if (Format.FULL.name().equalsIgnoreCase(format)) {
                     return asString(Format.FULL, null);
                 }
@@ -307,16 +316,16 @@ public class StructuredDataMessage extends MapMessage {
         return asString(Format.FULL, null);
     }
 
-    private String asXML() {
+    private String asXml() {
         final StringBuilder sb = new StringBuilder();
-        final StructuredDataId id = getId();
-        if (id == null || id.getName() == null || type == null) {
+        final StructuredDataId sdId = getId();
+        if (sdId == null || sdId.getName() == null || type == null) {
             return sb.toString();
         }
         sb.append("<StructuredData>\n");
         sb.append("<type>").append(type).append("</type>\n");
-        sb.append("<id>").append(id).append("</id>\n");
-        super.asXML(sb);
+        sb.append("<id>").append(sdId).append("</id>\n");
+        super.asXml(sb);
         sb.append("</StructuredData>\n");
         return sb.toString();
     }

@@ -20,7 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
-import org.apache.logging.log4j.core.helpers.Constants;
+import org.apache.logging.log4j.core.util.Constants;
+import org.apache.logging.log4j.core.util.Patterns;
 
 /**
  * Contains options which control how a {@link Throwable} pattern is formatted.
@@ -79,7 +80,7 @@ public final class ThrowableFormatOptions {
      */
     protected ThrowableFormatOptions(final int lines, final String separator, final List<String> packages) {
         this.lines = lines;
-        this.separator = separator == null ? Constants.LINE_SEP : separator;
+        this.separator = separator == null ? Constants.LINE_SEPARATOR : separator;
         this.packages = packages;
     }
 
@@ -161,12 +162,12 @@ public final class ThrowableFormatOptions {
     @Override
     public String toString() {
         final StringBuilder s = new StringBuilder();
-        s.append("{").append(allLines() ? FULL : this.lines == 2 ? SHORT : anyLines() ? String.valueOf(this.lines) : NONE).append("}");
+        s.append('{').append(allLines() ? FULL : this.lines == 2 ? SHORT : anyLines() ? String.valueOf(this.lines) : NONE).append('}');
         s.append("{separator(").append(this.separator).append(")}");
         if (hasPackages()) {
             s.append("{filters(");
             for (final String p : this.packages) {
-                s.append(p).append(",");
+                s.append(p).append(',');
             }
             s.deleteCharAt(s.length() - 1);
             s.append(")}");
@@ -189,7 +190,7 @@ public final class ThrowableFormatOptions {
         // However, the convention for multiple options should be:
         //     %xEx{["none"|"short"|"full"|depth]}[{filters(packages)}]
         if (options.length == 1 && options[0] != null && options[0].length() > 0) {
-            final String[] opts = options[0].split(",", 2);
+            final String[] opts = options[0].split(Patterns.COMMA_SEPARATOR, 2);
             final String first = opts[0].trim();
             final Scanner scanner = new Scanner(first);
             if (opts.length > 1 && (first.equalsIgnoreCase(FULL) || first.equalsIgnoreCase(SHORT) || first.equalsIgnoreCase(NONE) || scanner.hasNextInt())) {
@@ -201,7 +202,7 @@ public final class ThrowableFormatOptions {
         int lines = DEFAULT.lines;
         String separator = DEFAULT.separator;
         List<String> packages = DEFAULT.packages;
-        for (String rawOption : options) {
+        for (final String rawOption : options) {
             if (rawOption != null) {
                 final String option = rawOption.trim();
                 if (option.isEmpty()) {
@@ -211,7 +212,7 @@ public final class ThrowableFormatOptions {
                 } else if (option.startsWith("filters(") && option.endsWith(")")) {
                     final String filterStr = option.substring("filters(".length(), option.length() - 1);
                     if (filterStr.length() > 0) {
-                        final String[] array = filterStr.split(",");
+                        final String[] array = filterStr.split(Patterns.COMMA_SEPARATOR);
                         if (array.length > 0) {
                             packages = new ArrayList<String>(array.length);
                             for (String token : array) {
@@ -226,7 +227,7 @@ public final class ThrowableFormatOptions {
                     lines = 0;
                 } else if (option.equalsIgnoreCase(SHORT) || option.equalsIgnoreCase(CLASS_NAME) ||
                         option.equalsIgnoreCase(METHOD_NAME) || option.equalsIgnoreCase(LINE_NUMBER) ||
-                        option.equalsIgnoreCase(FILE_NAME) || option.equalsIgnoreCase(MESSAGE) || 
+                        option.equalsIgnoreCase(FILE_NAME) || option.equalsIgnoreCase(MESSAGE) ||
                         option.equalsIgnoreCase(LOCALIZED_MESSAGE)) {
                     lines = 2;
                 } else if (!option.equalsIgnoreCase(FULL)) {

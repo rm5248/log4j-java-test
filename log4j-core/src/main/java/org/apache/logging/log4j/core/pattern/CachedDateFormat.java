@@ -23,7 +23,7 @@ import java.text.ParsePosition;
 import java.util.Date;
 import java.util.TimeZone;
 
-import org.apache.logging.log4j.core.helpers.Constants;
+import org.apache.logging.log4j.core.util.Constants;
 
 
 /**
@@ -324,12 +324,13 @@ final class CachedDateFormat extends DateFormat {
     }
 
     /**
-     * Set timezone.
-     * <p/>
-     * Setting the timezone using getCalendar().setTimeZone()
-     * will likely cause caching to misbehave.
+     * Sets the time zone.
+     * <p>
+     * Setting the time zone using getCalendar().setTimeZone() will likely cause caching to misbehave.
+     * </p>
      *
-     * @param timeZone TimeZone new timezone
+     * @param timeZone
+     *        TimeZone new time zone
      */
     @Override
     public void setTimeZone(final TimeZone timeZone) {

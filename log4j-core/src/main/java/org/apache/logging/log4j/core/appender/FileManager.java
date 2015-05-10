@@ -41,13 +41,15 @@ public class FileManager extends OutputStreamManager {
     private final boolean isAppend;
     private final boolean isLocking;
     private final String advertiseURI;
+    private final int bufferSize;
 
     protected FileManager(final String fileName, final OutputStream os, final boolean append, final boolean locking,
-                          final String advertiseURI, final Layout<? extends Serializable> layout) {
+            final String advertiseURI, final Layout<? extends Serializable> layout, final int bufferSize) {
         super(os, fileName, layout);
         this.isAppend = append;
         this.isLocking = locking;
         this.advertiseURI = advertiseURI;
+        this.bufferSize = bufferSize;
     }
 
     /**
@@ -55,20 +57,21 @@ public class FileManager extends OutputStreamManager {
      * @param fileName The name of the file to manage.
      * @param append true if the file should be appended to, false if it should be overwritten.
      * @param locking true if the file should be locked while writing, false otherwise.
-     * @param bufferedIO true if the contents should be buffered as they are written.
-     * @param advertiseURI the URI to use when advertising the file
+     * @param bufferedIo true if the contents should be buffered as they are written.
+     * @param advertiseUri the URI to use when advertising the file
      * @param layout The layout
+     * @param bufferSize buffer size for buffered IO
      * @return A FileManager for the File.
      */
     public static FileManager getFileManager(final String fileName, final boolean append, boolean locking,
-                                             final boolean bufferedIO, final String advertiseURI,
-                                             final Layout<? extends Serializable> layout) {
+            final boolean bufferedIo, final String advertiseUri, final Layout<? extends Serializable> layout,
+            final int bufferSize) {
 
-        if (locking && bufferedIO) {
+        if (locking && bufferedIo) {
             locking = false;
         }
-        return (FileManager) getManager(fileName, new FactoryData(append, locking, bufferedIO, advertiseURI, layout),
-            FACTORY);
+        return (FileManager) getManager(fileName, new FactoryData(append, locking, bufferedIo, bufferSize,
+                advertiseUri, layout), FACTORY);
     }
 
     @Override
@@ -122,6 +125,15 @@ public class FileManager extends OutputStreamManager {
     public boolean isLocking() {
         return isLocking;
     }
+    
+    /**
+     * Returns the buffer size to use if the appender was configured with BufferedIO=true, otherwise returns a negative
+     * number.
+     * @return the buffer size, or a negative number if the output stream is not buffered
+     */
+    public int getBufferSize() {
+        return bufferSize;
+    }
 
     /**
      * FileManager's content format is specified by: <code>Key: "fileURI" Value: provided "advertiseURI" param</code>.
@@ -142,6 +154,7 @@ public class FileManager extends OutputStreamManager {
         private final boolean append;
         private final boolean locking;
         private final boolean bufferedIO;
+        private final int bufferSize;
         private final String advertiseURI;
         private final Layout<? extends Serializable> layout;
 
@@ -150,13 +163,15 @@ public class FileManager extends OutputStreamManager {
          * @param append Append status.
          * @param locking Locking status.
          * @param bufferedIO Buffering flag.
+         * @param bufferSize Buffer size.
          * @param advertiseURI the URI to use when advertising the file
          */
-        public FactoryData(final boolean append, final boolean locking, final boolean bufferedIO,
-                           final String advertiseURI, final Layout<? extends Serializable> layout) {
+        public FactoryData(final boolean append, final boolean locking, final boolean bufferedIO, final int bufferSize,
+                final String advertiseURI, final Layout<? extends Serializable> layout) {
             this.append = append;
             this.locking = locking;
             this.bufferedIO = bufferedIO;
+            this.bufferSize = bufferSize;
             this.advertiseURI = advertiseURI;
             this.layout = layout;
         }
@@ -184,10 +199,13 @@ public class FileManager extends OutputStreamManager {
             OutputStream os;
             try {
                 os = new FileOutputStream(name, data.append);
+                int bufferSize = data.bufferSize;
                 if (data.bufferedIO) {
-                    os = new BufferedOutputStream(os);
+                    os = new BufferedOutputStream(os, bufferSize);
+                } else {
+                    bufferSize = -1; // signals to RollingFileManager not to use BufferedOutputStream
                 }
-                return new FileManager(name, os, data.append, data.locking, data.advertiseURI, data.layout);
+                return new FileManager(name, os, data.append, data.locking, data.advertiseURI, data.layout, bufferSize);
             } catch (final FileNotFoundException ex) {
                 LOGGER.error("FileManager (" + name + ") " + ex);
             }

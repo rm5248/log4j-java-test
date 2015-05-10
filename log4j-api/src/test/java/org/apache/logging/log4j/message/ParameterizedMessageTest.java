@@ -18,7 +18,7 @@ package org.apache.logging.log4j.message;
 
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 /**
  *
@@ -35,5 +35,17 @@ public class ParameterizedMessageTest {
         msg = new ParameterizedMessage(testMsg, array, null);
         result = msg.getFormattedMessage();
         assertEquals(testMsg, result);
+    }
+
+    @Test
+    public void testSafeWithMutableParams() { // LOG4J2-763
+        final String testMsg = "Test message {}";
+        final Mutable param = new Mutable().set("abc");
+        final ParameterizedMessage msg = new ParameterizedMessage(testMsg, param);
+
+        // modify parameter before calling msg.getFormattedMessage
+        param.set("XYZ");
+        final String actual = msg.getFormattedMessage();
+        assertEquals("Should use initial param value", "Test message abc", actual);
     }
 }

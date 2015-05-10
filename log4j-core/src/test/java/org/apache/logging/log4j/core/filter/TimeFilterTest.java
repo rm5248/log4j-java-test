@@ -16,16 +16,16 @@
  */
 package org.apache.logging.log4j.core.filter;
 
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.core.Filter;
-import org.apache.logging.log4j.core.impl.Log4jLogEvent;
-import org.apache.logging.log4j.core.LogEvent;
-import org.junit.Test;
-
 import java.util.Calendar;
 import java.util.TimeZone;
 
-import static org.junit.Assert.assertTrue;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.Filter;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.impl.Log4jLogEvent;
+import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 /**
  *
@@ -41,15 +41,15 @@ public class TimeFilterTest {
         cal.set(Calendar.HOUR_OF_DAY, 2);
         long tod = cal.getTimeInMillis();
         LogEvent event = new Log4jLogEvent(null, null, null, null, null, null, null, null, null, null, tod);
-        assertTrue(filter.filter(null, Level.ERROR, null, null, (Throwable)null) == Filter.Result.NEUTRAL);
-        assertTrue(filter.filter(event) == Filter.Result.NEUTRAL);
+        assertSame(Filter.Result.NEUTRAL, filter.filter(null, Level.ERROR, null, null, (Throwable) null));
+        assertSame(Filter.Result.NEUTRAL, filter.filter(event));
         cal.roll(Calendar.DAY_OF_MONTH, true);
         tod = cal.getTimeInMillis();
         event = new Log4jLogEvent(null, null, null, null, null, null, null, null, null, null, tod);
-        assertTrue(filter.filter(event) == Filter.Result.NEUTRAL);
+        assertSame(Filter.Result.NEUTRAL, filter.filter(event));
         cal.set(Calendar.HOUR_OF_DAY, 4);
         tod = cal.getTimeInMillis();
         event = new Log4jLogEvent(null, null, null, null, null, null, null, null, null, null, tod);
-        assertTrue(filter.filter(event) == Filter.Result.DENY);
+        assertSame(Filter.Result.DENY, filter.filter(event));
     }
 }

@@ -24,12 +24,13 @@ import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
-import org.apache.logging.log4j.core.helpers.Constants;
 import org.apache.logging.log4j.core.layout.PatternLayout;
+import org.apache.logging.log4j.core.util.Constants;
 import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.message.ObjectMessage;
 import org.apache.logging.log4j.test.appender.ListAppender;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -59,6 +60,11 @@ public class CategoryTest {
         appender.stop();
     }
 
+    @Before
+    public void before() {
+        appender.clear();
+    }
+    
     /**
      * Tests Category.forcedLog.
      */
@@ -161,7 +167,7 @@ public class CategoryTest {
     @Test
     public void testClassName() {
         final Category category = Category.getInstance("TestCategory");
-        final Layout<String> layout = PatternLayout.createLayout("%d %p %C{1.} [%t] %m%n", null, null, null, null);
+        final Layout<String> layout = PatternLayout.newBuilder().withPattern("%d %p %C{1.} [%t] %m%n").build();
         final ListAppender appender = new ListAppender("List2", null, layout, false, false);
         appender.start();
         category.setAdditivity(false);
@@ -172,8 +178,8 @@ public class CategoryTest {
         final String msg = msgs.get(0);
         appender.clear();
         final String threadName = Thread.currentThread().getName();
-        final String expected = "ERROR o.a.l.CategoryTest [" + threadName + "] Test Message" + Constants.LINE_SEP;
-        assertTrue("Incorrect message \"" + msg + "\"" + " expected \"" + expected +"\"", msg.endsWith(expected));
+        final String expected = "ERROR o.a.l.CategoryTest [" + threadName + "] Test Message" + Constants.LINE_SEPARATOR;
+        assertTrue("Incorrect message \"" + msg + '"' + " expected \"" + expected + '"', msg.endsWith(expected));
     }
 
     /**

@@ -16,27 +16,35 @@
  */
 package org.apache.logging.log4j.test.appender;
 
-import org.apache.logging.log4j.core.Filter;
-import org.apache.logging.log4j.core.Layout;
-import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.appender.AbstractAppender;
-import org.apache.logging.log4j.core.config.plugins.Plugin;
-import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
-import org.apache.logging.log4j.core.config.plugins.PluginElement;
-import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.layout.SerializedLayout;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Filter;
+import org.apache.logging.log4j.core.Layout;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.plugins.Plugin;
+import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
+import org.apache.logging.log4j.core.config.plugins.PluginElement;
+import org.apache.logging.log4j.core.config.plugins.PluginFactory;
+import org.apache.logging.log4j.core.config.plugins.validation.constraints.Required;
+import org.apache.logging.log4j.core.layout.SerializedLayout;
+
 /**
  * This appender is primarily used for testing. Use in a real environment is discouraged as the
  * List could eventually grow to cause an OutOfMemoryError.
+ * @see org.apache.logging.log4j.junit.InitialLoggerContext#getListAppender(String) ILC.getListAppender
  */
 @Plugin(name = "List", category = "Core", elementType = "appender", printObject = true)
 public class ListAppender extends AbstractAppender {
+
+    private static final long serialVersionUID = 1L;
+
+    // Use CopyOnWriteArrayList?
 
     private final List<LogEvent> events = new ArrayList<LogEvent>();
 
@@ -97,7 +105,7 @@ public class ListAppender extends AbstractAppender {
             while (index < str.length()) {
                 int end;
                 final int wend = str.indexOf(WINDOWS_LINE_SEP, index);
-                final int lend = str.indexOf("\n", index);
+                final int lend = str.indexOf('\n', index);
                 int length;
                 if (wend >= 0 && wend < lend) {
                     end = wend;
@@ -107,7 +115,7 @@ public class ListAppender extends AbstractAppender {
                     length = 1;
                 }
                 if (index == end) {
-                    if (!messages.get(messages.size() - length).equals("")) {
+                    if (!messages.get(messages.size() - length).isEmpty()) {
                         messages.add("");
                     }
                 } else if (end >= 0) {
@@ -135,10 +143,11 @@ public class ListAppender extends AbstractAppender {
         }
     }
 
-    public synchronized void clear() {
+    public synchronized ListAppender clear() {
         events.clear();
         messages.clear();
         data.clear();
+        return this;
     }
 
     public synchronized List<LogEvent> getEvents() {
@@ -155,20 +164,24 @@ public class ListAppender extends AbstractAppender {
 
     @PluginFactory
     public static ListAppender createAppender(
-            @PluginAttribute("name") final String name,
-            @PluginAttribute("entryPerNewLine") final String newLine,
-            @PluginAttribute("raw") final String raw,
+            @PluginAttribute("name")
+            @Required(message = "No name provided for ListAppender")
+            final String name,
+            @PluginAttribute("entryPerNewLine") final boolean newLine,
+            @PluginAttribute("raw") final boolean raw,
             @PluginElement("Layout") final Layout<? extends Serializable> layout,
-            @PluginElement("Filters") final Filter filter) {
+            @PluginElement("Filter") final Filter filter) {
+        return new ListAppender(name, filter, layout, newLine, raw);
+    }
 
-        if (name == null) {
-            LOGGER.error("No name provided for ListAppender");
-            return null;
-        }
-
-        final boolean nl = Boolean.parseBoolean(newLine);
-        final boolean r = Boolean.parseBoolean(raw);
-
-        return new ListAppender(name, filter, layout, nl, r);
+    /**
+     * Gets the named ListAppender if it has been registered.
+     *
+     * @param name the name of the ListAppender
+     * @return the named ListAppender or {@code null} if it does not exist
+     * @see org.apache.logging.log4j.junit.InitialLoggerContext#getListAppender(String)
+     */
+    public static ListAppender getListAppender(final String name) {
+        return ((ListAppender) ((LoggerContext) LogManager.getContext(false)).getConfiguration().getAppender(name));
     }
 }

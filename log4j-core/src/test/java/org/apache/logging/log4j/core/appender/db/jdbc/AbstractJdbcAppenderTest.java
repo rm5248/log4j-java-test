@@ -22,7 +22,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Map;
+
 import javax.naming.InitialContext;
 import javax.sql.DataSource;
 
@@ -33,6 +33,7 @@ import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
 import org.apache.logging.log4j.core.config.DefaultConfiguration;
 import org.apache.logging.log4j.status.StatusLogger;
+import org.apache.logging.log4j.util.Strings;
 import org.easymock.IAnswer;
 import org.h2.util.IOUtils;
 import org.junit.After;
@@ -40,6 +41,7 @@ import org.junit.Test;
 import org.mockejb.jndi.MockContextFactory;
 
 import static org.easymock.EasyMock.*;
+
 import static org.junit.Assert.*;
 
 public abstract class AbstractJdbcAppenderTest {
@@ -75,11 +77,10 @@ public abstract class AbstractJdbcAppenderTest {
     public void tearDown() throws SQLException {
         final LoggerContext context = (LoggerContext) LogManager.getContext(false);
         try {
-            final Map<String, Appender> list = context.getConfiguration().getAppenders();
-            final Appender appender = list.get("databaseAppender");
+            final Appender appender = context.getConfiguration().getAppender("databaseAppender");
             assertNotNull("The appender should not be null.", appender);
-            assertTrue("The appender should be a JDBCAppender.", appender instanceof JDBCAppender);
-            ((JDBCAppender) appender).getManager().release();
+            assertTrue("The appender should be a JdbcAppender.", appender instanceof JdbcAppender);
+            ((JdbcAppender) appender).getManager().release();
         } finally {
             System.clearProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY);
             context.reconfigure();
@@ -167,56 +168,6 @@ public abstract class AbstractJdbcAppenderTest {
     }
 
     @Test
-    public void testDriverManagerConfig() throws Exception {
-        this.setUp("dmLogEntry", "log4j2-" + this.databaseType + "-driver-manager.xml");
-
-        final RuntimeException exception = new RuntimeException("Hello, world!");
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        final PrintWriter writer = new PrintWriter(outputStream);
-        exception.printStackTrace(writer);
-        writer.close();
-        final String stackTrace = outputStream.toString();
-
-        final long millis = System.currentTimeMillis();
-
-        final Logger logger = LogManager.getLogger(this.getClass().getName() + ".testDriverManagerConfig");
-        logger.info("Test my message 01.");
-        logger.warn("This is another message 02.", exception);
-
-        final Statement statement = this.connection.createStatement();
-        final ResultSet resultSet = statement.executeQuery("SELECT * FROM dmLogEntry ORDER BY id");
-
-        assertTrue("There should be at least one row.", resultSet.next());
-
-        long date = resultSet.getTimestamp("eventDate").getTime();
-        assertTrue("The date should be later than pre-logging (1).", date >= millis);
-        assertTrue("The date should be earlier than now (1).", date <= System.currentTimeMillis());
-        assertEquals("The literal column is not correct (1).", "Literal Value Test String",
-                resultSet.getString("literalColumn"));
-        assertEquals("The level column is not correct (1).", "INFO", resultSet.getNString("level"));
-        assertEquals("The logger column is not correct (1).", logger.getName(), resultSet.getNString("logger"));
-        assertEquals("The message column is not correct (1).", "Test my message 01.", resultSet.getString("message"));
-        assertEquals("The exception column is not correct (1).", "",
-                IOUtils.readStringAndClose(resultSet.getNClob("exception").getCharacterStream(), -1));
-
-        assertTrue("There should be two rows.", resultSet.next());
-
-        date = resultSet.getTimestamp("eventDate").getTime();
-        assertTrue("The date should be later than pre-logging (2).", date >= millis);
-        assertTrue("The date should be earlier than now (2).", date <= System.currentTimeMillis());
-        assertEquals("The literal column is not correct (2).", "Literal Value Test String",
-                resultSet.getString("literalColumn"));
-        assertEquals("The level column is not correct (2).", "WARN", resultSet.getNString("level"));
-        assertEquals("The logger column is not correct (2).", logger.getName(), resultSet.getNString("logger"));
-        assertEquals("The message column is not correct (2).", "This is another message 02.",
-                resultSet.getString("message"));
-        assertEquals("The exception column is not correct (2).", stackTrace,
-                IOUtils.readStringAndClose(resultSet.getNClob("exception").getCharacterStream(), -1));
-
-        assertFalse("There should not be three rows.", resultSet.next());
-    }
-
-    @Test
     public void testFactoryMethodConfig() throws Exception {
         this.setUp("fmLogEntry", "log4j2-" + this.databaseType + "-factory-method.xml");
 
@@ -247,7 +198,7 @@ public abstract class AbstractJdbcAppenderTest {
         assertEquals("The logger column is not correct (1).", logger.getName(), resultSet.getNString("logger"));
         assertEquals("The message column is not correct (1).", "Factory logged message 01.",
                 resultSet.getString("message"));
-        assertEquals("The exception column is not correct (1).", "",
+        assertEquals("The exception column is not correct (1).", Strings.EMPTY,
                 IOUtils.readStringAndClose(resultSet.getNClob("exception").getCharacterStream(), -1));
 
         assertTrue("There should be two rows.", resultSet.next());
@@ -265,41 +216,5 @@ public abstract class AbstractJdbcAppenderTest {
                 IOUtils.readStringAndClose(resultSet.getNClob("exception").getCharacterStream(), -1));
 
         assertFalse("There should not be three rows.", resultSet.next());
-    }
-
-    @Test
-    public void testPerformanceOfAppenderWith10000Events() throws Exception {
-        this.setUp("dmLogEntry", "log4j2-" + this.databaseType + "-driver-manager.xml");
-
-        final RuntimeException exception = new RuntimeException("Hello, world!");
-
-        final Logger logger = LogManager.getLogger(this.getClass().getName() +
-                ".testPerformanceOfAppenderWith10000Events");
-        logger.info("This is a warm-up message.");
-
-        System.out.println("Starting a performance test for JDBC Appender for " + this.databaseType + ".");
-
-        long start = System.nanoTime();
-
-        for(int i = 0; i < 10000; i++) {
-            if (i % 25 == 0) {
-                logger.warn("This is an exception message.", exception);
-            } else {
-                logger.info("This is an info message.");
-            }
-        }
-
-        long elapsed = System.nanoTime() - start;
-        long elapsedMilli = elapsed / 1000000;
-
-        final Statement statement = this.connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
-                ResultSet.CONCUR_READ_ONLY);
-        final ResultSet resultSet = statement.executeQuery("SELECT * FROM dmLogEntry ORDER BY id");
-
-        resultSet.last();
-        assertEquals("The number of records is not correct.", 10001, resultSet.getRow());
-
-        System.out.println("Wrote 10,000 log events in " + elapsed + " nanoseconds (" + elapsedMilli +
-                " milliseconds) for " + this.databaseType + ".");
     }
 }

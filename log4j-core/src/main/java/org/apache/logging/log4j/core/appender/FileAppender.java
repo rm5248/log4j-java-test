@@ -28,16 +28,19 @@ import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.Booleans;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.apache.logging.log4j.core.net.Advertiser;
+import org.apache.logging.log4j.core.util.Booleans;
+import org.apache.logging.log4j.core.util.Integers;
 
 /**
  * File Appender.
  */
 @Plugin(name = "File", category = "Core", elementType = "appender", printObject = true)
-public final class FileAppender extends AbstractOutputStreamAppender {
+public final class FileAppender extends AbstractOutputStreamAppender<FileManager> {
 
+    private static final long serialVersionUID = 1L;
+    private static final int DEFAULT_BUFFER_SIZE = 8192;
     private final String fileName;
     private final Advertiser advertiser;
     private Object advertisement;
@@ -84,39 +87,46 @@ public final class FileAppender extends AbstractOutputStreamAppender {
      * is "true".
      * @param ignore If {@code "true"} (default) exceptions encountered when appending events are logged; otherwise
      *               they are propagated to the caller.
-     * @param bufferedIO "true" if I/O should be buffered, "false" otherwise. The default is "true".
+     * @param bufferedIo "true" if I/O should be buffered, "false" otherwise. The default is "true".
+     * @param bufferSizeStr buffer size for buffered IO (default is 8192).
      * @param layout The layout to use to format the event. If no layout is provided the default PatternLayout
      * will be used.
      * @param filter The filter, if any, to use.
      * @param advertise "true" if the appender configuration should be advertised, "false" otherwise.
-     * @param advertiseURI The advertised URI which can be used to retrieve the file contents.
+     * @param advertiseUri The advertised URI which can be used to retrieve the file contents.
      * @param config The Configuration
      * @return The FileAppender.
      */
     @PluginFactory
     public static FileAppender createAppender(
+            // @formatter:off
             @PluginAttribute("fileName") final String fileName,
             @PluginAttribute("append") final String append,
             @PluginAttribute("locking") final String locking,
             @PluginAttribute("name") final String name,
             @PluginAttribute("immediateFlush") final String immediateFlush,
             @PluginAttribute("ignoreExceptions") final String ignore,
-            @PluginAttribute("bufferedIO") final String bufferedIO,
+            @PluginAttribute("bufferedIo") final String bufferedIo,
+            @PluginAttribute("bufferSize") final String bufferSizeStr,
             @PluginElement("Layout") Layout<? extends Serializable> layout,
-            @PluginElement("Filters") final Filter filter,
+            @PluginElement("Filter") final Filter filter,
             @PluginAttribute("advertise") final String advertise,
-            @PluginAttribute("advertiseURI") final String advertiseURI,
+            @PluginAttribute("advertiseUri") final String advertiseUri,
             @PluginConfiguration final Configuration config) {
-
+        // @formatter:on
         final boolean isAppend = Booleans.parseBoolean(append, true);
         final boolean isLocking = Boolean.parseBoolean(locking);
-        boolean isBuffered = Booleans.parseBoolean(bufferedIO, true);
+        boolean isBuffered = Booleans.parseBoolean(bufferedIo, true);
         final boolean isAdvertise = Boolean.parseBoolean(advertise);
         if (isLocking && isBuffered) {
-            if (bufferedIO != null) {
+            if (bufferedIo != null) {
                 LOGGER.warn("Locking and buffering are mutually exclusive. No buffering will occur for " + fileName);
             }
             isBuffered = false;
+        }
+        final int bufferSize = Integers.parseInt(bufferSizeStr, DEFAULT_BUFFER_SIZE);
+        if (!isBuffered && bufferSize > 0) {
+            LOGGER.warn("The bufferSize is set to {} but bufferedIO is not true: {}", bufferSize, bufferedIo);
         }
         final boolean isFlush = Booleans.parseBoolean(immediateFlush, true);
         final boolean ignoreExceptions = Booleans.parseBoolean(ignore, true);
@@ -131,15 +141,14 @@ public final class FileAppender extends AbstractOutputStreamAppender {
             return null;
         }
         if (layout == null) {
-            layout = PatternLayout.createLayout(null, null, null, null, null);
+            layout = PatternLayout.createDefaultLayout();
         }
 
-        final FileManager manager = FileManager.getFileManager(fileName, isAppend, isLocking, isBuffered, advertiseURI,
-            layout);
+        final FileManager manager = FileManager.getFileManager(fileName, isAppend, isLocking, isBuffered, advertiseUri,
+            layout, bufferSize);
         if (manager == null) {
             return null;
         }
-
 
         return new FileAppender(name, layout, filter, manager, fileName, ignoreExceptions, isFlush,
                 isAdvertise ? config.getAdvertiser() : null);

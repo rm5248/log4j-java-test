@@ -16,20 +16,19 @@
  */
 package org.apache.logging.log4j.core;
 
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LoggingException;
-import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.impl.Log4jLogEvent;
-import org.apache.logging.log4j.message.SimpleMessage;
-import org.junit.Test;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-import static org.junit.Assert.fail;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LoggingException;
+import org.apache.logging.log4j.core.impl.Log4jLogEvent;
+import org.apache.logging.log4j.message.SimpleMessage;
+import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 /**
  *
@@ -63,5 +62,16 @@ public class LogEventTest {
         } catch (final IOException ioe) {
             fail("Exception processing event2");
         }
+    }
+
+    public void testEquals() {
+        final LogEvent event1 = new Log4jLogEvent(this.getClass().getName(), null, "org.apache.logging.log4j.core.Logger",
+            Level.INFO, new SimpleMessage("Hello, world!"), null);
+        final LogEvent event2 = new Log4jLogEvent(this.getClass().getName(), null, "org.apache.logging.log4j.core.Logger",
+            Level.INFO, new SimpleMessage("Hello, Apache!"), null);
+        final LogEvent event3 = new Log4jLogEvent(this.getClass().getName(), null, "org.apache.logging.log4j.core.Logger",
+            Level.INFO, new SimpleMessage("Hello, Apache!"), null);
+        assertNotEquals("Events should not be equal", event1, event2);
+        assertEquals("Events should be equal", event2, event3);
     }
 }

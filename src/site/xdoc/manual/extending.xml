@@ -16,12 +16,14 @@
     limitations under the License.
 -->
 
-<document>
+<document xmlns="http://maven.apache.org/XDOC/2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/XDOC/2.0 http://maven.apache.org/xsd/xdoc-2.0.xsd">
     <properties>
         <title>Extending Log4j 2</title>
         <author email="rgoers@apache.org">Ralph Goers</author>
     </properties>
-
+<!-- TODO: add in documentation regarding plugin builders, factories, and typed attributes -->
     <body>
       <section name="Extending Log4j">
         <p>
@@ -30,33 +32,40 @@
         </p>
           <subsection name="LoggerContextFactory">
             <p>
-              The LoggerContextFactory binds the Log4j API to its implementation. The Log4j LogManager
-              locates a LoggerContextFactory by locating all instances of META-INF/log4j-provider.xml, a
-              file that conforms to the java.util.Properties DTD, and then inspecting each to verify that it
-              specifies a value for the "Log4jAPIVersion" property that conforms to the version required by the
-              LogManager. If more than one valid implementation is located the value for "FactoryPriority" will
-              be used to identify the factory with the highest priority.
-              Finally, the value of the "LoggerContextFactory" property will be used to locate the
-              LoggerContextFactory. In Log4j 2 this is provided by Log4jContextFactory.
+              The <code>LoggerContextFactory</code> binds the Log4j API to its implementation. The Log4j
+              <code>LogManager</code> locates a <code>LoggerContextFactory</code> by locating all instances of
+              <code>META-INF/log4j-provider.properties</code>, a standard <code>java.util.Properties</code> file,
+              and then inspecting each to verify that it specifies a value for the <var>Log4jAPIVersion</var> property
+              that conforms to the version required by the <code>LogManager</code>. If more than one valid
+              implementation is located the value for <var>FactoryPriority</var> will be used to identify the factory
+              with the highest priority. Finally, the value of the <var>LoggerContextFactory</var> property will be
+              used to locate the <code>LoggerContextFactory</code>. In Log4j 2 this is provided by
+              <code>Log4jContextFactory</code>.
             </p>
             <p>
               Applications may change the LoggerContextFactory that will be used by
-              <ol>
-                <li>Implementing a new LoggerContextFactory and creating a log4j-provider.xml to reference it making
-                  sure that it has the highest priority.</li>
-                <li>Create a new log4j-provider.xml and configure it with the desired LoggerContextFactory making
-                  sure that it has the highest priority.</li>
-                <li>Setting the system property "log4j2.LoggerContextFactory" to the name of the LoggerContextFactory
-                  class to use.</li>
-                <li>Setting the property "log4j2.LoggerContextFactory" in a properties file named
-                  "log4j2.LogManager.properties" to the name of the LoggerContextFactory class to use. The properties
-                  file must be on the classpath.</li>
-              </ol>
             </p>
+            <ol>
+              <li>Implementing a new <code>LoggerContextFactory</code> and creating a <code>log4j-provider.properties</code>
+                to reference it making sure that it has the highest priority.
+              </li>
+              <li>Create a new <code>log4j-provider.xml</code> and configure it with the desired
+                <code>LoggerContextFactory</code> making sure that it has the highest priority.
+              </li>
+              <li>Setting the system property <var>log4j2.loggerContextFactory</var> to the name of the
+                <code>LoggerContextFactory</code> class to use.
+              </li>
+              <li>Setting the property "log4j2.loggerContextFactory" in a properties file named
+                "log4j2.LogManager.properties" to the name of the LoggerContextFactory class to use. The properties
+                file must be on the classpath.
+              </li>
+            </ol>
           </subsection>
           <subsection name="ContextSelector">
             <p>
-              ContextSelectors are called by the Log4j LoggerContext factory. They perform the actual work of
+              ContextSelectors are called by the
+              <a href="../log4j-core/apidocs/org/apache/logging/log4j/core/impl/Log4jContextFactory.html">Log4j
+              LoggerContext factory</a>. They perform the actual work of
               locating or creating a LoggerContext, which is the anchor for Loggers and their configuration.
               ContextSelectors are free to implement any mechanism they desire to manage LoggerContexts. The
               default Log4jContextFactory checks for the presence of a System Property named "Log4jContextSelector".
@@ -64,16 +73,22 @@
               ContextSelector to be used.
             </p>
             <p>
-              Log4j provides three ContextSelectors:
-              <dl>
-                <dt>BasicContextSelector</dt>
-                <dd>Uses either a LoggerContext that has been stored in a ThreadLocal or a common LoggerContext.</dd>
-                <dt>ClassLoaderContextSelector</dt>
-                <dd>Associates LoggerContexts with the ClassLoader that created the caller of the getLogger call.</dd>
-                <dt>JNDIContextSelector</dt>
-                <dd>Locates the LoggerContext by querying JNDI.</dd>
-              </dl>
+              Log4j provides five ContextSelectors:
             </p>
+            <dl>
+              <dt><a class="javadoc" href="../log4j-core/apidocs/org/apache/logging/log4j/core/selector/BasicContextSelector.html">BasicContextSelector</a></dt>
+              <dd>Uses either a LoggerContext that has been stored in a ThreadLocal or a common LoggerContext.</dd>
+              <dt><a class="javadoc" href="../log4j-core/apidocs/org/apache/logging/log4j/core/selector/ClassLoaderContextSelector.html">ClassLoaderContextSelector</a></dt>
+              <dd>Associates LoggerContexts with the ClassLoader that created the caller of the getLogger call. This is
+              the default ContextSelector.</dd>
+              <dt><a class="javadoc" href="../log4j-core/apidocs/org/apache/logging/log4j/core/selector/JndiContextSelector.html">JndiContextSelector</a></dt>
+              <dd>Locates the LoggerContext by querying JNDI.</dd>
+              <dt><a class="javadoc" href="../log4j-core/apidocs/org/apache/logging/log4j/core/async/AsyncLoggerContextSelector.html">AsyncLoggerContextSelector</a></dt>
+              <dd>Creates a LoggerContext that ensures that all loggers are AsyncLoggers.</dd>
+              <dt><a class="javadoc" href="../log4j-core/apidocs/org/apache/logging/log4j/core/osgi/BundleContextSelector.html">BundleContextSelector</a></dt>
+              <dd>Associates LoggerContexts with the ClassLoader of the bundle that created the caller of the getLogger
+              call. This is enabled by default in OSGi environments.</dd>
+            </dl>
           </subsection>
           <subsection name="ConfigurationFactory">
             <p>
@@ -141,21 +156,12 @@ public class XMLConfigurationFactory extends ConfigurationFactory {
 public static class RootLogger extends LoggerConfig {
 
     @PluginFactory
-    public static LoggerConfig createLogger(@PluginAttr("additivity") String additivity,
-                                            @PluginAttr("level") String loggerLevel,
+    public static LoggerConfig createLogger(@PluginAttribute(value = "additivity", defaultBooleanValue = true) boolean additivity,
+                                            @PluginAttribute(value = "level", defaultStringValue = "ERROR") Level level,
                                             @PluginElement("AppenderRef") AppenderRef[] refs,
                                             @PluginElement("Filters") Filter filter) {
         List<AppenderRef> appenderRefs = Arrays.asList(refs);
-        Level level;
-        try {
-            level = loggerLevel == null ? Level.ERROR : Level.valueOf(loggerLevel.toUpperCase());
-        } catch (Exception ex) {
-            LOGGER.error("Invalid Log level specified: {}. Defaulting to Error", loggerLevel);
-            level = Level.ERROR;
-        }
-        boolean additive = additivity == null ? true : Boolean.parseBoolean(additivity);
-
-        return new LoggerConfig(LogManager.ROOT_LOGGER_NAME, appenderRefs, filter, level, additive);
+        return new LoggerConfig(LogManager.ROOT_LOGGER_NAME, appenderRefs, filter, level, additivity);
     }
 }]]></pre>
           </subsection>
@@ -177,6 +183,7 @@ public static class RootLogger extends LoggerConfig {
               use a PluginFactory. Instead, they are required to provide a constructor that accepts no arguments.
               The example below shows a Lookup that will return the value of a System Property.
             </p>
+            <p>The provided Lookups are documented here: <a href="./lookups.html">Lookups</a></p>
             <pre class="prettyprint linenums">
 @Plugin(name = "sys", category = "Lookup")
 public class SystemPropertiesLookup implements StrLookup {
@@ -260,13 +267,9 @@ public final class ThresholdFilter extends AbstractFilter {
      * @return The created ThresholdFilter.
      */
     @PluginFactory
-    public static ThresholdFilter createFilter(@PluginAttr("level") String loggerLevel,
-                                               @PluginAttr("onMatch") String match,
-                                               @PluginAttr("onMismatch") String mismatch) {
-        Level level = loggerLevel == null ? Level.ERROR : Level.toLevel(loggerLevel.toUpperCase());
-        Result onMatch = match == null ? Result.NEUTRAL : Result.valueOf(match.toUpperCase());
-        Result onMismatch = mismatch == null ? Result.DENY : Result.valueOf(mismatch.toUpperCase());
-
+    public static ThresholdFilter createFilter(@PluginAttribute(value = "level", defaultStringValue = "ERROR") Level level,
+                                               @PluginAttribute(value = "onMatch", defaultStringValue = "NEUTRAL") Result onMatch,
+                                               @PluginAttribute(value = "onMismatch", defaultStringValue = "DENY") Result onMismatch) {
         return new ThresholdFilter(level, onMatch, onMismatch);
     }
 }</pre>
@@ -276,7 +279,7 @@ public final class ThresholdFilter extends AbstractFilter {
               Appenders are passed an event, (usually) invoke a Layout to format the event, and then "publish"
               the event in whatever manner is desired. Appenders are declared as Plugins with a type of "Core"
               and an elementType of "appender". The name attribute on the Plugin annotation specifies the name
-              of the element users must provide in their configuration to use the Appender. Appender's should
+              of the element users must provide in their configuration to use the Appender. Appenders should
               specify printObject as "true" if the toString method renders the values of the attributes passed
               to the Appender.
             </p>
@@ -300,12 +303,10 @@ public final class StubAppender extends OutputStreamAppender {
     }
 
     @PluginFactory
-    public static StubAppender createAppender(@PluginAttr("name") String name,
-                                              @PluginAttr("ignoreExceptions") String ignore,
+    public static StubAppender createAppender(@PluginAttribute("name") String name,
+                                              @PluginAttribute("ignoreExceptions") boolean ignoreExceptions,
                                               @PluginElement("Layout") Layout layout,
                                               @PluginElement("Filters") Filter filter) {
-
-        boolean ignoreExceptions = Boolean.parseBoolean(ignore);
 
         if (name == null) {
             LOGGER.error("No name provided for StubAppender");
@@ -317,7 +318,7 @@ public final class StubAppender extends OutputStreamAppender {
             return null;
         }
         if (layout == null) {
-            layout = PatternLayout.createLayout(null, null, null, null);
+            layout = PatternLayout.createDefaultLayout();
         }
         return new StubAppender(name, layout, filter, manager, ignoreExceptions);
     }
@@ -347,24 +348,11 @@ public class SampleLayout extends AbstractStringLayout {
     }
 
     @PluginFactory
-    public static SampleLayout createLayout(@PluginAttr("locationInfo") String locationInfo,
-                                            @PluginAttr("properties") String properties,
-                                            @PluginAttr("complete") String complete,
-                                            @PluginAttr("charset") String charset) {
-        Charset c = Charset.isSupported("UTF-8") ?
-                    Charset.forName("UTF-8") : Charset.defaultCharset();
-        if (charset != null) {
-            if (Charset.isSupported(charset)) {
-                c = Charset.forName(charset);
-            } else {
-                LOGGER.error("Charset " + charset + " is not supported for layout, using " +
-                             c.displayName());
-            }
-        }
-        boolean info = locationInfo == null ? false : Boolean.valueOf(locationInfo);
-        boolean props = properties == null ? false : Boolean.valueOf(properties);
-        boolean comp = complete == null ? false : Boolean.valueOf(complete);
-        return new SampleLayout(info, props, comp, c);
+    public static SampleLayout createLayout(@PluginAttribute("locationInfo") boolean locationInfo,
+                                            @PluginAttribute("properties") boolean properties,
+                                            @PluginAttribute("complete") boolean complete,
+                                            @PluginAttribute(value = "charset", defaultStringValue = "UTF-8") Charset charset) {
+        return new SampleLayout(locationInfo, properties, complete, charset);
     }
 }</pre>
           </subsection>
@@ -404,7 +392,8 @@ public final class QueryConverter extends LogEventPatternConverter {
 }</pre>
           </subsection>
           <subsection name="Custom Plugins">
-
+            <p>See the <a href="plugins.html">Plugins</a> section of the manual.</p>
+<!-- TODO: some documentation here! -->
           </subsection>
       </section>
 

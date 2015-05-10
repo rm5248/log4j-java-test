@@ -16,10 +16,8 @@
  */
 package org.apache.logging.log4j.core.lookup;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,6 +31,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockejb.jndi.MockContextFactory;
 
+import static org.junit.Assert.*;
+
 /**
  *
  */
@@ -44,17 +44,23 @@ public class InterpolatorTest {
     private static final String TEST_CONTEXT_RESOURCE_NAME = "logging/context-name";
     private static final String TEST_CONTEXT_NAME = "app-1";
 
+    private static Context context;
+
     @BeforeClass
     public static void before() throws NamingException {
         System.setProperty(TESTKEY, TESTVAL);
 
         MockContextFactory.setAsInitial();
-        Context context = new InitialContext();
+        context = new InitialContext();
         context.bind(JndiLookup.CONTAINER_JNDI_RESOURCE_PATH_PREFIX + TEST_CONTEXT_RESOURCE_NAME, TEST_CONTEXT_NAME);
     }
 
     @AfterClass
     public static void after() {
+        try {
+            context.close();
+        } catch (final NamingException ignored) {
+        }
         MockContextFactory.revertSetAsInitial();
 
         System.clearProperty(TESTKEY);
@@ -74,13 +80,20 @@ public class InterpolatorTest {
         assertEquals(TESTVAL, value);
         value = lookup.lookup("BadKey");
         assertNull(value);
-        ThreadContext.clear();
+        ThreadContext.clearMap();
         value = lookup.lookup("ctx:" + TESTKEY);
         assertEquals(TESTVAL, value);
         value = lookup.lookup("jndi:" + TEST_CONTEXT_RESOURCE_NAME);
         assertEquals(TEST_CONTEXT_NAME, value);
     }
 
+    private void assertLookupNotEmpty(final StrLookup lookup, final String key) {
+        final String value = lookup.lookup(key);
+        assertNotNull(value);
+        assertFalse(value.isEmpty());
+        System.out.println(key + " = " + value);
+    }
+    
     @Test
     public void testLookupWithDefaultInterpolator() {
         final StrLookup lookup = new Interpolator();
@@ -90,5 +103,16 @@ public class InterpolatorTest {
         assertNotNull(value);
         value = lookup.lookup("jndi:" + TEST_CONTEXT_RESOURCE_NAME);
         assertEquals(TEST_CONTEXT_NAME, value);
+        value = lookup.lookup("date:yyyy-MM-dd");
+        assertNotNull("No Date", value);
+        final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        final String today = format.format(new Date());
+        assertEquals(value, today);
+        assertLookupNotEmpty(lookup, "java:version");
+        assertLookupNotEmpty(lookup, "java:runtime");
+        assertLookupNotEmpty(lookup, "java:vm");
+        assertLookupNotEmpty(lookup, "java:os");
+        assertLookupNotEmpty(lookup, "java:locale");
+        assertLookupNotEmpty(lookup, "java:hw");
     }
 }

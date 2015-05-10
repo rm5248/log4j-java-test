@@ -16,31 +16,39 @@
  */
 package org.apache.logging.log4j.core.layout;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.LoggingException;
 import org.apache.logging.log4j.ThreadContext;
+import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.BasicConfigurationFactory;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.test.appender.ListAppender;
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
+import org.apache.logging.log4j.core.impl.Log4jLogEvent;
+import org.apache.logging.log4j.message.SimpleMessage;
+import org.apache.logging.log4j.test.appender.ListAppender;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.util.List;
-
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  *
  */
 public class SerializedLayoutTest {
+    private static final String DAT_PATH = "target/test-classes/serializedEvent.dat";
     LoggerContext ctx = (LoggerContext) LogManager.getContext();
     Logger root = ctx.getLogger("");
 
@@ -48,6 +56,7 @@ public class SerializedLayoutTest {
 
     @BeforeClass
     public static void setupClass() {
+        ThreadContext.clearAll();
         ConfigurationFactory.setConfigurationFactory(cf);
         final LoggerContext ctx = (LoggerContext) LogManager.getContext();
         ctx.reconfigure();
@@ -56,6 +65,7 @@ public class SerializedLayoutTest {
     @AfterClass
     public static void cleanupClass() {
         ConfigurationFactory.removeConfigurationFactory(cf);
+        ThreadContext.clearAll();
     }
 
     private static final String body =
@@ -75,7 +85,10 @@ public class SerializedLayoutTest {
      */
     @Test
     public void testLayout() throws Exception {
-
+        final Map<String, Appender> appenders = root.getAppenders();
+        for (final Appender appender : appenders.values()) {
+            root.removeAppender(appender);
+        }
         // set up appender
         final SerializedLayout layout = SerializedLayout.createLayout();
         final ListAppender appender = new ListAppender("List", null, layout, false, true);
@@ -123,6 +136,32 @@ public class SerializedLayoutTest {
             assertTrue("Incorrect event", event.toString().equals(expected[i]));
             ++i;
         }
+        for (final Appender app : appenders.values()) {
+            root.addAppender(app);
+        }
+    }
 
+    @Test
+    public void testSerialization() throws Exception {
+        final SerializedLayout layout = SerializedLayout.createLayout();
+        final Throwable throwable = new LoggingException("Test");
+        final LogEvent event = new Log4jLogEvent(this.getClass().getName(), null,
+            "org.apache.logging.log4j.core.Logger", Level.INFO, new SimpleMessage("Hello, world!"), throwable);
+        final byte[] result = layout.toByteArray(event);
+        assertNotNull(result);
+        final FileOutputStream fos = new FileOutputStream(DAT_PATH);
+        fos.write(layout.getHeader());
+        fos.write(result);
+        fos.close();
+    }
+
+    @Test
+    public void testDeserialization() throws Exception {
+        testSerialization();
+        final File file = new File(DAT_PATH);
+        final FileInputStream fis = new FileInputStream(file);
+        final ObjectInputStream ois = new ObjectInputStream(fis);
+        final LogEvent event = (LogEvent) ois.readObject();
+        assertNotNull(event);
     }
 }

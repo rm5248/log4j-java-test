@@ -29,6 +29,8 @@ import org.apache.logging.log4j.core.filter.Filterable;
  */
 public class AppenderControl extends AbstractFilterable {
 
+    private static final long serialVersionUID = 1L;
+
     private final ThreadLocal<AppenderControl> recursive = new ThreadLocal<AppenderControl>();
 
     private final Appender appender;
@@ -48,7 +50,7 @@ public class AppenderControl extends AbstractFilterable {
         this.appender = appender;
         this.level = level;
         this.intLevel = level == null ? Level.ALL.intLevel() : level.intLevel();
-        startFilter();
+        start();
     }
 
     /**
@@ -70,10 +72,8 @@ public class AppenderControl extends AbstractFilterable {
                 return;
             }
         }
-        if (level != null) {
-            if (intLevel < event.getLevel().intLevel()) {
-                return;
-            }
+        if (level != null && intLevel < event.getLevel().intLevel()) {
+            return;
         }
         if (recursive.get() != null) {
             appender.getHandler().error("Recursive call to appender " + appender.getName());

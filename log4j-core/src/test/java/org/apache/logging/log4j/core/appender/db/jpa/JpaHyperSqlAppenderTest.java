@@ -22,13 +22,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.util.Strings;
 import org.junit.Test;
 
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.*;
 
 public class JpaHyperSqlAppenderTest extends AbstractJpaAppenderTest {
     private static final String USER_ID = "sa";
-    private static final String PASSWORD = "";
+    private static final String PASSWORD = Strings.EMPTY;
 
     public JpaHyperSqlAppenderTest() {
         super("hsqldb");
@@ -36,7 +37,7 @@ public class JpaHyperSqlAppenderTest extends AbstractJpaAppenderTest {
 
     @Override
     protected Connection setUpConnection() throws SQLException {
-        Connection connection = DriverManager.getConnection("jdbc:hsqldb:mem:Log4j", USER_ID, PASSWORD);
+        final Connection connection = DriverManager.getConnection("jdbc:hsqldb:mem:Log4j", USER_ID, PASSWORD);
 
         Statement statement = connection.createStatement();
         statement.executeUpdate("CREATE TABLE jpaBaseLogEntry ( " +
@@ -47,9 +48,9 @@ public class JpaHyperSqlAppenderTest extends AbstractJpaAppenderTest {
 
         statement = connection.createStatement();
         statement.executeUpdate("CREATE TABLE jpaBasicLogEntry ( " +
-                "id INTEGER IDENTITY, millis BIGINT, level VARCHAR(10), loggerName VARCHAR(255), " +
+                "id INTEGER IDENTITY, timemillis BIGINT, level VARCHAR(10), loggerName VARCHAR(255), " +
                 "message VARCHAR(1024), thrown VARCHAR(1048576), contextMapJson VARCHAR(1048576)," +
-                "fqcn VARCHAR(1024), contextStack VARCHAR(1048576), marker VARCHAR(255), source VARCHAR(2048)," +
+                "loggerFQCN VARCHAR(1024), contextStack VARCHAR(1048576), marker VARCHAR(255), source VARCHAR(2048)," +
                 "threadName VARCHAR(255)" +
                 " )");
         statement.close();
@@ -59,14 +60,14 @@ public class JpaHyperSqlAppenderTest extends AbstractJpaAppenderTest {
 
     @Test
     public void testNoEntityClassName() {
-        final JPAAppender appender = JPAAppender.createAppender("name", null, null, null, null, "jpaAppenderTestUnit");
+        final JpaAppender appender = JpaAppender.createAppender("name", null, null, null, null, "jpaAppenderTestUnit");
 
         assertNull("The appender should be null.", appender);
     }
 
     @Test
     public void testNoPersistenceUnitName() {
-        final JPAAppender appender = JPAAppender.createAppender("name", null, null, null, TestBaseEntity.class.getName(),
+        final JpaAppender appender = JpaAppender.createAppender("name", null, null, null, TestBaseEntity.class.getName(),
                 null);
 
         assertNull("The appender should be null.", appender);
@@ -74,7 +75,7 @@ public class JpaHyperSqlAppenderTest extends AbstractJpaAppenderTest {
 
     @Test
     public void testBadEntityClassName() {
-        final JPAAppender appender = JPAAppender.createAppender("name", null, null, null, "com.foo.Bar",
+        final JpaAppender appender = JpaAppender.createAppender("name", null, null, null, "com.foo.Bar",
                 "jpaAppenderTestUnit");
 
         assertNull("The appender should be null.", appender);
@@ -82,7 +83,7 @@ public class JpaHyperSqlAppenderTest extends AbstractJpaAppenderTest {
 
     @Test
     public void testNonLogEventEntity() {
-        final JPAAppender appender = JPAAppender.createAppender("name", null, null, null, Object.class.getName(),
+        final JpaAppender appender = JpaAppender.createAppender("name", null, null, null, Object.class.getName(),
                 "jpaAppenderTestUnit");
 
         assertNull("The appender should be null.", appender);
@@ -90,7 +91,7 @@ public class JpaHyperSqlAppenderTest extends AbstractJpaAppenderTest {
 
     @Test
     public void testBadConstructorEntity01() {
-        final JPAAppender appender = JPAAppender.createAppender("name", null, null, null,
+        final JpaAppender appender = JpaAppender.createAppender("name", null, null, null,
                 BadConstructorEntity1.class.getName(), "jpaAppenderTestUnit");
 
         assertNull("The appender should be null.", appender);
@@ -98,7 +99,7 @@ public class JpaHyperSqlAppenderTest extends AbstractJpaAppenderTest {
 
     @Test
     public void testBadConstructorEntity02() {
-        final JPAAppender appender = JPAAppender.createAppender("name", null, null, null,
+        final JpaAppender appender = JpaAppender.createAppender("name", null, null, null,
                 BadConstructorEntity2.class.getName(), "jpaAppenderTestUnit");
 
         assertNull("The appender should be null.", appender);

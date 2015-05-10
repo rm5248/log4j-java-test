@@ -25,8 +25,8 @@ import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.KeyValuePair;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
+import org.apache.logging.log4j.core.util.KeyValuePair;
 import org.apache.logging.log4j.message.MapMessage;
 import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.status.StatusLogger;
@@ -79,14 +79,14 @@ public final class MapRewritePolicy implements RewritePolicy {
         }
         final MapMessage message = ((MapMessage) msg).newInstance(newMap);
         if (source instanceof Log4jLogEvent) {
-            Log4jLogEvent event = (Log4jLogEvent) source;
-            return Log4jLogEvent.createEvent(event.getLoggerName(), event.getMarker(), event.getFQCN(),
-                event.getLevel(), message, event.getThrownProxy(), event.getContextMap(), event.getContextStack(),
-                event.getThreadName(), event.getSource(), event.getMillis());
+            final Log4jLogEvent event = (Log4jLogEvent) source;
+            return Log4jLogEvent.createEvent(event.getLoggerName(), event.getMarker(), event.getLoggerFqcn(),
+                event.getLevel(), message, event.getThrown(), event.getThrownProxy(), event.getContextMap(), 
+                event.getContextStack(), event.getThreadName(), event.getSource(), event.getTimeMillis());
         }
-        return new Log4jLogEvent(source.getLoggerName(), source.getMarker(), source.getFQCN(), source.getLevel(),
+        return new Log4jLogEvent(source.getLoggerName(), source.getMarker(), source.getLoggerFqcn(), source.getLevel(),
             message, source.getThrown(), source.getContextMap(), source.getContextStack(), source.getThreadName(),
-            source.getSource(), source.getMillis());
+            source.getSource(), source.getTimeMillis());
     }
 
     /**
@@ -114,10 +114,10 @@ public final class MapRewritePolicy implements RewritePolicy {
             if (!first) {
                 sb.append(", ");
             }
-            sb.append(entry.getKey()).append("=").append(entry.getValue());
+            sb.append(entry.getKey()).append('=').append(entry.getValue());
             first = false;
         }
-        sb.append("}");
+        sb.append('}');
         return sb.toString();
     }
 
@@ -159,7 +159,7 @@ public final class MapRewritePolicy implements RewritePolicy {
             }
             map.put(pair.getKey(), pair.getValue());
         }
-        if (map.size() == 0) {
+        if (map.isEmpty()) {
             LOGGER.error("MapRewritePolicy is not configured with any valid key value pairs");
             return null;
         }

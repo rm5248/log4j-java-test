@@ -18,8 +18,10 @@ package org.apache.logging.log4j.core.filter;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
+import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.config.Node;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
@@ -33,8 +35,10 @@ import org.apache.logging.log4j.message.Message;
  *
  * The default Level is ERROR.
  */
-@Plugin(name = "ThresholdFilter", category = "Core", elementType = "filter", printObject = true)
+@Plugin(name = "ThresholdFilter", category = Node.CATEGORY, elementType = Filter.ELEMENT_TYPE, printObject = true)
 public final class ThresholdFilter extends AbstractFilter {
+
+    private static final long serialVersionUID = 1L;
 
     private final Level level;
 
@@ -67,7 +71,7 @@ public final class ThresholdFilter extends AbstractFilter {
     }
 
     private Result filter(final Level level) {
-        return level.isAtLeastAsSpecificAs(this.level) ? onMatch : onMismatch;
+        return level.isMoreSpecificThan(this.level) ? onMatch : onMismatch;
     }
 
     @Override
@@ -77,20 +81,20 @@ public final class ThresholdFilter extends AbstractFilter {
 
     /**
      * Create a ThresholdFilter.
-     * @param levelName The log Level.
+     * @param level The log Level.
      * @param match The action to take on a match.
      * @param mismatch The action to take on a mismatch.
      * @return The created ThresholdFilter.
      */
     @PluginFactory
     public static ThresholdFilter createFilter(
-            @PluginAttribute("level") final String levelName,
-            @PluginAttribute("onMatch") final String match,
-            @PluginAttribute("onMismatch") final String mismatch) {
-        final Level level = Level.toLevel(levelName, Level.ERROR);
-        final Result onMatch = Result.toResult(match, Result.NEUTRAL);
-        final Result onMismatch = Result.toResult(mismatch, Result.DENY);
-        return new ThresholdFilter(level, onMatch, onMismatch);
+            @PluginAttribute("level") final Level level,
+            @PluginAttribute("onMatch") final Result match,
+            @PluginAttribute("onMismatch") final Result mismatch) {
+        final Level actualLevel = level == null ? Level.ERROR : level;
+        final Result onMatch = match == null ? Result.NEUTRAL : match;
+        final Result onMismatch = mismatch == null ? Result.DENY : mismatch;
+        return new ThresholdFilter(actualLevel, onMatch, onMismatch);
     }
 
 }

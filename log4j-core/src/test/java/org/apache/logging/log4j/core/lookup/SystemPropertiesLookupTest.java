@@ -20,14 +20,12 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.*;
 
 /**
  *
  */
 public class SystemPropertiesLookupTest {
-
 
     private static final String TESTKEY = "TestKey";
     private static final String TESTVAL = "TestValue";

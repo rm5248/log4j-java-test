@@ -16,30 +16,31 @@
  */
 package org.apache.logging.log4j;
 
-import org.apache.logging.log4j.message.MessageFactory;
-import org.apache.logging.log4j.spi.LoggerContext;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import org.apache.logging.log4j.message.MessageFactory;
+import org.apache.logging.log4j.spi.LoggerContext;
+import org.apache.logging.log4j.spi.ExtendedLogger;
 
 /**
  *
  */
 public class TestLoggerContext implements LoggerContext {
-    private final Map<String, Logger> map = new HashMap<String, Logger>();
+    private final Map<String, ExtendedLogger> map = new HashMap<String, ExtendedLogger>();
 
     @Override
-    public Logger getLogger(final String name) {
+    public ExtendedLogger getLogger(final String name) {
         if (map.containsKey(name)) {
             return map.get(name);
         }
-        final Logger logger = new TestLogger(name);
+        final ExtendedLogger logger = new TestLogger(name);
         map.put(name, logger);
         return logger;
     }
 
     @Override
-    public Logger getLogger(final String name, final MessageFactory messageFactory) {
+    public ExtendedLogger getLogger(final String name, final MessageFactory messageFactory) {
         return new TestLogger(name, messageFactory);
     }
 

@@ -23,8 +23,8 @@ import org.apache.logging.log4j.core.config.plugins.Plugin;
 /**
  * Formats the class name of the site of the logging request.
  */
-@Plugin(name = "ClassNamePatternConverter", category = "Converter")
-@ConverterKeys({"C", "class" })
+@Plugin(name = "ClassNamePatternConverter", category = PatternConverter.CATEGORY)
+@ConverterKeys({ "C", "class" })
 public final class ClassNamePatternConverter extends NamePatternConverter {
 
     private static final String NA = "?";

@@ -26,23 +26,28 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.config.plugins.PluginManager;
-import org.apache.logging.log4j.core.config.plugins.PluginType;
-import org.apache.logging.log4j.core.helpers.FileUtils;
-import org.apache.logging.log4j.core.helpers.Loader;
+import org.apache.logging.log4j.core.config.plugins.util.PluginManager;
+import org.apache.logging.log4j.core.config.plugins.util.PluginType;
 import org.apache.logging.log4j.core.lookup.Interpolator;
 import org.apache.logging.log4j.core.lookup.StrSubstitutor;
+import org.apache.logging.log4j.core.util.FileUtils;
+import org.apache.logging.log4j.core.util.Loader;
+import org.apache.logging.log4j.core.util.ReflectionUtil;
 import org.apache.logging.log4j.status.StatusLogger;
+import org.apache.logging.log4j.util.LoaderUtil;
 import org.apache.logging.log4j.util.PropertiesUtil;
 
 /**
+ * Factory class for parsed {@link Configuration} objects from a configuration file.
  * ConfigurationFactory allows the configuration implementation to be
  * dynamically chosen in 1 of 3 ways:
  * <ol>
@@ -53,10 +58,10 @@ import org.apache.logging.log4j.util.PropertiesUtil;
  * with the instance of the ConfigurationFactory to be used. This must be called
  * before any other calls to Log4j.</li>
  * <li>
- * A ConfigurationFactory implementation can be added to the classpath and
- * configured as a plugin. The Order annotation should be used to configure the
+ * A ConfigurationFactory implementation can be added to the classpath and configured as a plugin in the
+ * {@link #CATEGORY ConfigurationFactory} category. The {@link Order} annotation should be used to configure the
  * factory to be the first one inspected. See
- * {@linkplain XMLConfigurationFactory} for an example.</li>
+ * {@linkplain org.apache.logging.log4j.core.config.xml.XmlConfigurationFactory} for an example.</li>
  * </ol>
  *
  * If the ConfigurationFactory that was added returns null on a call to
@@ -74,6 +79,14 @@ public abstract class ConfigurationFactory {
      * Allow the location of the configuration file to be specified as a system property.
      */
     public static final String CONFIGURATION_FILE_PROPERTY = "log4j.configurationFile";
+
+    /**
+     * Plugin category used to inject a ConfigurationFactory {@link org.apache.logging.log4j.core.config.plugins.Plugin}
+     * class.
+     *
+     * @since 2.1
+     */
+    public static final String CATEGORY = "ConfigurationFactory";
 
     /**
      * Allow subclasses access to the status logger without creating another instance.
@@ -94,13 +107,11 @@ public abstract class ConfigurationFactory {
      * The name of the classloader URI scheme.
      */
     private static final String CLASS_LOADER_SCHEME = "classloader";
-    private static final int CLASS_LOADER_SCHEME_LENGTH = CLASS_LOADER_SCHEME.length() + 1;
 
     /**
      * The name of the classpath URI scheme, synonymous with the classloader URI scheme.
      */
     private static final String CLASS_PATH_SCHEME = "classpath";
-    private static final int CLASS_PATH_SCHEME_LENGTH = CLASS_PATH_SCHEME.length() + 1;
 
     private static volatile List<ConfigurationFactory> factories = null;
 
@@ -108,64 +119,67 @@ public abstract class ConfigurationFactory {
 
     protected final StrSubstitutor substitutor = new StrSubstitutor(new Interpolator());
 
+    private static final Lock LOCK = new ReentrantLock();
+
     /**
      * Returns the ConfigurationFactory.
      * @return the ConfigurationFactory.
      */
     public static ConfigurationFactory getInstance() {
+        // volatile works in Java 1.6+, so double-checked locking also works properly
+        //noinspection DoubleCheckedLocking
         if (factories == null) {
-            synchronized(TEST_PREFIX) {
+            LOCK.lock();
+            try {
                 if (factories == null) {
                     final List<ConfigurationFactory> list = new ArrayList<ConfigurationFactory>();
                     final String factoryClass = PropertiesUtil.getProperties().getStringProperty(CONFIGURATION_FACTORY_PROPERTY);
                     if (factoryClass != null) {
                         addFactory(list, factoryClass);
                     }
-                    final PluginManager manager = new PluginManager("ConfigurationFactory");
+                    final PluginManager manager = new PluginManager(CATEGORY);
                     manager.collectPlugins();
                     final Map<String, PluginType<?>> plugins = manager.getPlugins();
-                    final Set<WeightedFactory> ordered = new TreeSet<WeightedFactory>();
+                    final List<Class<? extends ConfigurationFactory>> ordered =
+                        new ArrayList<Class<? extends ConfigurationFactory>>(plugins.size());
                     for (final PluginType<?> type : plugins.values()) {
                         try {
-                            @SuppressWarnings("unchecked")
-                            final Class<ConfigurationFactory> clazz = (Class<ConfigurationFactory>)type.getPluginClass();
-                            final Order order = clazz.getAnnotation(Order.class);
-                            if (order != null) {
-                                final int weight = order.value();
-                                ordered.add(new WeightedFactory(weight, clazz));
-                            }
+                            ordered.add(type.getPluginClass().asSubclass(ConfigurationFactory.class));
                         } catch (final Exception ex) {
-                            LOGGER.warn("Unable to add class " + type.getPluginClass());
+                            LOGGER.warn("Unable to add class {}", type.getPluginClass(), ex);
                         }
                     }
-                    for (final WeightedFactory wf : ordered) {
-                        addFactory(list, wf.factoryClass);
+                    Collections.sort(ordered, OrderComparator.getInstance());
+                    for (final Class<? extends ConfigurationFactory> clazz : ordered) {
+                        addFactory(list, clazz);
                     }
+                    // see above comments about double-checked locking
+                    //noinspection NonThreadSafeLazyInitialization
                     factories = Collections.unmodifiableList(list);
                 }
+            } finally {
+                LOCK.unlock();
             }
         }
 
+        LOGGER.debug("Using configurationFactory {}", configFactory);
         return configFactory;
     }
 
-    @SuppressWarnings("unchecked")
-    private static void addFactory(final List<ConfigurationFactory> list, final String factoryClass) {
+    private static void addFactory(final Collection<ConfigurationFactory> list, final String factoryClass) {
         try {
-            addFactory(list, (Class<ConfigurationFactory>) Class.forName(factoryClass));
-        } catch (final ClassNotFoundException ex) {
-            LOGGER.error("Unable to load class " + factoryClass, ex);
+            addFactory(list, LoaderUtil.loadClass(factoryClass).asSubclass(ConfigurationFactory.class));
         } catch (final Exception ex) {
-            LOGGER.error("Unable to load class " + factoryClass, ex);
+            LOGGER.error("Unable to load class {}", factoryClass, ex);
         }
     }
 
-    private static void addFactory(final List<ConfigurationFactory> list,
-                                   final Class<ConfigurationFactory> factoryClass) {
+    private static void addFactory(final Collection<ConfigurationFactory> list,
+                                   final Class<? extends ConfigurationFactory> factoryClass) {
         try {
-            list.add(factoryClass.newInstance());
+            list.add(ReflectionUtil.instantiate(factoryClass));
         } catch (final Exception ex) {
-            LOGGER.error("Unable to create instance of " + factoryClass.getName(), ex);
+            LOGGER.error("Unable to create instance of {}", factoryClass.getName(), ex);
         }
     }
 
@@ -214,7 +228,7 @@ public abstract class ConfigurationFactory {
             return null;
         }
         if (configLocation != null) {
-            final ConfigurationSource source = getInputFromURI(configLocation);
+            final ConfigurationSource source = getInputFromUri(configLocation);
             if (source != null) {
                 return getConfiguration(source);
             }
@@ -223,47 +237,81 @@ public abstract class ConfigurationFactory {
     }
 
     /**
+     * Returns the Configuration obtained using a given ClassLoader.
+     *
+     * @param name The configuration name.
+     * @param configLocation A URI representing the location of the configuration.
+     * @param loader The default ClassLoader to use. If this is {@code null}, then the
+     *               {@linkplain LoaderUtil#getThreadContextClassLoader() default ClassLoader} will be used.
+     * @return The Configuration.
+     * @since 2.1
+     */
+    public Configuration getConfiguration(final String name, final URI configLocation, final ClassLoader loader) {
+        if (!isActive()) {
+            return null;
+        }
+        if (loader == null) {
+            return getConfiguration(name, configLocation);
+        }
+        if (isClassLoaderUri(configLocation)) {
+            final String path = extractClassLoaderUriPath(configLocation);
+            final ConfigurationSource source = getInputFromResource(path, loader);
+            if (source != null) {
+                final Configuration configuration = getConfiguration(source);
+                if (configuration != null) {
+                    return configuration;
+                }
+            }
+        }
+        return getConfiguration(name, configLocation);
+    }
+
+    /**
      * Load the configuration from a URI.
      * @param configLocation A URI representing the location of the configuration.
      * @return The ConfigurationSource for the configuration.
      */
-    protected ConfigurationSource getInputFromURI(final URI configLocation) {
-        final File configFile = FileUtils.fileFromURI(configLocation);
+    protected ConfigurationSource getInputFromUri(final URI configLocation) {
+        final File configFile = FileUtils.fileFromUri(configLocation);
         if (configFile != null && configFile.exists() && configFile.canRead()) {
             try {
                 return new ConfigurationSource(new FileInputStream(configFile), configFile);
             } catch (final FileNotFoundException ex) {
-                LOGGER.error("Cannot locate file " + configLocation.getPath(), ex);
+                LOGGER.error("Cannot locate file {}", configLocation.getPath(), ex);
             }
         }
-        final String scheme = configLocation.getScheme();
-        final boolean isClassLoaderScheme = scheme != null && scheme.equals(CLASS_LOADER_SCHEME);
-        final boolean isClassPathScheme = scheme != null && !isClassLoaderScheme && scheme.equals(CLASS_PATH_SCHEME);
-        if (scheme == null || isClassLoaderScheme || isClassPathScheme) {
-            final ClassLoader loader = this.getClass().getClassLoader();
-            String path;
-            if (isClassLoaderScheme) {
-                path = configLocation.toString().substring(CLASS_LOADER_SCHEME_LENGTH);
-            } else if (isClassPathScheme) {
-                path = configLocation.toString().substring(CLASS_PATH_SCHEME_LENGTH);
-            } else {
-                path = configLocation.getPath();
-            }
+        if (isClassLoaderUri(configLocation)) {
+            final ClassLoader loader = LoaderUtil.getThreadContextClassLoader();
+            final String path = extractClassLoaderUriPath(configLocation);
             final ConfigurationSource source = getInputFromResource(path, loader);
             if (source != null) {
                 return source;
             }
         }
+        if (!configLocation.isAbsolute()) { // LOG4J2-704 avoid confusing error message thrown by uri.toURL()
+            LOGGER.error("File not found in file system or classpath: {}", configLocation.toString());
+            return null;
+        }
         try {
-            return new ConfigurationSource(configLocation.toURL().openStream(), configLocation.getPath());
+            return new ConfigurationSource(configLocation.toURL().openStream(), configLocation.toURL());
         } catch (final MalformedURLException ex) {
-            LOGGER.error("Invalid URL " + configLocation.toString(), ex);
-        } catch (final IOException ex) {
-            LOGGER.error("Unable to access " + configLocation.toString(), ex);
+            LOGGER.error("Invalid URL {}", configLocation.toString(), ex);
         } catch (final Exception ex) {
-            LOGGER.error("Unable to access " + configLocation.toString(), ex);
+            LOGGER.error("Unable to access {}", configLocation.toString(), ex);
         }
         return null;
+    }
+
+    private static boolean isClassLoaderUri(final URI uri) {
+        if (uri == null) {
+            return false;
+        }
+        final String scheme = uri.getScheme();
+        return scheme == null || scheme.equals(CLASS_LOADER_SCHEME) || scheme.equals(CLASS_PATH_SCHEME);
+    }
+
+    private static String extractClassLoaderUriPath(final URI uri) {
+        return uri.getScheme() == null ? uri.getPath() : uri.getSchemeSpecificPart();
     }
 
     /**
@@ -275,7 +323,7 @@ public abstract class ConfigurationFactory {
     protected ConfigurationSource getInputFromString(final String config, final ClassLoader loader) {
         try {
             final URL url = new URL(config);
-            return new ConfigurationSource(url.openStream(), FileUtils.fileFromURI(url.toURI()));
+            return new ConfigurationSource(url.openStream(), FileUtils.fileFromUri(url.toURI()));
         } catch (final Exception ex) {
             final ConfigurationSource source = getInputFromResource(config, loader);
             if (source == null) {
@@ -284,6 +332,7 @@ public abstract class ConfigurationFactory {
                     return new ConfigurationSource(new FileInputStream(file), file);
                 } catch (final FileNotFoundException fnfe) {
                     // Ignore the exception
+                    LOGGER.catching(Level.DEBUG, fnfe);
                 }
             }
             return source;
@@ -305,6 +354,7 @@ public abstract class ConfigurationFactory {
         try {
             is = url.openStream();
         } catch (final IOException ioe) {
+            LOGGER.catching(Level.DEBUG, ioe);
             return null;
         }
         if (is == null) {
@@ -313,42 +363,13 @@ public abstract class ConfigurationFactory {
 
         if (FileUtils.isFile(url)) {
             try {
-                return new ConfigurationSource(is, FileUtils.fileFromURI((url.toURI())));
+                return new ConfigurationSource(is, FileUtils.fileFromUri(url.toURI()));
             } catch (final URISyntaxException ex) {
                 // Just ignore the exception.
+                LOGGER.catching(Level.DEBUG, ex);
             }
         }
-        return new ConfigurationSource(is, resource);
-    }
-
-    /**
-     * Factory that chooses a ConfigurationFactory based on weighting.
-     */
-    private static class WeightedFactory implements Comparable<WeightedFactory> {
-        private final int weight;
-        private final Class<ConfigurationFactory> factoryClass;
-
-        /**
-         * Constructor.
-         * @param weight The weight.
-         * @param clazz The class.
-         */
-        public WeightedFactory(final int weight, final Class<ConfigurationFactory> clazz) {
-            this.weight = weight;
-            this.factoryClass = clazz;
-        }
-
-        @Override
-        public int compareTo(final WeightedFactory wf) {
-            final int w = wf.weight;
-            if (weight == w) {
-                return 0;
-            } else if (weight > w) {
-                return -1;
-            } else {
-                return 1;
-            }
-        }
+        return new ConfigurationSource(is, url);
     }
 
     /**
@@ -371,12 +392,13 @@ public abstract class ConfigurationFactory {
                 if (config != null) {
                     ConfigurationSource source = null;
                     try {
-                        source = getInputFromURI(new URI(config));
-                    } catch (Exception ex) {
+                        source = getInputFromUri(FileUtils.getCorrectedFilePathUri(config));
+                    } catch (final Exception ex) {
                         // Ignore the error and try as a String.
+                        LOGGER.catching(Level.DEBUG, ex);
                     }
                     if (source == null) {
-                        final ClassLoader loader = this.getClass().getClassLoader();
+                        final ClassLoader loader = LoaderUtil.getThreadContextClassLoader();
                         source = getInputFromString(config, loader);
                     }
                     if (source != null) {
@@ -421,12 +443,16 @@ public abstract class ConfigurationFactory {
                     }
                 }
             }
-            return config != null ? config : new DefaultConfiguration();
+            if (config != null) {
+                return config;
+            }
+            LOGGER.error("No log4j2 configuration file found. Using default configuration: logging only errors to the console.");
+            return new DefaultConfiguration();
         }
 
         private Configuration getConfiguration(final boolean isTest, final String name) {
             final boolean named = name != null && name.length() > 0;
-            final ClassLoader loader = this.getClass().getClassLoader();
+            final ClassLoader loader = LoaderUtil.getThreadContextClassLoader();
             for (final ConfigurationFactory factory : factories) {
                 String configName;
                 final String prefix = isTest ? TEST_PREFIX : DEFAULT_PREFIX;
@@ -463,9 +489,10 @@ public abstract class ConfigurationFactory {
                     final String[] types = factory.getSupportedTypes();
                     if (types != null) {
                         for (final String type : types) {
-                            if (type.equals("*") || (config != null && config.endsWith(type))) {
+                            if (type.equals("*") || config != null && config.endsWith(type)) {
                                 final Configuration c = factory.getConfiguration(source);
                                 if (c != null) {
+                                    LOGGER.debug("Loaded configuration from {}", source);
                                     return c;
                                 }
                                 LOGGER.error("Cannot determine the ConfigurationFactory to use for {}", config);
@@ -477,63 +504,6 @@ public abstract class ConfigurationFactory {
             }
             LOGGER.error("Cannot process configuration, input source is null");
             return null;
-        }
-    }
-
-    /**
-     * Represents the source for the logging configuration.
-     */
-    public static class ConfigurationSource {
-
-        private File file;
-
-        private String location;
-
-        private InputStream stream;
-
-        public ConfigurationSource() {
-        }
-
-        public ConfigurationSource(final InputStream stream) {
-            this.stream = stream;
-            this.file = null;
-            this.location = null;
-        }
-
-        public ConfigurationSource(final InputStream stream, final File file) {
-            this.stream = stream;
-            this.file = file;
-            this.location = file.getAbsolutePath();
-        }
-
-        public ConfigurationSource(final InputStream stream, final String location) {
-            this.stream = stream;
-            this.location = location;
-            this.file = null;
-        }
-
-        public File getFile() {
-            return file;
-        }
-
-        public void setFile(final File file) {
-            this.file = file;
-        }
-
-        public String getLocation() {
-            return location;
-        }
-
-        public void setLocation(final String location) {
-            this.location = location;
-        }
-
-        public InputStream getInputStream() {
-            return stream;
-        }
-
-        public void setInputStream(final InputStream stream) {
-            this.stream = stream;
         }
     }
 }

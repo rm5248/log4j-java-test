@@ -16,10 +16,6 @@
  */
 package org.apache.logging.log4j.core.appender;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -31,6 +27,8 @@ import org.apache.logging.log4j.core.LifeCycle;
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 public class RollingRandomAccessFileAppenderRolloverTest {
 
@@ -71,6 +69,12 @@ public class RollingRandomAccessFileAppenderRolloverTest {
         log.warn(trigger);
 
         ((LifeCycle) LogManager.getContext()).stop(); // stop async thread
+        
+        final int MAX_ATTEMPTS = 50;
+        int count = 0;
+        while (!after1.exists() && count++ < MAX_ATTEMPTS) {
+            Thread.sleep(50);
+        }
 
         assertTrue("afterRollover-1.log created", after1.exists());
 

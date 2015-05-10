@@ -21,40 +21,60 @@ import java.util.ResourceBundle;
 /**
  * Creates {@link org.apache.logging.log4j.message.LocalizedMessage} instances for
  * {@link #newMessage(String, Object...)}.
- *
- * @version $Id:  $
  */
 public class LocalizedMessageFactory extends AbstractMessageFactory {
 
-    private final ResourceBundle bundle;
-    private final String bundleId;
+    private static final long serialVersionUID = 1L;
+    
+    private final ResourceBundle resourceBundle;
+    private final String baseName;
 
-    public LocalizedMessageFactory(final ResourceBundle bundle) {
-        this.bundle = bundle;
-        this.bundleId = null;
+    public LocalizedMessageFactory(final ResourceBundle resourceBundle) {
+        this.resourceBundle = resourceBundle;
+        this.baseName = null;
     }
 
 
-    public LocalizedMessageFactory(final String bundleId) {
-        this.bundle = null;
-        this.bundleId = bundleId;
+    public LocalizedMessageFactory(final String baseName) {
+        this.resourceBundle = null;
+        this.baseName = baseName;
+    }
+
+
+    /**
+     * Gets the resource bundle base name if set.
+     * 
+     * @return the resource bundle base name if set. May be null.
+     */
+    public String getBaseName() {
+        return this.baseName;
+    }
+
+
+    /**
+     * Gets the resource bundle if set.
+     * 
+     * @return the resource bundle if set. May be null.
+     */
+    public ResourceBundle getResourceBundle() {
+        return this.resourceBundle;
     }
 
 
     /**
      * Creates {@link org.apache.logging.log4j.message.StringFormattedMessage} instances.
      *
-     * @param message The message format String.
-     * @param params The parameters for the message.
+     * @param key The key String, used as a message if the key is absent.
+     * @param params The parameters for the message at the given key.
      * @return The Message.
      *
      * @see org.apache.logging.log4j.message.MessageFactory#newMessage(String, Object...)
      */
     @Override
-    public Message newMessage(final String message, final Object... params) {
-        if (bundle == null) {
-            return new LocalizedMessage(bundleId,  message, params);
+    public Message newMessage(final String key, final Object... params) {
+        if (resourceBundle == null) {
+            return new LocalizedMessage(baseName,  key, params);
         }
-        return new LocalizedMessage(bundle, message, params);
+        return new LocalizedMessage(resourceBundle, key, params);
     }
 }

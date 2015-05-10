@@ -34,22 +34,53 @@ public interface Marker extends Serializable {
     String getName();
 
     /**
-     * Returns the parent of this Marker.
-     * @return The parent Marker or null if this Marker has no parent.
+     * Returns a list of parents of this Marker.
+     * @return The parent Markers or {@code null} if this Marker has no parents.
      */
-    Marker getParent();
+    Marker[] getParents();
+
+    /**
+     * Indicates whether this Marker has references to any other Markers.
+     * @return {@code true} if the Marker has parent Markers
+     */
+    boolean hasParents();
 
     /**
      * Checks whether this Marker is an instance of the specified Marker.
      * @param m The Marker to check.
-     * @return true of this Marker or one of its ancestors is the specified Marker, false otherwise.
+     * @return {@code true} if this Marker or one of its ancestors is the specified Marker, {@code false} otherwise.
+     * @throws IllegalArgumentException if the argument is {@code null}
      */
     boolean isInstanceOf(Marker m);
 
     /**
      * Checks whether this Marker is an instance of the specified Marker.
      * @param name The name of the Marker.
-     * @return true of this Marker or one of its ancestors matches the specified name, false otherwise.
+     * @return {@code true} if this Marker or one of its ancestors matches the specified name, {@code false} otherwise.
+     * @throws IllegalArgumentException if the argument is {@code null}
      */
     boolean isInstanceOf(String name);
+
+    /**
+     * Adds a Marker as a parent to this Marker.
+     * @param markers The parent markers to add.
+     * @return The current Marker object, thus allowing multiple adds to be concatenated.
+     * @throws IllegalArgumentException if the argument is {@code null}
+     */
+    Marker addParents(Marker... markers);
+
+    /**
+     * Replaces the set of parent Markers with the provided Markers.
+     * @param markers The new set of parent Markers or {@code null} to clear the parents.
+     * @return The current Marker object.
+     */
+    Marker setParents(Marker... markers);
+
+    /**
+     * Removes the specified Marker as a parent of this Marker.
+     * @param marker The marker to remove.
+     * @return {@code true} if the marker was removed.
+     * @throws IllegalArgumentException if the argument is {@code null}
+     */
+    boolean remove(Marker marker);
 }

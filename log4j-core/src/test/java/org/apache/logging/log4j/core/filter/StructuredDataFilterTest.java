@@ -16,21 +16,19 @@
  */
 package org.apache.logging.log4j.core.filter;
 
+import java.util.List;
+import java.util.Map;
+
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.helpers.KeyValuePair;
+import org.apache.logging.log4j.core.util.KeyValuePair;
 import org.apache.logging.log4j.message.StructuredDataMessage;
 import org.junit.Test;
 
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  *
@@ -49,9 +47,9 @@ public class StructuredDataFilterTest {
         msg.put("FromAccount", "211000");
         msg.put("Amount", "1000.00");
         assertTrue(filter.isStarted());
-        assertTrue(filter.filter(null, Level.DEBUG, null, msg, null) == Filter.Result.NEUTRAL);
+        assertSame(Filter.Result.NEUTRAL, filter.filter(null, Level.DEBUG, null, msg, null));
         msg.put("ToAccount", "111111");
-        assertTrue(filter.filter(null, Level.ERROR, null, msg, null) == Filter.Result.DENY);
+        assertSame(Filter.Result.DENY, filter.filter(null, Level.ERROR, null, msg, null));
         filter = StructuredDataFilter.createFilter(pairs, "or", null, null);
         filter.start();
         msg = new StructuredDataMessage("AccountTransfer@18060", "Transfer Successful", "Audit");
@@ -59,9 +57,9 @@ public class StructuredDataFilterTest {
         msg.put("FromAccount", "211000");
         msg.put("Amount", "1000.00");
         assertTrue(filter.isStarted());
-        assertTrue(filter.filter(null, Level.DEBUG, null, msg, null) == Filter.Result.NEUTRAL);
+        assertSame(Filter.Result.NEUTRAL, filter.filter(null, Level.DEBUG, null, msg, null));
         msg.put("ToAccount", "111111");
-        assertTrue(filter.filter(null, Level.ERROR, null, msg, null) == Filter.Result.NEUTRAL);
+        assertSame(Filter.Result.NEUTRAL, filter.filter(null, Level.ERROR, null, msg, null));
     }
 
     @Test
@@ -75,9 +73,9 @@ public class StructuredDataFilterTest {
         assertFalse("Should not be And filter", sdFilter.isAnd());
         final Map<String, List<String>> map = sdFilter.getMap();
         assertNotNull("No Map", map);
-        assertTrue("No elements in Map", map.size() != 0);
-        assertTrue("Incorrect number of elements in Map", map.size() == 1);
+        assertFalse("No elements in Map", map.isEmpty());
+        assertEquals("Incorrect number of elements in Map", 1, map.size());
         assertTrue("Map does not contain key eventId", map.containsKey("eventId"));
-        assertTrue("List does not contain 2 elements", map.get("eventId").size() == 2);
+        assertEquals("List does not contain 2 elements", 2, map.get("eventId").size());
     }
 }

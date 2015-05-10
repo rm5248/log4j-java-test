@@ -18,19 +18,20 @@ package org.apache.logging.log4j.core.filter;
 
 import java.util.Iterator;
 
-import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.AbstractLifeCycle;
 import org.apache.logging.log4j.core.Filter;
-import org.apache.logging.log4j.core.LifeCycle;
 import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.status.StatusLogger;
 
 /**
  * Enhances a Class by allowing it to contain Filters.
  */
-public abstract class AbstractFilterable implements Filterable {
+public abstract class AbstractFilterable extends AbstractLifeCycle implements Filterable {
 
-    protected static final Logger LOGGER = StatusLogger.getLogger();
+    private static final long serialVersionUID = 1L;
 
+    /**
+     * May be null.
+     */
     private volatile Filter filter;
 
     protected AbstractFilterable(final Filter filter) {
@@ -42,7 +43,7 @@ public abstract class AbstractFilterable implements Filterable {
 
     /**
      * Returns the Filter.
-     * @return the Filter.
+     * @return the Filter or null.
      */
     @Override
     public Filter getFilter() {
@@ -50,7 +51,7 @@ public abstract class AbstractFilterable implements Filterable {
     }
 
     /**
-     * Add a filter.
+     * Adds a filter.
      * @param filter The Filter to add.
      */
     @Override
@@ -66,7 +67,7 @@ public abstract class AbstractFilterable implements Filterable {
     }
 
     /**
-     * Remove a Filter.
+     * Removes a Filter.
      * @param filter The Filter to remove.
      */
     @Override
@@ -99,19 +100,25 @@ public abstract class AbstractFilterable implements Filterable {
     /**
      * Make the Filter available for use.
      */
-    public void startFilter() {
-       if (filter != null && filter instanceof LifeCycle) {
-           ((LifeCycle) filter).start();
-       }
+    @Override
+    public void start() {
+        this.setStarting();
+        if (filter != null) {
+            filter.start();
+        }
+        this.setStarted();
     }
 
     /**
      * Cleanup the Filter.
      */
-    public void stopFilter() {
-       if (filter != null && filter instanceof LifeCycle) {
-           ((LifeCycle) filter).stop();
+    @Override
+    public void stop() {
+        this.setStopping();
+       if (filter != null) {
+           filter.stop();
        }
+       this.setStopped();
     }
 
     /**

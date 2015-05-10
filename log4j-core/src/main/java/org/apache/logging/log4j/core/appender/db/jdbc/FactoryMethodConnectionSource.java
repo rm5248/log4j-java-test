@@ -27,11 +27,12 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.Strings;
+import org.apache.logging.log4j.core.util.Loader;
 import org.apache.logging.log4j.status.StatusLogger;
+import org.apache.logging.log4j.util.Strings;
 
 /**
- * A {@link JDBCAppender} connection source that uses a public static factory method to obtain a {@link Connection} or
+ * A {@link JdbcAppender} connection source that uses a public static factory method to obtain a {@link Connection} or
  * {@link DataSource}.
  */
 @Plugin(name = "ConnectionFactory", category = "Core", elementType = "connectionSource", printObject = true)
@@ -44,7 +45,7 @@ public final class FactoryMethodConnectionSource implements ConnectionSource {
     private FactoryMethodConnectionSource(final DataSource dataSource, final String className, final String methodName,
                                           final String returnType) {
         this.dataSource = dataSource;
-        this.description = "factory{ public static " + returnType + " " + className + "." + methodName + "() }";
+        this.description = "factory{ public static " + returnType + ' ' + className + '.' + methodName + "() }";
     }
 
     @Override
@@ -78,7 +79,7 @@ public final class FactoryMethodConnectionSource implements ConnectionSource {
 
         final Method method;
         try {
-            final Class<?> factoryClass = Class.forName(className);
+            final Class<?> factoryClass = Loader.loadClass(className);
             method = factoryClass.getMethod(methodName);
         } catch (final Exception e) {
             LOGGER.error(e.toString(), e);
@@ -91,7 +92,7 @@ public final class FactoryMethodConnectionSource implements ConnectionSource {
         if (returnType == DataSource.class) {
             try {
                 dataSource = (DataSource) method.invoke(null);
-                returnTypeString += "[" + dataSource + "]";
+                returnTypeString += "[" + dataSource + ']';
             } catch (final Exception e) {
                 LOGGER.error(e.toString(), e);
                 return null;
@@ -122,7 +123,8 @@ public final class FactoryMethodConnectionSource implements ConnectionSource {
                     throw new UnsupportedOperationException();
                 }
 
-                // method must be present to compile on Java 7, @Override must be absent to compile on Java 6
+                // method must be present to compile on Java 7!
+                // @Override must be absent to compile on Java 6!
                 @SuppressWarnings("unused")
                 public java.util.logging.Logger getParentLogger() {
                     throw new UnsupportedOperationException();

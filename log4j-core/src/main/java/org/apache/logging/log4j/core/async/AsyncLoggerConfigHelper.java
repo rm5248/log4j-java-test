@@ -22,12 +22,14 @@ import java.util.concurrent.ThreadFactory;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.jmx.RingBufferAdmin;
+import org.apache.logging.log4j.core.util.Integers;
 import org.apache.logging.log4j.status.StatusLogger;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.EventTranslator;
+import com.lmax.disruptor.EventTranslatorTwoArg;
 import com.lmax.disruptor.ExceptionHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.Sequence;
@@ -37,7 +39,6 @@ import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
-import com.lmax.disruptor.util.Util;
 
 /**
  * Helper class decoupling the {@code AsyncLoggerConfig} class from the LMAX
@@ -57,18 +58,18 @@ import com.lmax.disruptor.util.Util;
  */
 class AsyncLoggerConfigHelper {
 
-    private static final int MAX_DRAIN_ATTEMPTS_BEFORE_SHUTDOWN = 20;
-    private static final int HALF_A_SECOND = 500;
+    private static final int MAX_DRAIN_ATTEMPTS_BEFORE_SHUTDOWN = 200;
+    private static final int SLEEP_MILLIS_BETWEEN_DRAIN_ATTEMPTS = 50;
     private static final int RINGBUFFER_MIN_SIZE = 128;
     private static final int RINGBUFFER_DEFAULT_SIZE = 256 * 1024;
     private static final Logger LOGGER = StatusLogger.getLogger();
 
-    private static ThreadFactory threadFactory = new DaemonThreadFactory(
-            "AsyncLoggerConfig-");
+    private static ThreadFactory threadFactory = new DaemonThreadFactory("AsyncLoggerConfig-");
     private static volatile Disruptor<Log4jEventWrapper> disruptor;
     private static ExecutorService executor;
 
     private static volatile int count = 0;
+    private static ThreadLocal<Boolean> isAppenderThread = new ThreadLocal<Boolean>();
 
     /**
      * Factory used to populate the RingBuffer with events. These event objects
@@ -84,16 +85,17 @@ class AsyncLoggerConfigHelper {
     /**
      * Object responsible for passing on data to a specific RingBuffer event.
      */
-    private final EventTranslator<Log4jEventWrapper> translator = new EventTranslator<Log4jEventWrapper>() {
+    private final EventTranslatorTwoArg<Log4jEventWrapper, LogEvent, AsyncLoggerConfig> translator 
+            = new EventTranslatorTwoArg<Log4jEventWrapper, LogEvent, AsyncLoggerConfig>() {
+
         @Override
-        public void translateTo(final Log4jEventWrapper event,
-                final long sequence) {
-            event.event = currentLogEvent.get();
-            event.loggerConfig = asyncLoggerConfig;
+        public void translateTo(final Log4jEventWrapper ringBufferElement, final long sequence, 
+                final LogEvent logEvent, final AsyncLoggerConfig loggerConfig) {
+            ringBufferElement.event = logEvent;
+            ringBufferElement.loggerConfig = loggerConfig;
         }
     };
 
-    private final ThreadLocal<LogEvent> currentLogEvent = new ThreadLocal<LogEvent>();
     private final AsyncLoggerConfig asyncLoggerConfig;
 
     public AsyncLoggerConfigHelper(final AsyncLoggerConfig asyncLoggerConfig) {
@@ -110,6 +112,7 @@ class AsyncLoggerConfigHelper {
         final int ringBufferSize = calculateRingBufferSize();
         final WaitStrategy waitStrategy = createWaitStrategy();
         executor = Executors.newSingleThreadExecutor(threadFactory);
+        initThreadLocalForExecutorThread();
         disruptor = new Disruptor<Log4jEventWrapper>(FACTORY, ringBufferSize,
                 executor, ProducerType.MULTI, waitStrategy);
         final EventHandler<Log4jEventWrapper>[] handlers = new Log4jEventWrapperHandler[] {//
@@ -135,7 +138,8 @@ class AsyncLoggerConfigHelper {
         } else if ("Block".equals(strategy)) {
             return new BlockingWaitStrategy();
         }
-        return new SleepingWaitStrategy();
+        LOGGER.debug("disruptor event handler uses BlockingWaitStrategy");
+        return new BlockingWaitStrategy();
     }
 
     private static int calculateRingBufferSize() {
@@ -156,7 +160,7 @@ class AsyncLoggerConfigHelper {
             LOGGER.warn("Invalid RingBufferSize {}, using default size {}.",
                     userPreferredRBSize, ringBufferSize);
         }
-        return Util.ceilingNextPowerOfTwo(ringBufferSize);
+        return Integers.ceilingNextPowerOfTwo(ringBufferSize);
     }
 
     private static ExceptionHandler getExceptionHandler() {
@@ -251,7 +255,9 @@ class AsyncLoggerConfigHelper {
         }
         final Disruptor<Log4jEventWrapper> temp = disruptor;
         if (temp == null) {
-            LOGGER.trace("AsyncLoggerConfigHelper: disruptor already shut down: ref count is {}.", count);
+            LOGGER.trace("AsyncLoggerConfigHelper: disruptor already shut down: ref count is {}. (Resetting to zero.)",
+                    count);
+            count = 0; // ref count must not be negative or #claim() will not work correctly
             return; // disruptor was already shut down by another thread
         }
         LOGGER.trace("AsyncLoggerConfigHelper: shutting down disruptor: ref count is {}.", count);
@@ -259,28 +265,99 @@ class AsyncLoggerConfigHelper {
         // Must guarantee that publishing to the RingBuffer has stopped
         // before we call disruptor.shutdown()
         disruptor = null; // client code fails with NPE if log after stop = OK
-        temp.shutdown();
 
-        // wait up to 10 seconds for the ringbuffer to drain
-        final RingBuffer<Log4jEventWrapper> ringBuffer = temp.getRingBuffer();
-        for (int i = 0; i < MAX_DRAIN_ATTEMPTS_BEFORE_SHUTDOWN; i++) {
-            if (ringBuffer.hasAvailableCapacity(ringBuffer.getBufferSize())) {
-                break;
-            }
+        // Calling Disruptor.shutdown() will wait until all enqueued events are fully processed,
+        // but this waiting happens in a busy-spin. To avoid (postpone) wasting CPU,
+        // we sleep in short chunks, up to 10 seconds, waiting for the ringbuffer to drain.
+        for (int i = 0; hasBacklog(temp) && i < MAX_DRAIN_ATTEMPTS_BEFORE_SHUTDOWN; i++) {
             try {
-                // give ringbuffer some time to drain...
-                Thread.sleep(HALF_A_SECOND);
-            } catch (final InterruptedException e) {
-                // ignored
+                Thread.sleep(SLEEP_MILLIS_BETWEEN_DRAIN_ATTEMPTS); // give up the CPU for a while
+            } catch (final InterruptedException e) { // ignored
             }
         }
+        temp.shutdown(); // busy-spins until all events currently in the disruptor have been processed
         executor.shutdown(); // finally, kill the processor thread
         executor = null; // release reference to allow GC
     }
 
-    public void callAppendersFromAnotherThread(final LogEvent event) {
-        currentLogEvent.set(event);
-        disruptor.publishEvent(translator);
+    /**
+     * Returns {@code true} if the specified disruptor still has unprocessed events.
+     */
+    private static boolean hasBacklog(final Disruptor<?> disruptor) {
+        final RingBuffer<?> ringBuffer = disruptor.getRingBuffer();
+        return !ringBuffer.hasAvailableCapacity(ringBuffer.getBufferSize());
+    }
+
+    /**
+     * Initialize the threadlocal that allows us to detect Logger.log() calls 
+     * initiated from the appender thread, which may cause deadlock when the 
+     * RingBuffer is full. (LOG4J2-471)
+     */
+    private static void initThreadLocalForExecutorThread() {
+        executor.submit(new Runnable() {
+            @Override
+            public void run() {
+                isAppenderThread.set(Boolean.TRUE);
+            }
+        });
+    }
+
+    /**
+     * If possible, delegates the invocation to {@code callAppenders} to another
+     * thread and returns {@code true}. If this is not possible (if it detects
+     * that delegating to another thread would cause deadlock because the
+     * current call to Logger.log() originated from the appender thread and the
+     * ringbuffer is full) then this method does nothing and returns {@code false}.
+     * It is the responsibility of the caller to process the event when this
+     * method returns {@code false}.
+     * 
+     * @param event the event to delegate to another thread
+     * @return {@code true} if delegation was successful, {@code false} if the
+     *          calling thread needs to process the event itself
+     */
+    public boolean callAppendersFromAnotherThread(final LogEvent event) {
+        // TODO refactor to reduce size to <= 35 bytecodes to allow JVM to inline it
+        final Disruptor<Log4jEventWrapper> temp = disruptor;
+        if (temp == null) { // LOG4J2-639
+            LOGGER.fatal("Ignoring log event after log4j was shut down");
+            return true;
+        }
+
+        // LOG4J2-471: prevent deadlock when RingBuffer is full and object
+        // being logged calls Logger.log() from its toString() method
+        if (isAppenderThread.get() == Boolean.TRUE //
+                && temp.getRingBuffer().remainingCapacity() == 0) {
+
+            // bypass RingBuffer and invoke Appender directly
+            return false;
+        }
+        // LOG4J2-639: catch NPE if disruptor field was set to null after our check above
+        try {
+            LogEvent logEvent = event;
+            if (event instanceof RingBufferLogEvent) {
+                logEvent = ((RingBufferLogEvent) event).createMemento();
+            }
+            logEvent.getMessage().getFormattedMessage(); // LOG4J2-763: ask message to freeze parameters
+
+            // Note: do NOT use the temp variable above!
+            // That could result in adding a log event to the disruptor after it was shut down,
+            // which could cause the publishEvent method to hang and never return.
+            disruptor.getRingBuffer().publishEvent(translator, logEvent, asyncLoggerConfig);
+        } catch (final NullPointerException npe) {
+            LOGGER.fatal("Ignoring log event after log4j was shut down.");
+        }
+        return true;
+    }
+
+    /**
+     * Creates and returns a new {@code RingBufferAdmin} that instruments the
+     * ringbuffer of this {@code AsyncLoggerConfig}.
+     * 
+     * @param contextName name of the {@code LoggerContext}
+     * @param loggerConfigName name of the logger config
+     */
+    public RingBufferAdmin createRingBufferAdmin(final String contextName, final String loggerConfigName) {
+        return RingBufferAdmin.forAsyncLoggerConfig(disruptor.getRingBuffer(), contextName, loggerConfigName);
     }
 
 }

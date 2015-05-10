@@ -21,12 +21,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.logging.log4j.core.config.plugins.PluginType;
+import org.apache.logging.log4j.core.config.plugins.util.PluginType;
 
 /**
  * A Configuration node.
  */
 public class Node {
+
+    /**
+     * Main plugin category for plugins which are represented as a configuration node. Such plugins tend to be
+     * available as XML elements in a configuration file.
+     *
+     * @since 2.1
+     */
+    public static final String CATEGORY = "Core";
 
     private final Node parent;
     private final String name;
@@ -38,7 +46,7 @@ public class Node {
 
 
     /**
-     * Creates a new instance of <code>Node</code> and initializes it
+     * Creates a new instance of {@code Node} and initializes it
      * with a name and the corresponding XML element.
      *
      * @param parent the node's parent.
@@ -78,7 +86,7 @@ public class Node {
     }
 
     public boolean hasChildren() {
-        return children.size() > 0;
+        return !children.isEmpty();
     }
 
     public String getValue() {
@@ -105,8 +113,32 @@ public class Node {
         object = obj;
     }
 
-    public Object getObject() {
-        return object;
+    @SuppressWarnings("unchecked")
+    public <T> T getObject() {
+        return (T) object;
+    }
+
+    /**
+     * Returns this node's object cast to the given class.
+     *
+     * @param clazz the class to cast this node's object to.
+     * @param <T>   the type to cast to.
+     * @return this node's object.
+     * @since 2.1
+     */
+    public <T> T getObject(final Class<T> clazz) {
+        return clazz.cast(object);
+    }
+
+    /**
+     * Determines if this node's object is an instance of the given class.
+     *
+     * @param clazz the class to check.
+     * @return {@code true} if this node's object is an instance of the given class.
+     * @since 2.1
+     */
+    public boolean isInstanceOf(final Class<?> clazz) {
+        return clazz.isInstance(object);
     }
 
     public PluginType<?> getType() {

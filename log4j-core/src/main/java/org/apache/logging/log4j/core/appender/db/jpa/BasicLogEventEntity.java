@@ -17,11 +17,11 @@
 package org.apache.logging.log4j.core.appender.db.jpa;
 
 import java.util.Map;
+
 import javax.persistence.Basic;
 import javax.persistence.Convert;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
 import javax.persistence.MappedSuperclass;
+import javax.persistence.Transient;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
@@ -29,10 +29,12 @@ import org.apache.logging.log4j.ThreadContext;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.db.jpa.converter.ContextMapAttributeConverter;
 import org.apache.logging.log4j.core.appender.db.jpa.converter.ContextStackAttributeConverter;
+import org.apache.logging.log4j.core.appender.db.jpa.converter.LevelAttributeConverter;
 import org.apache.logging.log4j.core.appender.db.jpa.converter.MarkerAttributeConverter;
 import org.apache.logging.log4j.core.appender.db.jpa.converter.MessageAttributeConverter;
 import org.apache.logging.log4j.core.appender.db.jpa.converter.StackTraceElementAttributeConverter;
 import org.apache.logging.log4j.core.appender.db.jpa.converter.ThrowableAttributeConverter;
+import org.apache.logging.log4j.core.impl.ThrowableProxy;
 import org.apache.logging.log4j.message.Message;
 
 /**
@@ -92,8 +94,7 @@ public abstract class BasicLogEventEntity extends AbstractLogEventWrapperEntity 
      * @return the level.
      */
     @Override
-    @Basic
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = LevelAttributeConverter.class)
     public Level getLevel() {
         return this.getWrappedEvent().getLevel();
     }
@@ -164,8 +165,8 @@ public abstract class BasicLogEventEntity extends AbstractLogEventWrapperEntity 
      */
     @Override
     @Basic
-    public long getMillis() {
-        return this.getWrappedEvent().getMillis();
+    public long getTimeMillis() {
+        return this.getWrappedEvent().getTimeMillis();
     }
 
     /**
@@ -178,6 +179,18 @@ public abstract class BasicLogEventEntity extends AbstractLogEventWrapperEntity 
     @Convert(converter = ThrowableAttributeConverter.class)
     public Throwable getThrown() {
         return this.getWrappedEvent().getThrown();
+    }
+
+    /**
+     * Gets the exception logged. Annotated with {@code @Convert(converter = ThrowableAttributeConverter.class)}.
+     *
+     * @return the exception logged.
+     * @see ThrowableAttributeConverter
+     */
+    @Override
+    @Transient
+    public ThrowableProxy getThrownProxy() {
+        return this.getWrappedEvent().getThrownProxy();
     }
 
     /**
@@ -213,7 +226,7 @@ public abstract class BasicLogEventEntity extends AbstractLogEventWrapperEntity 
      */
     @Override
     @Basic
-    public String getFQCN() {
-        return this.getWrappedEvent().getFQCN();
+    public String getLoggerFqcn() {
+        return this.getWrappedEvent().getLoggerFqcn();
     }
 }

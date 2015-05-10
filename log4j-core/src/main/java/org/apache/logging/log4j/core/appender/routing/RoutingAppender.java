@@ -33,7 +33,7 @@ import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.Booleans;
+import org.apache.logging.log4j.core.util.Booleans;
 
 /**
  * This Appender "routes" between various Appenders, some of which can be references to
@@ -45,6 +45,7 @@ import org.apache.logging.log4j.core.helpers.Booleans;
  */
 @Plugin(name = "Routing", category = "Core", elementType = "appender", printObject = true)
 public final class RoutingAppender extends AbstractAppender {
+    private static final long serialVersionUID = 1L;
     private static final String DEFAULT_KEY = "ROUTING_APPENDER_DEFAULT";
     private final Routes routes;
     private final Route defaultRoute;
@@ -74,11 +75,10 @@ public final class RoutingAppender extends AbstractAppender {
 
     @Override
     public void start() {
-        final Map<String, Appender> map = config.getAppenders();
         // Register all the static routes.
         for (final Route route : routes.getRoutes()) {
             if (route.getAppenderRef() != null) {
-                final Appender appender = map.get(route.getAppenderRef());
+                final Appender appender = config.getAppender(route.getAppenderRef());
                 if (appender != null) {
                     final String key = route == defaultRoute ? DEFAULT_KEY : route.getKey();
                     appenders.put(key, new AppenderControl(appender, null, null));
@@ -182,7 +182,7 @@ public final class RoutingAppender extends AbstractAppender {
             @PluginElement("Routes") final Routes routes,
             @PluginConfiguration final Configuration config,
             @PluginElement("RewritePolicy") final RewritePolicy rewritePolicy,
-            @PluginElement("Filters") final Filter filter) {
+            @PluginElement("Filter") final Filter filter) {
 
         final boolean ignoreExceptions = Booleans.parseBoolean(ignore, true);
         if (name == null) {

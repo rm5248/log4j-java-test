@@ -18,17 +18,15 @@ package org.apache.logging.log4j.core.appender;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.Layout;
-import org.apache.logging.log4j.core.helpers.Constants;
-import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.core.layout.PatternLayout;
+import org.apache.logging.log4j.core.util.Constants;
 import org.apache.logging.log4j.message.SimpleMessage;
-
 import org.apache.logging.log4j.test.appender.InMemoryAppender;
 import org.junit.Test;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
+
+import static org.junit.Assert.*;
 
 /**
  *
@@ -37,7 +35,7 @@ public class OutputStreamAppenderTest {
 
     @Test
     public void testAppender() {
-        final Layout<String> layout = PatternLayout.createLayout(null, null, null, null, null);
+        final Layout<String> layout = PatternLayout.createDefaultLayout();
         final InMemoryAppender app = new InMemoryAppender("test", layout, null, false);
         final LogEvent event = new Log4jLogEvent("TestLogger", null, OutputStreamAppenderTest.class.getName(), Level.INFO,
             new SimpleMessage("Test"), null);
@@ -46,7 +44,7 @@ public class OutputStreamAppenderTest {
         app.append(event);
         final String msg = app.toString();
         assertNotNull("No message", msg);
-        assertTrue("Incorrect message: " + msg , msg.endsWith("Test" + Constants.LINE_SEP));
+        assertTrue("Incorrect message: " + msg , msg.endsWith("Test" + Constants.LINE_SEPARATOR));
         app.stop();
         assertFalse("Appender did not stop", app.isStarted());
     }

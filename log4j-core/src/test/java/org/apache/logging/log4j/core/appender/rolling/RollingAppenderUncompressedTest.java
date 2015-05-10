@@ -16,8 +16,6 @@
  */
 package org.apache.logging.log4j.core.appender.rolling;
 
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 
 import org.apache.logging.log4j.LogManager;
@@ -28,6 +26,8 @@ import org.apache.logging.log4j.status.StatusLogger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 /**
  *
@@ -64,7 +64,7 @@ public class RollingAppenderUncompressedTest {
         final File dir = new File(DIR);
         assertTrue("Directory not created", dir.exists() && dir.listFiles().length > 0);
         final File[] files = dir.listFiles();
-        assertTrue("No files created", files.length > 0);
+        assertNotNull(files);
         boolean found = false;
         for (final File file : files) {
             final String name = file.getName();

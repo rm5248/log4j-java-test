@@ -21,13 +21,13 @@ import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 
 /**
- * Looks up keys from system properties.
+ * Looks up keys from {@link ThreadContext} objects..
  */
-@Plugin(name = "ctx", category = "Lookup")
+@Plugin(name = "ctx", category = StrLookup.CATEGORY)
 public class ContextMapLookup implements StrLookup {
 
     /**
-     * Lookup the value from the ThreadContext Map.
+     * Looks up the value from the ThreadContext Map.
      * @param key  the key to be looked up, may be null
      * @return The value associated with the key.
      */
@@ -37,7 +37,7 @@ public class ContextMapLookup implements StrLookup {
     }
 
     /**
-     * Lookup the value from the ThreadContext Map.
+     * Looks up the value from the ThreadContext Map.
      * @param event The current LogEvent.
      * @param key  the key to be looked up, may be null
      * @return The value associated with the key.

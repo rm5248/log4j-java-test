@@ -15,6 +15,9 @@
  * limitations under the license.
  */
 /**
- * Log4j 2.0 Lookups.
+ * Log4j 2 Lookups. These are used in variable interpolation in various configuration attributes.
+ * {@link org.apache.logging.log4j.core.lookup.StrLookup} plugins should use the
+ * {@linkplain org.apache.logging.log4j.core.config.plugins.Plugin#category() plugin category}
+ * {@link org.apache.logging.log4j.core.lookup.StrLookup#CATEGORY Lookup}.
  */
 package org.apache.logging.log4j.core.lookup;

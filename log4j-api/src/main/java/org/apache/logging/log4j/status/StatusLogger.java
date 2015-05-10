@@ -16,12 +16,16 @@
  */
 package org.apache.logging.log4j.status;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -31,11 +35,14 @@ import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.simple.SimpleLogger;
 import org.apache.logging.log4j.spi.AbstractLogger;
 import org.apache.logging.log4j.util.PropertiesUtil;
+import org.apache.logging.log4j.util.Strings;
 
 /**
  * Mechanism to record events that occur in the logging system.
  */
 public final class StatusLogger extends AbstractLogger {
+
+    private static final long serialVersionUID = 2L;
 
     /**
      * System property that can be configured with the number of entries in the queue. Once the limit
@@ -51,22 +58,22 @@ public final class StatusLogger extends AbstractLogger {
 
     private static final String DEFAULT_STATUS_LEVEL = PROPS.getStringProperty("log4j2.StatusLogger.level");
 
-    // private static final String FQCN = AbstractLogger.class.getName();
-
     private static final StatusLogger STATUS_LOGGER = new StatusLogger();
 
     private final SimpleLogger logger;
 
-    private final CopyOnWriteArrayList<StatusListener> listeners = new CopyOnWriteArrayList<StatusListener>();
-    private final ReentrantReadWriteLock listenersLock = new ReentrantReadWriteLock();
+    private final Collection<StatusListener> listeners = new CopyOnWriteArrayList<StatusListener>();
+    @SuppressWarnings("NonSerializableFieldInSerializableClass") // ReentrantReadWriteLock is Serializable
+    private final ReadWriteLock listenersLock = new ReentrantReadWriteLock();
 
     private final Queue<StatusData> messages = new BoundedQueue<StatusData>(MAX_ENTRIES);
-    private final ReentrantLock msgLock = new ReentrantLock();
+    @SuppressWarnings("NonSerializableFieldInSerializableClass") // ReentrantLock is Serializable
+    private final Lock msgLock = new ReentrantLock();
 
     private int listenersLevel;
 
     private StatusLogger() {
-        this.logger = new SimpleLogger("StatusLogger", Level.ERROR, false, true, false, false, "", null, PROPS,
+        this.logger = new SimpleLogger("StatusLogger", Level.ERROR, false, true, false, false, Strings.EMPTY, null, PROPS,
             System.err);
         this.listenersLevel = Level.toLevel(DEFAULT_STATUS_LEVEL, Level.WARN).intLevel();
     }
@@ -77,10 +84,6 @@ public final class StatusLogger extends AbstractLogger {
      */
     public static StatusLogger getLogger() {
         return STATUS_LOGGER;
-    }
-
-    public Level getLevel() {
-        return logger.getLevel();
     }
 
     public void setLevel(final Level level) {
@@ -95,7 +98,7 @@ public final class StatusLogger extends AbstractLogger {
         listenersLock.writeLock().lock();
         try {
             listeners.add(listener);
-            Level lvl = listener.getStatusLevel();
+            final Level lvl = listener.getStatusLevel();
             if (listenersLevel < lvl.intLevel()) {
                 listenersLevel = lvl.intLevel();
             }
@@ -109,12 +112,13 @@ public final class StatusLogger extends AbstractLogger {
      * @param listener The StatusListener to remove.
      */
     public void removeListener(final StatusListener listener) {
+        closeSilently(listener);
         listenersLock.writeLock().lock();
         try {
             listeners.remove(listener);
             int lowest = Level.toLevel(DEFAULT_STATUS_LEVEL, Level.WARN).intLevel();
-            for (StatusListener l : listeners) {
-                int level = l.getStatusLevel().intLevel();
+            for (final StatusListener l : listeners) {
+                final int level = l.getStatusLevel().intLevel();
                 if (lowest < level) {
                     lowest = level;
                 }
@@ -126,19 +130,35 @@ public final class StatusLogger extends AbstractLogger {
     }
 
     /**
-     * Returns a thread safe Iterator for the StatusListener.
-     * @return An Iterator for the list of StatusListeners.
+     * Returns a thread safe Iterable for the StatusListener.
+     * @return An Iterable for the list of StatusListeners.
      */
-    public Iterator<StatusListener> getListeners() {
-        return listeners.iterator();
+    public Iterable<StatusListener> getListeners() {
+        return listeners;
     }
 
     /**
      * Clears the list of status events and listeners.
      */
     public void reset() {
-        listeners.clear();
-        clear();
+        listenersLock.writeLock().lock();
+        try {
+            for (final StatusListener listener : listeners) {
+                closeSilently(listener);
+            }
+        } finally {
+            listeners.clear();
+            listenersLock.writeLock().unlock();
+            // note this should certainly come after the unlock to avoid unnecessary nested locking
+            clear();
+        }
+    }
+
+    private static void closeSilently(final Closeable resource) {
+        try {
+            resource.close();
+        } catch (final IOException ignored) {
+        }
     }
 
     /**
@@ -166,6 +186,10 @@ public final class StatusLogger extends AbstractLogger {
         }
     }
 
+    @Override
+    public Level getLevel() {
+        return logger.getLevel();
+    }
 
     /**
      * Add an event.
@@ -176,7 +200,7 @@ public final class StatusLogger extends AbstractLogger {
      * @param t      A Throwable or null.
      */
     @Override
-    public void log(final Marker marker, final String fqcn, final Level level, final Message msg, final Throwable t) {
+    public void logMessage(final String fqcn, final Level level, final Marker marker, final Message msg, final Throwable t) {
         StackTraceElement element = null;
         if (fqcn != null) {
             element = getStackTraceElement(fqcn, Thread.currentThread().getStackTrace());
@@ -190,12 +214,12 @@ public final class StatusLogger extends AbstractLogger {
         }
         if (listeners.size() > 0) {
             for (final StatusListener listener : listeners) {
-                if (data.getLevel().isAtLeastAsSpecificAs(listener.getStatusLevel())) {
+                if (data.getLevel().isMoreSpecificThan(listener.getStatusLevel())) {
                     listener.log(data);
                 }
             }
         } else {
-            logger.log(marker, fqcn, level, msg, t);
+            logger.logMessage(fqcn, level, marker, msg, t);
         }
     }
 
@@ -205,10 +229,10 @@ public final class StatusLogger extends AbstractLogger {
         }
         boolean next = false;
         for (final StackTraceElement element : stackTrace) {
-            if (next) {
+            final String className = element.getClassName();
+            if (next && !fqcn.equals(className)) {
                 return element;
             }
-            final String className = element.getClassName();
             if (fqcn.equals(className)) {
                 next = true;
             } else if (NOT_AVAIL.equals(className)) {
@@ -219,27 +243,27 @@ public final class StatusLogger extends AbstractLogger {
     }
 
     @Override
-    protected boolean isEnabled(final Level level, final Marker marker, final String data) {
+    public boolean isEnabled(final Level level, final Marker marker, final String message, final Throwable t) {
         return isEnabled(level, marker);
     }
 
     @Override
-    protected boolean isEnabled(final Level level, final Marker marker, final String data, final Throwable t) {
+    public boolean isEnabled(final Level level, final Marker marker, final String message) {
         return isEnabled(level, marker);
     }
 
     @Override
-    protected boolean isEnabled(final Level level, final Marker marker, final String data, final Object... p1) {
+    public boolean isEnabled(final Level level, final Marker marker, final String message, final Object... params) {
         return isEnabled(level, marker);
     }
 
     @Override
-    protected boolean isEnabled(final Level level, final Marker marker, final Object data, final Throwable t) {
+    public boolean isEnabled(final Level level, final Marker marker, final Object message, final Throwable t) {
         return isEnabled(level, marker);
     }
 
     @Override
-    protected boolean isEnabled(final Level level, final Marker marker, final Message data, final Throwable t) {
+    public boolean isEnabled(final Level level, final Marker marker, final Message message, final Throwable t) {
         return isEnabled(level, marker);
     }
 
@@ -248,22 +272,7 @@ public final class StatusLogger extends AbstractLogger {
         if (listeners.size() > 0) {
             return listenersLevel >= level.intLevel();
         }
-        switch (level) {
-            case FATAL:
-                return logger.isFatalEnabled(marker);
-            case TRACE:
-                return logger.isTraceEnabled(marker);
-            case DEBUG:
-                return logger.isDebugEnabled(marker);
-            case INFO:
-                return logger.isInfoEnabled(marker);
-            case WARN:
-                return logger.isWarnEnabled(marker);
-            case ERROR:
-                return logger.isErrorEnabled(marker);
-            default:
-                return false;
-        }
+        return logger.isEnabled(level, marker);
     }
 
     /**

@@ -23,6 +23,12 @@
         <author email="ggregory@apache.org">Gary Gregory</author>
     </properties>
   #set($dollar = '$')
+  #set($sharp = '#')
+  #set($javadocRoot = 'http://docs.oracle.com/javase/6/docs/api')
+  #macro(javadoc $path $class)
+      <a class="javadoc" href="${javadocRoot}/${path}/${class}.html">${class}</a>
+  #end
+  #set($Charset = "<a class='javadoc' href='${javadocRoot}/java/nio/charset/Charset.html'>Charset</a>")
   #if (!$alignedFileName)
     #set ($isPDF = true)
     #set ($break = '<br />')
@@ -35,20 +41,20 @@
         <p>An Appender uses a Layout to format a LogEvent into a form that meets the needs of whatever will be
           consuming the log event. In Log4j 1.x and Logback Layouts were expected to transform an event into a
           String. In Log4j 2 Layouts return a byte array. This allows the result of the Layout to be useful in
-          many more types of Appenders. However, this means you need to configure most Layouts with a
-          <a href="http://download.oracle.com/javase/6/docs/api/java/nio/charset/Charset.html">Charset</a> to
-          insure the byte array contains correct values.
+          many more types of Appenders. However, this means you need to configure most Layouts with a ${Charset} to
+          ensure the byte array contains correct values.
         </p>
         <a name="JSONLayout"/>
         <subsection name="JSONLayout">
           <!-- From Javadoc of org.apache.logging.log4j.core.layout.JSONLayout -->
           <p>
-          Appends a series of JSON events as strings serialized as bytes..
+          Appends a series of JSON events as strings serialized as bytes. This layout requires Jackson jar files
+          (see pom.xml for details).
           </p>
           <h4>Complete well-formed JSON vs. fragment JSON</h4>
           <p>
-          If you configure <code>complete="true"</code>, the appender outputs a well-formed JSON document. By default, 
-          with <code>complete="false"</code>, you should include the output as an <em>external file</em> in a 
+          If you configure <code>complete="true"</code>, the appender outputs a well-formed JSON document. By default,
+          with <code>complete="false"</code>, you should include the output as an <em>external file</em> in a
           separate file to form a well-formed JSON document.
           </p>
           <p>
@@ -73,7 +79,7 @@
 ]
 </pre>
           <p>
-          If <code>complete="false"</code>, the appender does not write the JSON open array character "[" at the start 
+          If <code>complete="false"</code>, the appender does not write the JSON open array character "[" at the start
           of the document. and "]" and the end.
           </p>
           <p>
@@ -81,16 +87,63 @@
           </p>
           <h4>Encoding</h4>
           <p>
-          Appenders using this layout should have their <code>charset</code> set to <code>UTF-8</code> or 
-          <code>UTF-16</code>, otherwise events containing non ASCII characters could result in corrupted log files.
+          Appenders using this layout should have their <code>charset</code> set to <code>UTF-8</code> or
+          <code>UTF-16</code>, otherwise events containing non-ASCII characters could result in corrupted log files.
+          The default charset is <code>UTF-8</code>.
           </p>
-          <h4>Pretty vs. compact XML</h4>
+          <h4>Pretty vs. compact JSON</h4>
           <p>
-          By default, the JSON layout is not compact (a.k.a. not "pretty") with <code>compact="false"</code>, which 
-          means the appender uses end-of-line characters and indents lines to format the text. If 
-          <code>compact="true"</code>,  then no end-of-line or indentation is used. Message content may contain, 
+          By default, the JSON layout is not compact (a.k.a. not "pretty") with <code>compact="false"</code>, which
+          means the appender uses end-of-line characters and indents lines to format the text. If
+          <code>compact="true"</code>,  then no end-of-line or indentation is used. Message content may contain,
           of course, escaped end-of-lines.
           </p>
+          <table>
+            <tr>
+              <th>Parameter Name</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+            <tr>
+              <td>charset</td>
+              <td>String</td>
+              <td>The character set to use when converting the HTML String to a byte array. The value must be
+                a valid ${Charset}. If not specified, UTF-8 will be used.</td>
+            </tr>
+            <tr>
+              <td>compact</td>
+              <td>boolean</td>
+              <td>If true, the appender does not use end-of-lines and indentation. Defaults to false.</td>
+            </tr>
+            <tr>
+              <td>eventEol</td>
+              <td>boolean</td>
+              <td>
+                If true, the appender appends an end-of-line after each record. Defaults to false.
+                Use with eventEol=true and compact=true to get one record per line.
+              </td>
+            </tr>
+            <tr>
+              <td>complete</td>
+              <td>boolean</td>
+              <td>If true, the appender includes the JSON header and footer. Defaults to false.</td>
+            </tr>
+            <tr>
+              <td>properties</td>
+              <td>boolean</td>
+              <td>If true, the appender includes the thread context in the generated JSON. Defaults to false.</td>
+            </tr>
+            <tr>
+              <td>locationInfo</td>
+              <td>boolean</td>
+              <td>
+              <p>If true, the appender includes the location information in the generated JSON. Defaults to false.</p>
+              <p>Generating <a href="#LocationInformation">location information</a>
+                is an expensive operation and may impact performance. Use with caution.</p>
+              </td>
+            </tr>
+            <caption align="top">JSON Layout Parameters</caption>
+          </table>
         </subsection>
         <a name="HTMLLayout"/>
         <subsection name="HTMLLayout">
@@ -106,8 +159,7 @@
               <td>charset</td>
               <td>String</td>
               <td>The character set to use when converting the HTML String to a byte array. The value must be
-                a valid <a href="http://download.oracle.com/javase/6/docs/api/java/nio/charset/Charset.html">Charset</a>.
-                If not specified, the default system Charset will be used.</td>
+                a valid ${Charset}. If not specified, the default system Charset will be used.</td>
             </tr>
             <tr>
               <td>contentType</td>
@@ -142,7 +194,9 @@
             A conversion pattern is composed of literal text and format control expressions called
             <em>conversion specifiers</em>.
           </p>
-          <p><i>Note that any literal text may be included in the conversion pattern.</i>
+          <p><i>Note that any literal text, including <b>Special Characters</b>, may be included in the conversion
+            pattern.</i> Special Characters include <b>\t</b>, <b>\n</b>, <b>\r</b>, <b>\f</b>. Use <b>\\</b> to
+            insert a single backslash into the output.
           </p>
           <p>Each conversion specifier starts with a percent sign (%) and is followed by optional <em>format
             modifiers</em> and a <em>conversion character</em>. The conversion character specifies the type of
@@ -178,8 +232,7 @@ WARN  [main]: Message 2</pre>
               <td>charset</td>
               <td>String</td>
               <td>The character set to use when converting the syslog String to a byte array. The String must be
-                a valid <a href="http://download.oracle.com/javase/6/docs/api/java/nio/charset/Charset.html">Charset</a>.
-                If not specified, the default system Charset will be used.
+                a valid ${Charset}. If not specified, the default system Charset will be used.
               </td>
             </tr>
             <tr>
@@ -205,6 +258,21 @@ WARN  [main]: Message 2</pre>
                 <code>false</code> disables this behavior and allows you to exclude exceptions from your pattern
                 output.</td>
             </tr>
+            <tr>
+              <td>header</td>
+              <td>String</td>
+              <td>The optional header string to include at the top of each log file.</td>
+            </tr>
+            <tr>
+              <td>footer</td>
+              <td>String</td>
+              <td>The optional footer string to include at the bottom of each log file.</td>
+            </tr>
+            <tr>
+              <td>noConsoleNoAnsi</td>
+              <td>boolean</td>
+              <td>If <code>true</code> (default is false) and <code>System.console()</code> is null, do not output ANSI escape codes.</td>
+            </tr>
             <caption align="top">PatternLayout Parameters</caption>
           </table>
           <table>
@@ -217,8 +285,7 @@ WARN  [main]: Message 2</pre>
               <td>regex</td>
               <td>String</td>
               <td>A Java-compliant regular expression to match in the resulting string. See
-                <a href="http://docs.oracle.com/javase/6/docs/api/java/util/regex/Pattern.html"
-                   target="_blank">java.util.regex.Pattern</a>.</td>
+                  #javadoc('java/util/regex', 'Pattern').</td>
             </tr>
             <tr>
               <td>replacement</td>
@@ -308,10 +375,10 @@ WARN  [main]: Message 2</pre>
               <td>
                 <p>Outputs the date of the logging event. The date conversion specifier may be
                   followed by a set of braces containing a date and time pattern string per
-                  <a href="http://docs.oracle.com/javase/6/docs/api/java/text/SimpleDateFormat.html">
-                    SimpleDateFormat</a>.
+                  #javadoc('java/text', 'SimpleDateFormat').
                 </p>
                 <p>The predefined formats are
+                  <code>DEFAULT</code>,
                   <code>ABSOLUTE</code>,
                   <code>COMPACT</code>,
                   <code>DATE</code>,
@@ -320,7 +387,7 @@ WARN  [main]: Message 2</pre>
                   <code>ISO8601_BASIC</code>.
                 </p>
                 <p>You can also use a set of braces containing a time zone id per
-                  <a href="http://docs.oracle.com/javase/6/docs/api/java/util/TimeZone.html#getTimeZone(java.lang.String)">
+                  <a class="javadoc" href="${javadocRoot}/java/util/TimeZone.html${sharp}getTimeZone(java.lang.String)">
                     java.util.TimeZone.getTimeZone</a>. If no date format specifier is given then ISO8601 format is assumed.
                   <table>
                     <tr>
@@ -328,12 +395,16 @@ WARN  [main]: Message 2</pre>
                       <th>Example</th>
                     </tr>
                     <tr>
-                      <td>%d{ISO8601}</td>
+                      <td>%d{DEFAULT}</td>
                       <td>2012-11-02 14:34:02,781</td>
                     </tr>
                     <tr>
+                      <td>%d{ISO8601}</td>
+                      <td>2012-11-02T14:34:02,781</td>
+                    </tr>
+                    <tr>
                       <td>%d{ISO8601_BASIC}</td>
-                      <td>20121102 143402,781</td>
+                      <td>20121102T143402,781</td>
                     </tr>
                     <tr>
                       <td>%d{ABSOLUTE}</td>
@@ -357,9 +428,72 @@ WARN  [main]: Message 2</pre>
                     </tr>
                     <tr>
                       <td>%d{HH:mm:ss}{GMT+0}</td>
-                      <td>18:34:02,781</td>
+                      <td>18:34:02</td>
+                    </tr>
+                    <tr>
+                      <td>%d{UNIX}</td>
+                      <td>1351866842</td>
+                    </tr>
+                    <tr>
+                      <td>%d{UNIX_MILLIS}</td>
+                      <td>1351866842781</td>
                     </tr>
                   </table>
+                </p>
+                <p>
+                  %d{UNIX} outputs the UNIX time in seconds. %d{UNIX_MILLIS} outputs the UNIX time in milliseconds.
+                  The UNIX time is the difference, in seconds for UNIX and in milliseconds for UNIX_MILLIS, between
+                  the current time and midnight, January 1, 1970 UTC. While the time unit is milliseconds, the
+                  granularity depends on the operating system
+                  (<a href="http://msdn.microsoft.com/en-us/windows/hardware/gg463266.aspx">Windows</a>).
+                  This is an efficient way to output the event time because only a conversion from long to String
+                  takes place, there is no Date formatting involved.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center">
+                <b>enc</b>{pattern}<br />
+                <b>encode</b>{pattern>
+              </td>
+              <td>
+                <p>Escape newlines and HTML special characters in the specified pattern.
+                </p>
+                <p>Allows HTML to be safely logged.</p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center">
+                <b>enc{pattern}</b><br />
+                <b>encode{pattern}</b>
+              </td>
+              <td>
+                <p>
+                  Encodes special characters such as '\n' and HTML characters to help prevent log forging
+                  and some XSS attacks that could occur when displaying logs in a web browser. Anytime
+                  user provided data is logged, this can provide a safeguard.
+                </p>
+                <p>
+                  A typical usage would encode the message
+                  <pre>%enc{%m}</pre>
+                  but user input could come from other locations as well, such as the MDC
+                  <pre>%enc{%mdc{key}}</pre>
+                </p>
+                <p>The replaced characters are:
+                 <table>
+                   <tr>
+                     <th>Character</th>
+                     <th>Replacement</th>
+                   </tr>
+                   <tr>
+                     <th>'\r', '\n'</th>
+                     <th>Removed from the pattern</th>
+                   </tr>
+                   <tr>
+                     <td>&amp;, &lt;, &gt;, &quot;, &apos;, &#x2F;</td>
+                     <td>Replaced with the corresponding HTML entity</td>
+                   </tr>
+                 </table>
                 </p>
               </td>
             </tr>
@@ -379,37 +513,37 @@ WARN  [main]: Message 2</pre>
               </td>
               <td>
                 <p>
-                  Outputs the Throwable trace bound to the LoggingEvent, by default this will output the full trace 
+                  Outputs the Throwable trace bound to the LoggingEvent, by default this will output the full trace
                   as one would normally find with a call to Throwable.printStackTrace().
                 </p>
                 <p>
                   You can follow the throwable conversion word with an option in the form <b>%throwable{option}</b>.
                 </p>
-                <p> 
+                <p>
                   <b>%throwable{short}</b> outputs the first line of the Throwable.
                 </p>
-                <p> 
+                <p>
                   <b>%throwable{short.className}</b> outputs the name of the class where the exception occurred.
                 </p>
-                <p> 
+                <p>
                   <b>%throwable{short.methodName}</b> outputs the method name where the exception occurred.
                 </p>
-                <p> 
+                <p>
                   <b>%throwable{short.fileName}</b> outputs the name of the class where the exception occurred.
                 </p>
-                <p> 
+                <p>
                   <b>%throwable{short.lineNumber}</b> outputs the line number where the exception occurred.
                 </p>
-                <p> 
+                <p>
                   <b>%throwable{short.message}</b> outputs the message.
                 </p>
-                <p> 
+                <p>
                   <b>%throwable{short.localizedMessage}</b> outputs the localized message.
                 </p>
-                <p> 
-                  <b>%throwable{n}</b> outputs the first n lines of the stack trace. 
-                </p> 
-                <p> 
+                <p>
+                  <b>%throwable{n}</b> outputs the first n lines of the stack trace.
+                </p>
+                <p>
                   Specifying <b>%throwable{none}</b> or <b>%throwable{0}</b> suppresses output of the exception.
                 </p>
               </td>
@@ -464,7 +598,8 @@ WARN  [main]: Message 2</pre>
                    </tr>
                  </table>
                 </p>
-                <p>The color names are ANSI names defined in the <a href="../log4j-core/apidocs/index.html">AnsiEscape</a> class.
+                <p>The color names are ANSI names defined in the
+                  <a class="javadoc" href="../log4j-core/apidocs/org/apache/logging/log4j/core/pattern/AnsiEscape.html">AnsiEscape</a> class.
                 </p>
                 <p>The color and attribute names and are standard, but the exact shade, hue, or value.
                 </p>
@@ -597,7 +732,7 @@ WARN  [main]: Message 2</pre>
               </td>
               <td>
                 <p>Outputs the entries in a
-                  <a href="../log4j-api/apidocs/org/apache/logging/log4j/message/MapMessage.html">MapMessage</a>,
+                  <a class="javadoc" href="../log4j-api/apidocs/org/apache/logging/log4j/message/MapMessage.html">MapMessage</a>,
                   if one is present in the event. The <b>K</b> conversion character can be followed by the key
                   for the map placed between braces, as in
                   <b>%K{clientNumber}</b> where <code>clientNumber</code> is the key. The value in the Map
@@ -923,7 +1058,7 @@ WARN  [main]: Message 2</pre>
                   is output using a format {{key1,val1},{key2,val2}}
                 </p>
                 <p>See the
-                  <a href="../log4j-api/apidocs/org/apache/logging/log4j/ThreadContext.html">ThreadContext</a>
+                  <a class="javadoc" href="../log4j-api/apidocs/org/apache/logging/log4j/ThreadContext.html">ThreadContext</a>
                   class for more details.
                 </p>
               </td>
@@ -1035,9 +1170,7 @@ WARN  [main]: Message 2</pre>
             <tr>
               <td align="center">%-20c</td>
               <td align="center">true</td>
-              <td
-                  align="center">20
-              </td>
+              <td align="center">20</td>
               <td align="center">none</td>
               <td>Right pad with
                 spaces if the category name is less than 20 characters long.
@@ -1102,7 +1235,7 @@ WARN  [main]: Message 2</pre>
               testException(ExtendedThrowableTest.java:71) ~[test-classes/:?]
          ... 30 more</pre>
  #else
-          <pre class="prettyprint linenums">Exception java.lang.IllegalArgumentException: IllegalArgument
+          <pre>Exception java.lang.IllegalArgumentException: IllegalArgument
 at org.apache.logging.log4j.core.pattern.ExtendedThrowableTest.testException(ExtendedThrowableTest.java:72) [test-classes/:?]
 ... suppressed 26 lines
 at ${dollar}Proxy0.invoke(Unknown Source)} [?:?]
@@ -1140,8 +1273,7 @@ at org.apache.logging.log4j.core.pattern.ExtendedThrowableTest.testException(Ext
               <td>charset</td>
               <td>String</td>
               <td>The character set to use when converting the syslog String to a byte array. The String must be
-                a valid <a href="http://download.oracle.com/javase/6/docs/api/java/nio/charset/Charset.html">Charset</a>.
-                If not specified, the default system Charset will be used.</td>
+                a valid ${Charset}. If not specified, the default system Charset will be used.</td>
             </tr>
             <tr>
               <td>enterpriseNumber</td>
@@ -1195,8 +1327,8 @@ at org.apache.logging.log4j.core.pattern.ExtendedThrowableTest.testException(Ext
               <td>loggerFields</td>
               <td>List of KeyValuePairs</td>
               <td>Allows arbitrary PatternLayout patterns to be included as specified ThreadContext fields; no default
-                specified. To use, include a &gt;LoggerFields&lt; nested element, containing one or more
-                &gt;KeyValuePair&lt; elements. Each &gt;KeyValuePair&lt; must have a key attribute, which
+                specified. To use, include a &lt;LoggerFields&gt; nested element, containing one or more
+                &lt;KeyValuePair&gt; elements. Each &lt;KeyValuePair&gt; must have a key attribute, which
                 specifies the key name which will be used to identify the field within the MDC Structured Data element,
                 and a value attribute, which specifies the PatternLayout pattern to use as the value.</td>
             </tr>
@@ -1224,6 +1356,11 @@ at org.apache.logging.log4j.core.pattern.ExtendedThrowableTest.testException(Ext
               <td>String</td>
               <td>A string that should be prepended to each MDC key in order to distinguish it from event attributes.
                 The default string is "mdc:". This attribute only applies to RFC 5424 syslog records.</td>
+            </tr>
+            <tr>
+              <td>mdcId</td>
+              <td>String</td>
+              <td>A required MDC ID. This attribute only applies to RFC 5424 syslog records.</td>
             </tr>
             <tr>
               <td>messageId</td>
@@ -1264,8 +1401,7 @@ at org.apache.logging.log4j.core.pattern.ExtendedThrowableTest.testException(Ext
               <td>charset</td>
               <td>String</td>
               <td>The character set to use when converting the syslog String to a byte array. The String must be
-                a valid <a href="http://download.oracle.com/javase/6/docs/api/java/nio/charset/Charset.html">Charset</a>.
-                If not specified, the default system Charset will be used.</td>
+                a valid ${Charset}. If not specified, the default system Charset will be used.</td>
             </tr>
             <tr>
               <td>facility</td>
@@ -1292,47 +1428,88 @@ at org.apache.logging.log4j.core.pattern.ExtendedThrowableTest.testException(Ext
         <subsection name="XMLLayout">
           <!-- From Javadoc of org.apache.logging.log4j.core.layout.XMLLayout -->
           <p>
-          Appends a series of <code>event</code> elements as defined in the <a href="log4j.dtd">log4j.dtd</a>.
+            <!-- FIXME: log4j.dtd link is broken -->
+          Appends a series of <code>Event</code> elements as defined in the <a href="log4j.dtd">log4j.dtd</a>.
           </p>
           <h4>Complete well-formed XML vs. fragment XML</h4>
           <p>
-          If you configure <code>complete="true"</code>, the appender outputs a well-formed XML document where the 
-          default namespace is the Log4j namespace <code>"http://logging.apache.org/log4j/2.0/events"</code>.  By default, 
-          with <code>complete="false"</code>, you should include the output as an <em>external entity</em> in a 
-          separate file to form a well-formed XML document, in which case the appender uses 
+          If you configure <code>complete="true"</code>, the appender outputs a well-formed XML document where the
+          default namespace is the Log4j namespace <code>"http://logging.apache.org/log4j/2.0/events"</code>.  By default,
+          with <code>complete="false"</code>, you should include the output as an <em>external entity</em> in a
+          separate file to form a well-formed XML document, in which case the appender uses
           <code>namespacePrefix</code> with a default of <code>"log4j"</code>.
           </p>
           <p>
           A well-formed XML document follows this pattern:
           </p>
           <pre class="prettyprint linenums">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
-&lt;events xmlns=&quot;http://logging.apache.org/log4j/2.0/events&quot;&gt;
-  &lt;event logger=&quot;com.foo.Bar&quot; timestamp=&quot;1373436580419&quot; level=&quot;INFO&quot; thread=&quot;main&quot;&gt;
-    &lt;message&gt;&lt;![CDATA[This is a log message 1]]&gt;&lt;/message&gt;
-  &lt;/event&gt;
-  &lt;event logger=&quot;com.foo.Baz&quot; timestamp=&quot;1373436580420&quot; level=&quot;INFO&quot; thread=&quot;main&quot;&gt;
-    &lt;message&gt;&lt;![CDATA[This is a log message 2]]&gt;&lt;/message&gt;
-  &lt;/event&gt;
-&lt;/events&gt;</pre>
+&lt;Events xmlns=&quot;http://logging.apache.org/log4j/2.0/events&quot;&gt;
+  &lt;Event logger=&quot;com.foo.Bar&quot; timestamp=&quot;1373436580419&quot; level=&quot;INFO&quot; thread=&quot;main&quot;&gt;
+    &lt;Message&gt;&lt;![CDATA[This is a log message 1]]&gt;&lt;/Message&gt;
+    &lt;Marker parent=&quot;Parent Marker&quot;&gt;&lt;Child Marker&gt;&lt;/Marker&gt;
+  &lt;/Event&gt;
+  &lt;Event logger=&quot;com.foo.Baz&quot; timestamp=&quot;1373436580420&quot; level=&quot;INFO&quot; thread=&quot;main&quot;&gt;
+    &lt;Message&gt;&lt;![CDATA[This is a log message 2]]&gt;&lt;/Message&gt;
+    &lt;Marker&gt;&lt;The Marker Name&gt;&lt;/Marker&gt;
+  &lt;/Event&gt;
+&lt;/Events&gt;</pre>
           <p>
-          If <code>complete="false"</code>, the appender does not write the XML processing instruction and the root 
+          If <code>complete="false"</code>, the appender does not write the XML processing instruction and the root
           element.
           </p>
           <p>
           This approach enforces the independence of the XMLLayout and the appender where you embed it.
           </p>
+          <h4>Marker</h4>
+          <p>Markers are represented by a <code>Marker</code> element within the <code>Event</code> element.
+          The <code>Marker</code> element appears only when a marker is used in the log message. The name of the marker's
+          parent will be provided in the <code>parent</code> attribute of the <code>Marker</code> element.
+          Only the leaf marker is included, not the full hierarchy.
+          </p>
           <h4>Encoding</h4>
           <p>
-          Appenders using this layout should have their <code>charset</code> set to <code>UTF-8</code> or 
+          Appenders using this layout should have their <code>charset</code> set to <code>UTF-8</code> or
           <code>UTF-16</code>, otherwise events containing non ASCII characters could result in corrupted log files.
           </p>
           <h4>Pretty vs. compact XML</h4>
           <p>
-          By default, the XML layout is not compact (a.k.a. not "pretty") with <code>compact="false"</code>, which 
-          means the appender uses end-of-line characters and indents lines to format the XML. If 
-          <code>compact="true"</code>,  then no end-of-line or indentation is used. Message content may contain, 
+          By default, the XML layout is not compact (a.k.a. not "pretty") with <code>compact="false"</code>, which
+          means the appender uses end-of-line characters and indents lines to format the XML. If
+          <code>compact="true"</code>,  then no end-of-line or indentation is used. Message content may contain,
           of course, end-of-lines.
           </p>
+        </subsection>
+        <a name="GELFLayout"/>
+        <subsection name="GELF Layout">
+          <!-- From Javadoc of org.apache.logging.log4j.core.layout.GELFLayout -->
+          <p>
+            Lays out events in the Graylog Extended Log Format (GELF) 1.1.
+          </p>
+          <p>
+            This layout compresses JSON to GZIP or ZLIB (the <code>compressionType</code>) if log event data is larger than 1024 bytes
+            (the <code>compressionThreshold</code>). This layout does not implement chunking.
+          </p>
+          <p>
+            Configure as follows to send to a Graylog2 server:
+          </p>
+          <pre class="prettyprint linenums">[
+  &lt;Appenders&gt;
+    &lt;Socket name="Graylog" protocol="udp" host="graylog.domain.com" port="12201"&gt;
+        &lt;GelfLayout host="someserver" compressionType="GZIP" compressionThreshold="1024"&gt;
+            &lt;KeyValuePair key="additionalField1" value="additional value 1"/&gt;
+            &lt;KeyValuePair key="additionalField2" value="additional value 2"/&gt;
+        &lt;/GelfLayout&gt;
+    &lt;/Socket&gt;
+  &lt;/Appenders&gt;
+]
+</pre>
+           <p>
+             See also:
+           </p>
+           <ul>
+             <li>The <a href="http://graylog2.org/gelf">GELF home page</a></li>
+             <li>The <a href="http://graylog2.org/resources/gelf/specification">GELF specification</a></li>
+           </ul>
         </subsection>
         <a name="LocationInformation"/>
         <subsection name="Location Information">

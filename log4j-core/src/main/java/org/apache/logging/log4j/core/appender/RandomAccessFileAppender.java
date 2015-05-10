@@ -29,15 +29,18 @@ import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.Booleans;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.apache.logging.log4j.core.net.Advertiser;
+import org.apache.logging.log4j.core.util.Booleans;
+import org.apache.logging.log4j.core.util.Integers;
 
 /**
  * File Appender.
  */
 @Plugin(name = "RandomAccessFile", category = "Core", elementType = "appender", printObject = true)
-public final class RandomAccessFileAppender extends AbstractOutputStreamAppender {
+public final class RandomAccessFileAppender extends AbstractOutputStreamAppender<RandomAccessFileManager> {
+
+    private static final long serialVersionUID = 1L;
 
     private final String fileName;
     private Object advertisement;
@@ -81,7 +84,7 @@ public final class RandomAccessFileAppender extends AbstractOutputStreamAppender
         // From a user's point of view, this means that all log events are
         // _always_ available in the log file, without incurring the overhead
         // of immediateFlush=true.
-        ((RandomAccessFileManager) getManager()).setEndOfBatch(event.isEndOfBatch());
+        getManager().setEndOfBatch(event.isEndOfBatch());
         super.append(event);
     }
 
@@ -92,6 +95,14 @@ public final class RandomAccessFileAppender extends AbstractOutputStreamAppender
      */
     public String getFileName() {
         return this.fileName;
+    }
+    
+    /**
+     * Returns the size of the file manager's buffer.
+     * @return the buffer size
+     */
+    public int getBufferSize() {
+        return getManager().getBufferSize();
     }
 
     // difference from standard File Appender:
@@ -105,6 +116,7 @@ public final class RandomAccessFileAppender extends AbstractOutputStreamAppender
      * @param name The name of the Appender.
      * @param immediateFlush "true" if the contents should be flushed on every
      *            write, "false" otherwise. The default is "true".
+     * @param bufferSizeStr The buffer size, defaults to {@value RandomAccessFileManager#DEFAULT_BUFFER_SIZE}.
      * @param ignore If {@code "true"} (default) exceptions encountered when appending events are logged; otherwise
      *               they are propagated to the caller.
      * @param layout The layout to use to format the event. If no layout is
@@ -123,9 +135,10 @@ public final class RandomAccessFileAppender extends AbstractOutputStreamAppender
             @PluginAttribute("append") final String append,
             @PluginAttribute("name") final String name,
             @PluginAttribute("immediateFlush") final String immediateFlush,
+            @PluginAttribute("bufferSize") final String bufferSizeStr,
             @PluginAttribute("ignoreExceptions") final String ignore,
             @PluginElement("Layout") Layout<? extends Serializable> layout,
-            @PluginElement("Filters") final Filter filter,
+            @PluginElement("Filter") final Filter filter,
             @PluginAttribute("advertise") final String advertise,
             @PluginAttribute("advertiseURI") final String advertiseURI,
             @PluginConfiguration final Configuration config) {
@@ -134,6 +147,7 @@ public final class RandomAccessFileAppender extends AbstractOutputStreamAppender
         final boolean isFlush = Booleans.parseBoolean(immediateFlush, true);
         final boolean ignoreExceptions = Booleans.parseBoolean(ignore, true);
         final boolean isAdvertise = Boolean.parseBoolean(advertise);
+        final int bufferSize = Integers.parseInt(bufferSizeStr, RandomAccessFileManager.DEFAULT_BUFFER_SIZE);
 
         if (name == null) {
             LOGGER.error("No name provided for FileAppender");
@@ -146,10 +160,10 @@ public final class RandomAccessFileAppender extends AbstractOutputStreamAppender
             return null;
         }
         if (layout == null) {
-            layout = PatternLayout.createLayout(null, null, null, null, null);
+            layout = PatternLayout.createDefaultLayout();
         }
         final RandomAccessFileManager manager = RandomAccessFileManager.getFileManager(
-                fileName, isAppend, isFlush, advertiseURI, layout
+                fileName, isAppend, isFlush, bufferSize, advertiseURI, layout
         );
         if (manager == null) {
             return null;

@@ -23,21 +23,26 @@ import java.util.Map;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
+import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.config.Node;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
-import org.apache.logging.log4j.core.helpers.KeyValuePair;
+import org.apache.logging.log4j.core.util.KeyValuePair;
 import org.apache.logging.log4j.message.MapMessage;
 import org.apache.logging.log4j.message.Message;
 
 /**
  * A Filter that operates on a Map.
  */
-@Plugin(name = "MapFilter", category = "Core", elementType = "filter", printObject = true)
+@Plugin(name = "MapFilter", category = Node.CATEGORY, elementType = Filter.ELEMENT_TYPE, printObject = true)
 public class MapFilter extends AbstractFilter {
+
+    private static final long serialVersionUID = 1L;
+
     private final Map<String, List<String>> map;
 
     private final boolean isAnd;
@@ -100,9 +105,9 @@ public class MapFilter extends AbstractFilter {
                 first = false;
                 final List<String> list = entry.getValue();
                 final String value = list.size() > 1 ? list.get(0) : list.toString();
-                sb.append(entry.getKey()).append("=").append(value);
+                sb.append(entry.getKey()).append('=').append(value);
             }
-            sb.append("}");
+            sb.append('}');
         }
         return sb.toString();
     }
@@ -119,8 +124,8 @@ public class MapFilter extends AbstractFilter {
     public static MapFilter createFilter(
             @PluginElement("Pairs") final KeyValuePair[] pairs,
             @PluginAttribute("operator") final String oper,
-            @PluginAttribute("onMatch") final String match,
-            @PluginAttribute("onMismatch") final String mismatch) {
+            @PluginAttribute("onMatch") final Result match,
+            @PluginAttribute("onMismatch") final Result mismatch) {
         if (pairs == null || pairs.length == 0) {
             LOGGER.error("keys and values must be specified for the MapFilter");
             return null;
@@ -146,13 +151,11 @@ public class MapFilter extends AbstractFilter {
                 map.put(pair.getKey(), list);
             }
         }
-        if (map.size() == 0) {
+        if (map.isEmpty()) {
             LOGGER.error("MapFilter is not configured with any valid key value pairs");
             return null;
         }
         final boolean isAnd = oper == null || !oper.equalsIgnoreCase("or");
-        final Result onMatch = Result.toResult(match);
-        final Result onMismatch = Result.toResult(mismatch);
-        return new MapFilter(map, isAnd, onMatch, onMismatch);
+        return new MapFilter(map, isAnd, match, mismatch);
     }
 }

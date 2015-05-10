@@ -28,11 +28,9 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.core.helpers.Loader;
 import org.apache.logging.log4j.core.impl.ContextAnchor;
-import org.apache.logging.log4j.core.impl.ReflectiveCallerClassUtility;
 import org.apache.logging.log4j.status.StatusLogger;
+import org.apache.logging.log4j.util.ReflectionUtil;
 
 /**
  * This ContextSelector chooses a LoggerContext based upon the ClassLoader of the caller. This allows Loggers
@@ -49,32 +47,10 @@ public class ClassLoaderContextSelector implements ContextSelector {
 
     private static final AtomicReference<LoggerContext> CONTEXT = new AtomicReference<LoggerContext>();
 
-    private static final PrivateSecurityManager SECURITY_MANAGER;
+    protected static final StatusLogger LOGGER = StatusLogger.getLogger();
 
-    private static final StatusLogger LOGGER = StatusLogger.getLogger();
-
-    private static final ConcurrentMap<String, AtomicReference<WeakReference<LoggerContext>>> CONTEXT_MAP =
+    protected static final ConcurrentMap<String, AtomicReference<WeakReference<LoggerContext>>> CONTEXT_MAP =
         new ConcurrentHashMap<String, AtomicReference<WeakReference<LoggerContext>>>();
-
-    static {
-        if (ReflectiveCallerClassUtility.isSupported()) {
-            SECURITY_MANAGER = null;
-        } else {
-            PrivateSecurityManager securityManager;
-            try {
-                securityManager = new PrivateSecurityManager();
-                if (securityManager.getCaller(ClassLoaderContextSelector.class.getName()) == null) {
-                    // This shouldn't happen.
-                    securityManager = null;
-                    LOGGER.error("Unable to obtain call stack from security manager.");
-                }
-            } catch (final Exception e) {
-                securityManager = null;
-                LOGGER.debug("Unable to install security manager", e);
-            }
-            SECURITY_MANAGER = securityManager;
-        }
-    }
 
     @Override
     public LoggerContext getContext(final String fqcn, final ClassLoader loader, final boolean currentContext) {
@@ -93,59 +69,9 @@ public class ClassLoaderContextSelector implements ContextSelector {
         } else if (loader != null) {
             return locateContext(loader, configLocation);
         } else {
-            if (ReflectiveCallerClassUtility.isSupported()) {
-                try {
-                    Class<?> clazz = Class.class;
-                    boolean next = false;
-                    for (int index = 2; clazz != null; ++index) {
-                        clazz = ReflectiveCallerClassUtility.getCaller(index);
-                        if (clazz == null) {
-                            break;
-                        }
-                        if (clazz.getName().equals(fqcn)) {
-                            next = true;
-                            continue;
-                        }
-                        if (next) {
-                            break;
-                        }
-                    }
-                    if (clazz != null) {
-                        return locateContext(clazz.getClassLoader(), configLocation);
-                    }
-                } catch (final Exception ex) {
-                    // logger.debug("Unable to determine caller class via Sun Reflection", ex);
-                }
-            }
-
-            if (SECURITY_MANAGER != null) {
-                final Class<?> clazz = SECURITY_MANAGER.getCaller(fqcn);
-                if (clazz != null) {
-                    final ClassLoader ldr = clazz.getClassLoader() != null ? clazz.getClassLoader() :
-                        ClassLoader.getSystemClassLoader();
-                    return locateContext(ldr, configLocation);
-                }
-            }
-
-            final Throwable t = new Throwable();
-            boolean next = false;
-            String name = null;
-            for (final StackTraceElement element : t.getStackTrace()) {
-                if (element.getClassName().equals(fqcn)) {
-                    next = true;
-                    continue;
-                }
-                if (next) {
-                    name = element.getClassName();
-                    break;
-                }
-            }
-            if (name != null) {
-                try {
-                    return locateContext(Loader.loadClass(name).getClassLoader(), configLocation);
-                } catch (final ClassNotFoundException ignore) {
-                    //this is ok
-                }
+            final Class<?> clazz = ReflectionUtil.getCallerClass(fqcn);
+            if (clazz != null) {
+                return locateContext(clazz.getClassLoader(), configLocation);
             }
             final LoggerContext lc = ContextAnchor.THREAD_CONTEXT.get();
             if (lc != null) {
@@ -178,15 +104,17 @@ public class ClassLoaderContextSelector implements ContextSelector {
         return Collections.unmodifiableList(list);
     }
 
-    private LoggerContext locateContext(final ClassLoader loader, final URI configLocation) {
-        final String name = loader.toString();
+    private LoggerContext locateContext(final ClassLoader loaderOrNull, final URI configLocation) {
+        // LOG4J2-477: class loader may be null
+        final ClassLoader loader = loaderOrNull != null ? loaderOrNull : ClassLoader.getSystemClassLoader();
+        final String name = toContextMapKey(loader);
         AtomicReference<WeakReference<LoggerContext>> ref = CONTEXT_MAP.get(name);
         if (ref == null) {
             if (configLocation == null) {
                 ClassLoader parent = loader.getParent();
                 while (parent != null) {
 
-                    ref = CONTEXT_MAP.get(parent.toString());
+                    ref = CONTEXT_MAP.get(toContextMapKey(parent));
                     if (ref != null) {
                         final WeakReference<LoggerContext> r = ref.get();
                         final LoggerContext ctx = r.get();
@@ -218,12 +146,12 @@ public class ClassLoaderContextSelector implements ContextSelector {
             final AtomicReference<WeakReference<LoggerContext>> r =
                 new AtomicReference<WeakReference<LoggerContext>>();
             r.set(new WeakReference<LoggerContext>(ctx));
-            CONTEXT_MAP.putIfAbsent(loader.toString(), r);
+            CONTEXT_MAP.putIfAbsent(name, r);
             ctx = CONTEXT_MAP.get(name).get().get();
             return ctx;
         }
-        final WeakReference<LoggerContext> r = ref.get();
-        LoggerContext ctx = r.get();
+        final WeakReference<LoggerContext> weakRef = ref.get();
+        LoggerContext ctx = weakRef.get();
         if (ctx != null) {
             if (ctx.getConfigLocation() == null && configLocation != null) {
                 LOGGER.debug("Setting configuration to {}", configLocation);
@@ -236,38 +164,21 @@ public class ClassLoaderContextSelector implements ContextSelector {
             return ctx;
         }
         ctx = new LoggerContext(name, null, configLocation);
-        ref.compareAndSet(r, new WeakReference<LoggerContext>(ctx));
+        ref.compareAndSet(weakRef, new WeakReference<LoggerContext>(ctx));
         return ctx;
     }
 
-    private LoggerContext getDefault() {
+    private String toContextMapKey(final ClassLoader loader) {
+        return String.valueOf(System.identityHashCode(loader));
+    }
+
+    protected LoggerContext getDefault() {
         final LoggerContext ctx = CONTEXT.get();
         if (ctx != null) {
             return ctx;
         }
         CONTEXT.compareAndSet(null, new LoggerContext("Default"));
         return CONTEXT.get();
-    }
-
-    /**
-     * SecurityManager that will locate the caller of the Log4j 2 API.
-     */
-    private static class PrivateSecurityManager extends SecurityManager {
-
-        public Class<?> getCaller(final String fqcn) {
-            final Class<?>[] classes = getClassContext();
-            boolean next = false;
-            for (final Class<?> clazz : classes) {
-                if (clazz.getName().equals(fqcn)) {
-                    next = true;
-                    continue;
-                }
-                if (next) {
-                    return clazz;
-                }
-            }
-            return null;
-        }
     }
 
 }

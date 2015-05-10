@@ -16,13 +16,12 @@
  */
 package org.apache.logging.log4j.core.async;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 import java.util.List;
 
 import org.apache.logging.log4j.core.LoggerContext;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 public class AsyncLoggerContextSelectorTest {
 
@@ -52,11 +51,11 @@ public class AsyncLoggerContextSelectorTest {
     }
 
     @Test
-    public void testContextNameIsAsyncLoggerContext() {
+    public void testContextNameIsAsyncLoggerContextWithClassHashCode() {
         final AsyncLoggerContextSelector selector = new AsyncLoggerContextSelector();
         final LoggerContext context = selector.getContext(null, null, false);
-
-        assertEquals("AsyncLoggerContext", context.getName());
+        final String expectedContextName = "AsyncLoggerContext@" + AsyncLoggerContext.class.hashCode();
+        assertEquals(expectedContextName, context.getName());
     }
 
 }

@@ -18,15 +18,15 @@ package org.apache.logging.log4j.osgi;
 
 import java.io.File;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
-import org.osgi.framework.launch.Framework;
+import org.osgi.framework.launch.FrameworkFactory;
 
 /**
  * Tests loading a bundle into an OSGi container.
@@ -39,20 +39,10 @@ import org.osgi.framework.launch.Framework;
  */
 public abstract class AbstractLoadBundleTest {
 
-    protected static Framework OsgiFramework;
+    protected abstract FrameworkFactory getFactory();
 
-    /**
-     * Uninstalls the OSGi framework.
-     * 
-     * @throws BundleException
-     */
-    @AfterClass
-    public static void afterClass() throws BundleException {
-        if (OsgiFramework != null) {
-            OsgiFramework.stop();
-            OsgiFramework = null;
-        }
-    }
+    @Rule
+    public OsgiRule osgi = new OsgiRule(getFactory());
 
     private final BundleTestInfo bundleTestInfo;
 
@@ -77,12 +67,12 @@ public abstract class AbstractLoadBundleTest {
     }
 
     protected String getBundlePath() {
-        return "target/" + bundleTestInfo.getArtifactId() + "-" + bundleTestInfo.getVersion() + ".jar";
+        return "target/" + bundleTestInfo.getArtifactId() + '-' + bundleTestInfo.getVersion() + ".jar";
     }
 
     /**
      * Gets the expected bundle symbolic name.
-     * 
+     *
      * @return the expected bundle symbolic name.
      */
     public String getExpectedBundleSymbolicName() {
@@ -91,12 +81,12 @@ public abstract class AbstractLoadBundleTest {
 
     /**
      * Loads, starts, and stops a bundle.
-     * 
+     *
      * @throws BundleException
      */
     @Test
     public void testLoadStartStop() throws BundleException {
-        final BundleContext bundleContext = OsgiFramework.getBundleContext();
+        final BundleContext bundleContext = osgi.getFramework().getBundleContext();
         final Bundle bundle = bundleContext.installBundle("file:" + getBundlePath());
         Assert.assertNotNull("Error loading bundle: null returned", bundle);
         Assert.assertEquals("Error loading bundle: symbolic name mismatch", getExpectedBundleSymbolicName(),

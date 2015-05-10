@@ -16,20 +16,27 @@
  */
 package org.apache.logging.log4j.core.appender;
 
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.core.Layout;
-import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.helpers.Constants;
-import org.apache.logging.log4j.core.impl.Log4jLogEvent;
-import org.apache.logging.log4j.core.layout.PatternLayout;
-import org.apache.logging.log4j.message.SimpleMessage;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import static org.easymock.EasyMock.anyInt;
+import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.expectLastCall;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import static org.junit.Assert.*;
+
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.Layout;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.impl.Log4jLogEvent;
+import org.apache.logging.log4j.core.layout.PatternLayout;
+import org.apache.logging.log4j.core.util.Constants;
+import org.apache.logging.log4j.message.SimpleMessage;
+import org.easymock.EasyMockSupport;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 /**
  *
@@ -37,6 +44,8 @@ import static org.junit.Assert.*;
 public class ConsoleAppenderTest {
 
     private final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    EasyMockSupport mocks = new EasyMockSupport();
+    PrintStream psMock = mocks.createMock("psMock", PrintStream.class);
 
     @BeforeClass
     public static void before() {
@@ -49,10 +58,39 @@ public class ConsoleAppenderTest {
     }
 
     @Test
+    public void testConsoleStreamManagerDoesNotClose() {
+        final PrintStream ps = System.out;
+
+        psMock.write((byte[]) anyObject(), anyInt(), anyInt());
+        expectLastCall().anyTimes();
+        psMock.flush();
+
+        mocks.replayAll();
+        System.setOut(psMock);
+        final Layout<String> layout = PatternLayout.createLayout(null, null, null, null, false, false, null, null);
+        final ConsoleAppender app = ConsoleAppender.createAppender(layout, null, "SYSTEM_OUT", "Console", "false",
+                "false");
+        app.start();
+        assertTrue("Appender did not start", app.isStarted());
+
+        final LogEvent event = new Log4jLogEvent("TestLogger", null, ConsoleAppenderTest.class.getName(), Level.INFO,
+                new SimpleMessage("Test"), null);
+        app.append(event);
+
+        app.stop();
+        assertFalse("Appender did not stop", app.isStarted());
+
+        System.setOut(ps);
+        mocks.verifyAll();
+    }
+    
+    @Test
     public void testFollow() {
         final PrintStream ps = System.out;
-        final Layout<String> layout = PatternLayout.createLayout(null, null, null, null, null);
-        final ConsoleAppender app = ConsoleAppender.createAppender(layout, null, "SYSTEM_OUT", "Console", "true", "false");
+        final ConsoleAppender app = ConsoleAppender.newBuilder()
+            .setFollow(true)
+            .setIgnoreExceptions(false)
+            .build();
         app.start();
         final LogEvent event = new Log4jLogEvent("TestLogger", null, ConsoleAppenderTest.class.getName(), Level.INFO,
             new SimpleMessage("Test"), null);
@@ -63,10 +101,9 @@ public class ConsoleAppenderTest {
         System.setOut(ps);
         final String msg = baos.toString();
         assertNotNull("No message", msg);
-        assertTrue("Incorrect message: " + msg , msg.endsWith("Test" + Constants.LINE_SEP));
+        assertTrue("Incorrect message: " + msg , msg.endsWith("Test" + Constants.LINE_SEPARATOR));
         app.stop();
         assertFalse("Appender did not stop", app.isStarted());
     }
-
 
 }

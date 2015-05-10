@@ -16,12 +16,10 @@
  */
 package org.apache.logging.log4j.spi;
 
-import java.util.Collection;
-
 import org.apache.logging.log4j.ThreadContext;
 
 /**
- *
+ * Service provider interface to implement custom NDC behavior for {@link ThreadContext}.
  */
-public interface ThreadContextStack extends ThreadContext.ContextStack, Collection<String> {
+public interface ThreadContextStack extends ThreadContext.ContextStack {
 }

@@ -77,11 +77,11 @@ public final class Route {
             sb.append("invalid Route");
         }
         if (key != null) {
-            sb.append(" key='").append(key).append("'");
+            sb.append(" key='").append(key).append('\'');
         } else {
             sb.append(" default");
         }
-        sb.append(")");
+        sb.append(')');
         return sb.toString();
     }
 
@@ -98,9 +98,6 @@ public final class Route {
             @PluginAttribute("key") final String key,
             @PluginNode final Node node) {
         if (node != null && node.hasChildren()) {
-            for (final Node child : node.getChildren()) {
-
-            }
             if (appenderRef != null) {
                 LOGGER.error("A route cannot be configured with an appender reference and an appender definition");
                 return null;

@@ -18,12 +18,11 @@ package org.apache.logging.log4j.core.filter;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
+import org.apache.logging.log4j.core.AbstractLifeCycle;
 import org.apache.logging.log4j.core.Filter;
-import org.apache.logging.log4j.core.LifeCycle;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.message.Message;
-import org.apache.logging.log4j.status.StatusLogger;
 
 /**
  * Users should extend this class to implement filters. Filters can be either context wide or attached to
@@ -31,12 +30,9 @@ import org.apache.logging.log4j.status.StatusLogger;
  * which case it will only implement the required method(s). The rest will default to return NEUTRAL.
  *
  */
-public abstract class AbstractFilter implements Filter, LifeCycle {
+public abstract class AbstractFilter extends AbstractLifeCycle implements Filter {
     
-    /**
-     * Allow subclasses access to the status logger without creating another instance.
-     */
-    protected static final org.apache.logging.log4j.Logger LOGGER = StatusLogger.getLogger();
+    private static final long serialVersionUID = 1L;
 
     /**
      * The onMatch Result.
@@ -47,8 +43,6 @@ public abstract class AbstractFilter implements Filter, LifeCycle {
      * The onMismatch Result.
      */
     protected final Result onMismatch;
-
-    private boolean started;
 
     /**
      * The default constructor.
@@ -67,52 +61,35 @@ public abstract class AbstractFilter implements Filter, LifeCycle {
         this.onMismatch = onMismatch == null ? Result.DENY : onMismatch;
     }
 
-    /**
-     * Mark the Filter as started.
-     */
     @Override
-    public void start() {
-        started = true;
+    public boolean equals(final Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!super.equals(obj)) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final AbstractFilter other = (AbstractFilter) obj;
+        if (onMatch != other.onMatch) {
+            return false;
+        }
+        if (onMismatch != other.onMismatch) {
+            return false;
+        }
+        return true;
     }
 
     /**
-     * Determine if the the Filter has started.
-     * @return true if the Filter is started, false otherwise.
+     * Context Filter method. The default returns NEUTRAL.
+     * @param event The LogEvent.
+     * @return The Result of filtering.
      */
     @Override
-    public boolean isStarted() {
-        return started;
-    }
-
-    /**
-     * Mark the Filter as stopped.
-     */
-    @Override
-    public void stop() {
-        started = false;
-    }
-
-    /**
-     * Returns the Result to be returned when a match does not occur.
-     * @return the onMismatch Result.
-     */
-    @Override
-    public final Result getOnMismatch() {
-        return onMismatch;
-    }
-
-    /**
-     * Returns the Result to be returned when a match occurs.
-     * @return the onMatch Result.
-     */
-    @Override
-    public final Result getOnMatch() {
-        return onMatch;
-    }
-
-    @Override
-    public String toString() {
-        return this.getClass().getSimpleName();
+    public Result filter(final LogEvent event) {
+        return Result.NEUTRAL;
     }
 
     /**
@@ -121,12 +98,12 @@ public abstract class AbstractFilter implements Filter, LifeCycle {
      * @param level The logging Level.
      * @param marker The Marker, if any.
      * @param msg The message, if present.
-     * @param params An array of parameters or null.
+     * @param t A throwable or null.
      * @return The Result of filtering.
      */
     @Override
-    public Result filter(final Logger logger, final Level level, final Marker marker, final String msg,
-                         final Object... params) {
+    public Result filter(final Logger logger, final Level level, final Marker marker, final Message msg,
+                         final Throwable t) {
         return Result.NEUTRAL;
     }
 
@@ -151,22 +128,44 @@ public abstract class AbstractFilter implements Filter, LifeCycle {
      * @param level The logging Level.
      * @param marker The Marker, if any.
      * @param msg The message, if present.
-     * @param t A throwable or null.
+     * @param params An array of parameters or null.
      * @return The Result of filtering.
      */
     @Override
-    public Result filter(final Logger logger, final Level level, final Marker marker, final Message msg,
-                         final Throwable t) {
+    public Result filter(final Logger logger, final Level level, final Marker marker, final String msg,
+                         final Object... params) {
         return Result.NEUTRAL;
     }
 
     /**
-     * Context Filter method. The default returns NEUTRAL.
-     * @param event The LogEvent.
-     * @return The Result of filtering.
+     * Returns the Result to be returned when a match occurs.
+     * @return the onMatch Result.
      */
     @Override
-    public Result filter(final LogEvent event) {
-        return Result.NEUTRAL;
+    public final Result getOnMatch() {
+        return onMatch;
+    }
+
+    /**
+     * Returns the Result to be returned when a match does not occur.
+     * @return the onMismatch Result.
+     */
+    @Override
+    public final Result getOnMismatch() {
+        return onMismatch;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + ((onMatch == null) ? 0 : onMatch.hashCode());
+        result = prime * result + ((onMismatch == null) ? 0 : onMismatch.hashCode());
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName();
     }
 }

@@ -25,7 +25,7 @@ import org.apache.logging.log4j.core.config.plugins.Plugin;
  * Formats an integer.
  */
 @Plugin(name = "IntegerPatternConverter", category = "FileConverter")
-@ConverterKeys({"i", "index" })
+@ConverterKeys({ "i", "index" })
 public final class IntegerPatternConverter extends AbstractPatternConverter implements ArrayPatternConverter {
     
     /**
@@ -68,9 +68,7 @@ public final class IntegerPatternConverter extends AbstractPatternConverter impl
     public void format(final Object obj, final StringBuilder toAppendTo) {
         if (obj instanceof Integer) {
             toAppendTo.append(obj.toString());
-        }
-
-        if (obj instanceof Date) {
+        } else if (obj instanceof Date) {
             toAppendTo.append(Long.toString(((Date) obj).getTime()));
         }
     }

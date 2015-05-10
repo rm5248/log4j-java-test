@@ -53,8 +53,9 @@ public interface Appender {
     /**
      * Release any resources allocated within the appender such as file
      * handles, network connections, etc.
-     * <p/>
-     * <p>It is a programming error to append to a closed appender.
+     * <p>
+     * It is a programming error to append to a closed appender.
+     * </p>
      *
      * @since 0.8.4
      */
@@ -128,10 +129,11 @@ public interface Appender {
      * a layout is not required, then layout configuration will be
      * skipped even if there is available layout configuration
      * information at the disposal of the configurator..
-     * <p/>
-     * <p>In the rather exceptional case, where the appender
+     * <p>
+     * In the rather exceptional case, where the appender
      * implementation admits a layout but can also work without it, then
      * the appender should return {@code true}.
+     * </p>
      * @return true if a Layout is required.
      *
      * @since 0.8.4

@@ -22,37 +22,32 @@ import java.io.OutputStream;
 import org.apache.logging.log4j.core.Layout;
 
 /**
- * Manage an OutputStream so that it can be shared by multiple Appenders and will
+ * Manages an OutputStream so that it can be shared by multiple Appenders and will
  * allow appenders to reconfigure without requiring a new stream.
  */
 public class OutputStreamManager extends AbstractManager {
 
     private volatile OutputStream os;
-
-    private final byte[] footer;
-    private final byte[] header;
+    protected final Layout<?> layout;
 
     protected OutputStreamManager(final OutputStream os, final String streamName, final Layout<?> layout) {
         super(streamName);
         this.os = os;
+        this.layout = layout;
         if (layout != null) {
-            this.footer = layout.getFooter();
-            this.header = layout.getHeader();
-            if (this.header != null) {
+            final byte[] header = layout.getHeader();
+            if (header != null) {
                 try {
                     this.os.write(header, 0, header.length);
                 } catch (final IOException ioe) {
                     LOGGER.error("Unable to write header", ioe);
                 }
             }
-        } else {
-            this.footer = null;
-            this.header = null;
         }
     }
 
     /**
-     * Create a Manager.
+     * Creates a Manager.
      *
      * @param name The name of the stream to manage.
      * @param data The data to pass to the Manager.
@@ -70,10 +65,21 @@ public class OutputStreamManager extends AbstractManager {
      */
     @Override
     public void releaseSub() {
+        writeFooter();
+        close();
+    }
+
+    /**
+     * Writes the footer.
+     */
+    protected void writeFooter() {
+        if (layout == null) {
+            return;
+        }
+        final byte[] footer = layout.getFooter();
         if (footer != null) {
             write(footer);
         }
-        close();
     }
 
     /**
@@ -89,6 +95,7 @@ public class OutputStreamManager extends AbstractManager {
     }
 
     protected void setOutputStream(final OutputStream os) {
+        final byte[] header = layout.getHeader();
         if (header != null) {
             try {
                 os.write(header, 0, header.length);
@@ -120,8 +127,7 @@ public class OutputStreamManager extends AbstractManager {
     }
 
     /**
-     * Some output streams synchronize writes while others do not. Synchronizing here insures that
-     * log events won't be intertwined.
+     * Some output streams synchronize writes while others do not.
      * @param bytes The serialized Log event.
      * @throws AppenderLoggingException if an error occurs.
      */
@@ -142,7 +148,7 @@ public class OutputStreamManager extends AbstractManager {
     }
 
     /**
-     * Flush any buffers.
+     * Flushes any buffers.
      */
     public synchronized void flush() {
         try {
