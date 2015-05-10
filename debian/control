@@ -6,6 +6,7 @@ Uploaders: Emmanuel Bourg <ebourg@apache.org>
 Build-Depends: cdbs, debhelper (>= 9), default-jdk, maven-debian-helper (>= 1.5)
 Build-Depends-Indep: default-jdk-doc,
                      libapache-pom-java (>= 10),
+                     libcommons-lang3-java,
                      libcommons-logging-java,
                      libcommons-logging-java-doc,
                      libdisruptor-java,
