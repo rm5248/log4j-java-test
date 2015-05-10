@@ -36,3 +36,5 @@ org.hsqldb hsqldb * * * *
 org.mockejb mockejb * * * *
 org.slf4j slf4j-ext * * * *
 org.springframework spring-test * * * *
+org.jboss.spec.javax.jms jboss-jms-api * * * *
+org.codehaus.woodstox woodstox-core-asl * * * *
