@@ -42,6 +42,7 @@ License: Apache-2.0
 
 Files: debian/*
 Copyright: 2014, Emmanuel Bourg <ebourg@apache.org>
+           2015, Markus Koschany <apo@gambaru.de>
 License: Apache-2.0
 
 License: Apache-2.0
