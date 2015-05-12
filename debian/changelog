@@ -1,6 +1,6 @@
 apache-log4j2 (2.2-1) UNRELEASED; urgency=medium
 
-  [not ready yet, needs https://github.com/FasterXML/jackson-dataformat-xml ? ]
+  [not ready yet], changelog update follows soon
   * Imported Upstream version 2.2
 
  -- Markus Koschany <apo@gambaru.de>  Sun, 10 May 2015 21:37:10 +0200
