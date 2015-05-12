@@ -21,5 +21,4 @@ s/org.apache.tomcat/javax.servlet/ jsp-api jar s/.*/2.1/ * *
 s/org.apache.tomcat/javax.servlet/ servlet-api jar s/.*/2.5/ * *
 s/org.apache.felix/org.osgi/ org.osgi.core * * * *
 org.apache.commons commons-lang3 jar s/3\..*/3.x/ * *
-org.jboss.spec.javax.jms jboss-jms-api_1.1_spec * s/1\..*/debian/ * *
-
+s/org\.jboss\.spec\.javax\.jms/org.apache.geronimo.specs/ s/jboss-jms-api_1\.1_spec/geronimo-jms_1.1_spec/ * s/.*/debian/ * *
