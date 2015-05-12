@@ -25,6 +25,9 @@ apache-log4j2 (2.2-1) unstable; urgency=medium
     - Add libjboss-jms-api-java to Build-Depends-Indep.
   * Update maven.rules due to additional build-dependencies.
 
+  [ Emmanuel Bourg ]
+  * debian/watch: Watch the release tags on Github
+
  -- Markus Koschany <apo@gambaru.de>  Tue, 12 May 2015 18:59:19 +0200
 
 apache-log4j2 (2.0~beta9-1) unstable; urgency=medium
