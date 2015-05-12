@@ -54,8 +54,8 @@ Description: Apache Log4j - Logging Framework for Java
  Support for multiple APIs: While the Log4j 2 API will provide the best
  performance, Log4j 2 provides support for the SLF4J and Commons Logging APIs.
  .
- Automatic Reloading of Configurations: Log4j 2 can automatically reload its 
- configuration upon modification. It will do so without losing log events 
+ Automatic Reloading of Configurations: Log4j 2 can automatically reload its
+ configuration upon modification. It will do so without losing log events
  while reconfiguration is taking place.
  .
  Advanced Filtering: Log4j 2 supports filtering based on context
@@ -71,7 +71,7 @@ Description: Apache Log4j - Logging Framework for Java
  Property Support: Properties can be referenced in a configuration, Log4j will
  directly replace them, or Log4j will pass them to an underlying component that
  will dynamically resolve them. Properties come from values defined in the
- configuration file, system properties, environment variables, the 
+ configuration file, system properties, environment variables, the
  ThreadContext Map, and data present in the event.
 
 Package: liblog4j2-java-doc
