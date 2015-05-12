@@ -37,3 +37,6 @@ org.mockejb mockejb * * * *
 org.slf4j slf4j-ext * * * *
 org.springframework spring-test * * * *
 org.codehaus.woodstox woodstox-core-asl * * * *
+net.javacrumbs.json-unit json-unit * * * *
+org.apache.activemq activemq-broker * * * *
+
