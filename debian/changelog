@@ -25,6 +25,7 @@ apache-log4j2 (2.2-1) unstable; urgency=medium
   * Update maven.rules due to additional build-dependencies.
 
   [ Emmanuel Bourg ]
+  * Build depend on libmail-java instead of libgnumail-java
   * debian/watch: Watch the release tags on Github
 
  -- Markus Koschany <apo@gambaru.de>  Fri, 29 May 2015 14:43:11 +0200
