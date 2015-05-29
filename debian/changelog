@@ -1,27 +1,21 @@
 apache-log4j2 (2.2-1) unstable; urgency=medium
 
   * Team upload.
-  * Imported Upstream version 2.2.
+  * New upstream release
   * liblog4j2-java.poms:
-    - Remove log4j-osgi/pom.xml --ignore
-    - Ignore log4j-bom.
-    - Add log4j-nosql --has-package-version --java-lib line.
-    - Add log4j-web pom.xml.
-    - Add log4j2-perf pom.xml.
-    - Ignore log4j2-perf for now because it requires Maven 3.
-    - Ignore log4j-iostreams.
-    - Add log4j2-jul.
+    - Add and enable the new modules: log4j-nosql, log4j-web, log4j2-jul
+      and log4j-bom
+    - Remove the log4j-osgi module
+    - Ignore log4j-iostreams and log4j-perf modules
   * maven.ignoreRules: Ignore all artifacts which make the build FTBFS,
     including maven-failsafe-plugin, woodstox-core-asl, json-unit,
     activemq-broker.
   * debian/control:
     - Declare compliance with Debian Policy 3.9.6.
     - Switch Vcs-Browser field to cgit.
-    - Add libmaven-source-plugin-java to Build-Depends-Indep.
-    - Add libcommons-lang3-java to Build-Depends-Indep.
-    - Add libjackson2-dataformat-yaml to Build-Depends-Indep.
-    - Add libjackson2-dataformat-xml-java to Build-Depends-Indep.
-    - Add jackson-module-jaxb-annotations to Build-Depends-Indep.
+    - New build dependencies on libmaven-source-plugin-java,
+      libcommons-lang3-java, libjackson2-dataformat-yaml,
+      libjackson2-dataformat-xml-java and jackson-module-jaxb-annotations
   * Update maven.rules due to additional build-dependencies.
 
   [ Emmanuel Bourg ]
