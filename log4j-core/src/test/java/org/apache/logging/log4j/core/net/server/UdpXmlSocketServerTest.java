@@ -20,7 +20,6 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.charset.Charset;
 
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.junit.AfterClass;
@@ -32,9 +31,9 @@ public class UdpXmlSocketServerTest extends AbstractSocketServerTest {
 
     @BeforeClass
     public static void setupClass() throws Exception {
-        ((LoggerContext) LogManager.getContext(false)).reconfigure();
+        (LoggerContext.getContext(false)).reconfigure();
         // Use a tiny buffer just to test the code, the TCP test uses a large buffer
-        server = new UdpSocketServer<InputStream>(PORT_NUM, new XmlInputStreamLogEventBridge(100,
+        server = new UdpSocketServer<>(PORT_NUM, new XmlInputStreamLogEventBridge(100,
                 Charset.defaultCharset()));
         thread = server.startNewThread();
     }

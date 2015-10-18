@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.junit.InitialLoggerContext;
+import org.apache.logging.log4j.junit.LoggerContextRule;
 import org.apache.logging.log4j.message.MapMessage;
 import org.apache.logging.log4j.test.appender.ListAppender;
 import org.junit.Before;
@@ -39,7 +39,7 @@ public class CollectionLoggingTest {
     private ListAppender app;
 
     @ClassRule
-    public static InitialLoggerContext context = new InitialLoggerContext(CONFIG);
+    public static LoggerContextRule context = new LoggerContextRule(CONFIG);
 
     @Before
     public void before() {
@@ -58,7 +58,7 @@ public class CollectionLoggingTest {
     public void testSimpleMap() {
         final Logger logger = context.getLogger(CollectionLoggingTest.class.getName());
         logger.error(System.getProperties());
-        final Map<String, String> map = new HashMap<String, String>();
+        final Map<String, String> map = new HashMap<>();
         map.put("MyKey1", "MyValue1");
         map.put("MyKey2", "MyValue2");
         logger.error(new MapMessage(map));

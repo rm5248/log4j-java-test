@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 import java.util.zip.DeflaterOutputStream;
@@ -36,17 +37,18 @@ import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import org.apache.logging.log4j.core.net.Severity;
-import org.apache.logging.log4j.core.util.Charsets;
 import org.apache.logging.log4j.core.util.KeyValuePair;
 import org.apache.logging.log4j.status.StatusLogger;
+import org.apache.logging.log4j.util.Strings;
 
 import com.fasterxml.jackson.core.io.JsonStringEncoder;
 
 /**
  * Lays out events in the Graylog Extended Log Format (GELF) 1.1.
  * <p>
- * This layout compresses JSON to GZIP or ZLIB (the {@code compressionType}) if log event data is larger than 1024 bytes
- * (the {@code compressionThreshold}). This layout does not implement chunking.
+ * This layout compresses JSON to GZIP or ZLIB (the {@code compressionType}) if
+ * log event data is larger than 1024 bytes (the {@code compressionThreshold}).
+ * This layout does not implement chunking.
  * </p>
  * <p>
  * Configure as follows to send to a Graylog2 server:
@@ -64,7 +66,8 @@ import com.fasterxml.jackson.core.io.JsonStringEncoder;
  * </pre>
  *
  * @see <a href="http://graylog2.org/gelf">GELF home page</a>
- * @see <a href="http://graylog2.org/resources/gelf/specification">GELF specification</a>
+ * @see <a href="http://graylog2.org/resources/gelf/specification">GELF
+ *      specification</a>
  */
 @Plugin(name = "GelfLayout", category = Node.CATEGORY, elementType = Layout.ELEMENT_TYPE, printObject = true)
 public final class GelfLayout extends AbstractStringLayout {
@@ -107,7 +110,7 @@ public final class GelfLayout extends AbstractStringLayout {
             //@formatter:off
             @PluginAttribute("host") final String host,
             @PluginElement("AdditionalField") final KeyValuePair[] additionalFields,
-            @PluginAttribute(value = "compressionThreshold",
+            @PluginAttribute(value = "compressionType",
                 defaultString = "GZIP") final CompressionType compressionType,
             @PluginAttribute(value = "compressionThreshold",
                 defaultInt= COMPRESSION_THRESHOLD) final int compressionThreshold) {
@@ -145,7 +148,7 @@ public final class GelfLayout extends AbstractStringLayout {
 
     public GelfLayout(final String host, final KeyValuePair[] additionalFields, final CompressionType compressionType,
             final int compressionThreshold) {
-        super(Charsets.UTF_8);
+        super(StandardCharsets.UTF_8);
         this.host = host;
         this.additionalFields = additionalFields;
         this.compressionType = compressionType;
@@ -155,13 +158,13 @@ public final class GelfLayout extends AbstractStringLayout {
     private byte[] compress(final byte[] bytes) {
         try {
             final ByteArrayOutputStream baos = new ByteArrayOutputStream(compressionThreshold / 8);
-            final DeflaterOutputStream stream = compressionType.createDeflaterOutputStream(baos);
-            if (stream == null) {
-                return bytes;
+            try (final DeflaterOutputStream stream = compressionType.createDeflaterOutputStream(baos)) {
+                if (stream == null) {
+                    return bytes;
+                }
+                stream.write(bytes);
+                stream.finish();
             }
-            stream.write(bytes);
-            stream.finish();
-            stream.close();
             return baos.toByteArray();
         } catch (final IOException e) {
             StatusLogger.getLogger().error(e);
@@ -191,7 +194,7 @@ public final class GelfLayout extends AbstractStringLayout {
         final JsonStringEncoder jsonEncoder = JsonStringEncoder.getInstance();
         builder.append('{');
         builder.append("\"version\":\"1.1\",");
-        builder.append("\"host\":\"").append(jsonEncoder.quoteAsString(host)).append(QC);
+        builder.append("\"host\":\"").append(jsonEncoder.quoteAsString(toNullSafeString(host))).append(QC);
         builder.append("\"timestamp\":").append(formatTimestamp(event.getTimeMillis())).append(C);
         builder.append("\"level\":").append(formatLevel(event.getLevel())).append(C);
         if (event.getThreadName() != null) {
@@ -203,20 +206,24 @@ public final class GelfLayout extends AbstractStringLayout {
 
         for (final KeyValuePair additionalField : additionalFields) {
             builder.append(QU).append(jsonEncoder.quoteAsString(additionalField.getKey())).append("\":\"")
-                    .append(jsonEncoder.quoteAsString(additionalField.getValue())).append(QC);
+                    .append(jsonEncoder.quoteAsString(toNullSafeString(additionalField.getValue()))).append(QC);
         }
         for (final Map.Entry<String, String> entry : event.getContextMap().entrySet()) {
             builder.append(QU).append(jsonEncoder.quoteAsString(entry.getKey())).append("\":\"")
-                    .append(jsonEncoder.quoteAsString(entry.getValue())).append(QC);
+                    .append(jsonEncoder.quoteAsString(toNullSafeString(entry.getValue()))).append(QC);
         }
         if (event.getThrown() != null) {
             builder.append("\"full_message\":\"").append(jsonEncoder.quoteAsString(formatThrowable(event.getThrown())))
                     .append(QC);
         }
 
-        builder.append("\"short_message\":\"")
-                .append(jsonEncoder.quoteAsString(event.getMessage().getFormattedMessage())).append(Q);
+        builder.append("\"short_message\":\"").append(jsonEncoder.quoteAsString(toNullSafeString(event.getMessage().getFormattedMessage())))
+                .append(Q);
         builder.append('}');
         return builder.toString();
+    }
+
+    private String toNullSafeString(final String s) {
+        return s == null ? Strings.EMPTY : s;
     }
 }

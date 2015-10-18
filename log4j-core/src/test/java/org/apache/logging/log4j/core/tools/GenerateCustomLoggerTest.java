@@ -37,9 +37,10 @@ import javax.tools.ToolProvider;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.TestLogger;
-import org.apache.logging.log4j.core.tools.Generate;
 import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.message.MessageFactory;
+import org.apache.logging.log4j.util.MessageSupplier;
+import org.apache.logging.log4j.util.Supplier;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -62,27 +63,28 @@ public class GenerateCustomLoggerTest {
         final String src = Generate.generateSource(CLASSNAME, levels, Generate.Type.CUSTOM);
         final File f = new File("target/test-classes/org/myorg/MyCustomLogger.java");
         f.getParentFile().mkdirs();
-        final FileOutputStream out = new FileOutputStream(f);
-        out.write(src.getBytes(Charset.defaultCharset()));
-        out.close();
+        try (final FileOutputStream out = new FileOutputStream(f)) {
+            out.write(src.getBytes(Charset.defaultCharset()));
+        }
 
         // set up compiler
         final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        final DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
-        final StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
-        final Iterable<? extends JavaFileObject> compilationUnits = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(f));
+        final DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        final List<String> errors = new ArrayList<>();
+        try (final StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null)) {
+            final Iterable<? extends JavaFileObject> compilationUnits = fileManager.getJavaFileObjectsFromFiles(Arrays
+                    .asList(f));
 
-        // compile generated source
-        compiler.getTask(null, fileManager, diagnostics, null, null, compilationUnits).call();
+            // compile generated source
+            compiler.getTask(null, fileManager, diagnostics, null, null, compilationUnits).call();
 
-        // check we don't have any compilation errors
-        final List<String> errors = new ArrayList<String>();
-        for (final Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
-            if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
-                errors.add(String.format("Compile error: %s%n", diagnostic.getMessage(Locale.getDefault())));
+            // check we don't have any compilation errors
+            for (final Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
+                if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
+                    errors.add(String.format("Compile error: %s%n", diagnostic.getMessage(Locale.getDefault())));
+                }
             }
         }
-        fileManager.close();
         assertTrue(errors.toString(), errors.isEmpty());
 
         // load the compiled class
@@ -116,6 +118,18 @@ public class GenerateCustomLoggerTest {
             cls.getDeclaredMethod(name, String.class, Throwable.class);
             cls.getDeclaredMethod(name, String.class, Object[].class);
             cls.getDeclaredMethod(name, Marker.class, String.class, Object[].class);
+
+            // 2.4 lambda support
+            cls.getDeclaredMethod(name, Marker.class, MessageSupplier.class);
+            cls.getDeclaredMethod(name, Marker.class, MessageSupplier.class, Throwable.class);
+            cls.getDeclaredMethod(name, Marker.class, String.class, Supplier[].class);
+            cls.getDeclaredMethod(name, Marker.class, Supplier.class);
+            cls.getDeclaredMethod(name, Marker.class, Supplier.class, Throwable.class);
+            cls.getDeclaredMethod(name, MessageSupplier.class);
+            cls.getDeclaredMethod(name, MessageSupplier.class, Throwable.class);
+            cls.getDeclaredMethod(name, String.class, Supplier[].class);
+            cls.getDeclaredMethod(name, Supplier.class);
+            cls.getDeclaredMethod(name, Supplier.class, Throwable.class);
         }
 
         // now see if it actually works...

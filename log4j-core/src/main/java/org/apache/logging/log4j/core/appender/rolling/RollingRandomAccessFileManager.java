@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.appender.AppenderLoggingException;
 import org.apache.logging.log4j.core.appender.ManagerFactory;
+import org.apache.logging.log4j.core.util.NullOutputStream;
 
 /**
  * Extends RollingFileManager but instead of using a buffered output stream,
@@ -43,14 +44,15 @@ public class RollingRandomAccessFileManager extends RollingFileManager {
     private final boolean isImmediateFlush;
     private RandomAccessFile randomAccessFile;
     private final ByteBuffer buffer;
-    private final ThreadLocal<Boolean> isEndOfBatch = new ThreadLocal<Boolean>();
+    private final ThreadLocal<Boolean> isEndOfBatch = new ThreadLocal<>();
 
     public RollingRandomAccessFileManager(final RandomAccessFile raf, final String fileName,
             final String pattern, final OutputStream os, final boolean append,
             final boolean immediateFlush, final int bufferSize, final long size, final long time,
             final TriggeringPolicy policy, final RolloverStrategy strategy,
-            final String advertiseURI, final Layout<? extends Serializable> layout) {
-        super(fileName, pattern, os, append, size, time, policy, strategy, advertiseURI, layout, bufferSize);
+            final String advertiseURI, final Layout<? extends Serializable> layout, final boolean writeHeader) {
+        super(fileName, pattern, os, append, size, time, policy, strategy, advertiseURI, layout, bufferSize,
+                writeHeader);
         this.isImmediateFlush = immediateFlush;
         this.randomAccessFile = raf;
         isEndOfBatch.set(Boolean.FALSE);
@@ -180,6 +182,7 @@ public class RollingRandomAccessFileManager extends RollingFileManager {
             final long size = data.append ? file.length() : 0;
             final long time = file.exists() ? file.lastModified() : System.currentTimeMillis();
 
+            final boolean writeHeader = !data.append || !file.exists();
             RandomAccessFile raf = null;
             try {
                 raf = new RandomAccessFile(name, "rw");
@@ -191,9 +194,9 @@ public class RollingRandomAccessFileManager extends RollingFileManager {
                     LOGGER.trace("RandomAccessFile {} set length to 0", name);
                     raf.setLength(0);
                 }
-                return new RollingRandomAccessFileManager(raf, name, data.pattern, new DummyOutputStream(), data.append,
-                        data.immediateFlush, data.bufferSize, size, time, data.policy, data.strategy, data.advertiseURI,
-                        data.layout);
+                return new RollingRandomAccessFileManager(raf, name, data.pattern, NullOutputStream.NULL_OUTPUT_STREAM,
+                        data.append, data.immediateFlush, data.bufferSize, size, time, data.policy, data.strategy,
+                        data.advertiseURI, data.layout, writeHeader);
             } catch (final IOException ex) {
                 LOGGER.error("Cannot access RandomAccessFile {}) " + ex);
                 if (raf != null) {
@@ -205,17 +208,6 @@ public class RollingRandomAccessFileManager extends RollingFileManager {
                 }
             }
             return null;
-        }
-    }
-
-    /** {@code OutputStream} subclass that does not write anything. */
-    static class DummyOutputStream extends OutputStream {
-        @Override
-        public void write(final int b) throws IOException {
-        }
-
-        @Override
-        public void write(final byte[] b, final int off, final int len) throws IOException {
         }
     }
 

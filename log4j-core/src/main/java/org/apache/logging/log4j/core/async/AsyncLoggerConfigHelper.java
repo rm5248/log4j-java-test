@@ -25,6 +25,7 @@ import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.jmx.RingBufferAdmin;
 import org.apache.logging.log4j.core.util.Integers;
 import org.apache.logging.log4j.status.StatusLogger;
+import org.apache.logging.log4j.util.PropertiesUtil;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.EventFactory;
@@ -69,7 +70,7 @@ class AsyncLoggerConfigHelper {
     private static ExecutorService executor;
 
     private static volatile int count = 0;
-    private static ThreadLocal<Boolean> isAppenderThread = new ThreadLocal<Boolean>();
+    private static ThreadLocal<Boolean> isAppenderThread = new ThreadLocal<>();
 
     /**
      * Factory used to populate the RingBuffer with events. These event objects
@@ -113,11 +114,10 @@ class AsyncLoggerConfigHelper {
         final WaitStrategy waitStrategy = createWaitStrategy();
         executor = Executors.newSingleThreadExecutor(threadFactory);
         initThreadLocalForExecutorThread();
-        disruptor = new Disruptor<Log4jEventWrapper>(FACTORY, ringBufferSize,
-                executor, ProducerType.MULTI, waitStrategy);
+        disruptor = new Disruptor<>(FACTORY, ringBufferSize, executor, ProducerType.MULTI, waitStrategy);
         final EventHandler<Log4jEventWrapper>[] handlers = new Log4jEventWrapperHandler[] {//
         new Log4jEventWrapperHandler() };
-        final ExceptionHandler errorHandler = getExceptionHandler();
+        final ExceptionHandler<Log4jEventWrapper> errorHandler = getExceptionHandler();
         disruptor.handleExceptionsWith(errorHandler);
         disruptor.handleEventsWith(handlers);
 
@@ -144,7 +144,7 @@ class AsyncLoggerConfigHelper {
 
     private static int calculateRingBufferSize() {
         int ringBufferSize = RINGBUFFER_DEFAULT_SIZE;
-        final String userPreferredRBSize = System.getProperty(
+        final String userPreferredRBSize = PropertiesUtil.getProperties().getStringProperty(
                 "AsyncLoggerConfig.RingBufferSize",
                 String.valueOf(ringBufferSize));
         try {
@@ -163,22 +163,18 @@ class AsyncLoggerConfigHelper {
         return Integers.ceilingNextPowerOfTwo(ringBufferSize);
     }
 
-    private static ExceptionHandler getExceptionHandler() {
-        final String cls = System
-                .getProperty("AsyncLoggerConfig.ExceptionHandler");
+    private static ExceptionHandler<Log4jEventWrapper> getExceptionHandler() {
+        final String cls = System.getProperty("AsyncLoggerConfig.ExceptionHandler");
         if (cls == null) {
             return null;
         }
         try {
             @SuppressWarnings("unchecked")
-            final Class<? extends ExceptionHandler> klass = (Class<? extends ExceptionHandler>) Class
+            final Class<? extends ExceptionHandler<Log4jEventWrapper>> klass = (Class<? extends ExceptionHandler<Log4jEventWrapper>>) Class
                     .forName(cls);
-            final ExceptionHandler result = klass.newInstance();
-            return result;
+            return klass.newInstance();
         } catch (final Exception ignored) {
-            LOGGER.debug(
-                    "AsyncLoggerConfig.ExceptionHandler not set: error creating "
-                            + cls + ": ", ignored);
+            LOGGER.debug("AsyncLoggerConfig.ExceptionHandler not set: error creating " + cls + ": ", ignored);
             return null;
         }
     }
@@ -222,9 +218,15 @@ class AsyncLoggerConfigHelper {
             event.loggerConfig.asyncCallAppenders(event.event);
             event.clear();
 
-            // notify the BatchEventProcessor that the sequence has progressed.
-            // Without this callback the sequence would not be progressed
-            // until the batch has completely finished.
+            notifyIntermediateProgress(sequence);
+        }
+
+        /**
+         * Notify the BatchEventProcessor that the sequence has progressed.
+         * Without this callback the sequence would not be progressed
+         * until the batch has completely finished.
+         */
+        private void notifyIntermediateProgress(final long sequence) {
             if (++counter > NOTIFY_PROGRESS_THRESHOLD) {
                 sequenceCallback.set(sequence);
                 counter = 0;
@@ -316,37 +318,73 @@ class AsyncLoggerConfigHelper {
      *          calling thread needs to process the event itself
      */
     public boolean callAppendersFromAnotherThread(final LogEvent event) {
-        // TODO refactor to reduce size to <= 35 bytecodes to allow JVM to inline it
         final Disruptor<Log4jEventWrapper> temp = disruptor;
-        if (temp == null) { // LOG4J2-639
+        if (!hasLog4jBeenShutDown(temp)) {
+
+            // LOG4J2-471: prevent deadlock when RingBuffer is full and object
+            // being logged calls Logger.log() from its toString() method
+            if (isCalledFromAppenderThreadAndBufferFull(temp)) {
+                // bypass RingBuffer and invoke Appender directly
+                return false;
+            }
+            enqueueEvent(event);
+        }
+        return true;
+    }
+
+    /**
+     * Returns {@code true} if the specified disruptor is null.
+     */
+    private boolean hasLog4jBeenShutDown(final Disruptor<Log4jEventWrapper> aDisruptor) {
+        if (aDisruptor == null) { // LOG4J2-639
             LOGGER.fatal("Ignoring log event after log4j was shut down");
             return true;
         }
+        return false;
+    }
 
-        // LOG4J2-471: prevent deadlock when RingBuffer is full and object
-        // being logged calls Logger.log() from its toString() method
-        if (isAppenderThread.get() == Boolean.TRUE //
-                && temp.getRingBuffer().remainingCapacity() == 0) {
-
-            // bypass RingBuffer and invoke Appender directly
-            return false;
-        }
+    private void enqueueEvent(final LogEvent event) {
         // LOG4J2-639: catch NPE if disruptor field was set to null after our check above
         try {
-            LogEvent logEvent = event;
-            if (event instanceof RingBufferLogEvent) {
-                logEvent = ((RingBufferLogEvent) event).createMemento();
-            }
-            logEvent.getMessage().getFormattedMessage(); // LOG4J2-763: ask message to freeze parameters
-
-            // Note: do NOT use the temp variable above!
-            // That could result in adding a log event to the disruptor after it was shut down,
-            // which could cause the publishEvent method to hang and never return.
-            disruptor.getRingBuffer().publishEvent(translator, logEvent, asyncLoggerConfig);
+            final LogEvent logEvent = prepareEvent(event);
+            enqueue(logEvent);
         } catch (final NullPointerException npe) {
             LOGGER.fatal("Ignoring log event after log4j was shut down.");
         }
-        return true;
+    }
+
+    private LogEvent prepareEvent(final LogEvent event) {
+        final LogEvent logEvent = ensureImmutable(event);
+        logEvent.getMessage().getFormattedMessage(); // LOG4J2-763: ask message to freeze parameters
+        return logEvent;
+    }
+
+    private void enqueue(LogEvent logEvent) {
+        // Note: do NOT use the temp variable above!
+        // That could result in adding a log event to the disruptor after it was shut down,
+        // which could cause the publishEvent method to hang and never return.
+        disruptor.getRingBuffer().publishEvent(translator, logEvent, asyncLoggerConfig);
+    }
+
+    private LogEvent ensureImmutable(final LogEvent event) {
+        LogEvent result = event;
+        if (event instanceof RingBufferLogEvent) {
+            // Deal with special case where both types of Async Loggers are used together:
+            // RingBufferLogEvents are created by the all-loggers-async type, but
+            // this event is also consumed by the some-loggers-async type (this class).
+            // The original event will be re-used and modified in an application thread later,
+            // so take a snapshot of it, which can be safely processed in the
+            // some-loggers-async background thread.
+            result = ((RingBufferLogEvent) event).createMemento();
+        }
+        return result;
+    }
+
+    /**
+     * Returns true if the specified ringbuffer is full and the Logger.log() call was made from the appender thread.
+     */
+    private boolean isCalledFromAppenderThreadAndBufferFull(Disruptor<Log4jEventWrapper> disruptor) {
+        return isAppenderThread.get() == Boolean.TRUE && disruptor.getRingBuffer().remainingCapacity() == 0;
     }
 
     /**

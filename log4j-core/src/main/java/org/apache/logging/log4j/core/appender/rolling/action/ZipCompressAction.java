@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -42,7 +43,7 @@ public final class ZipCompressAction extends AbstractAction {
     private final File destination;
 
     /**
-     * If true, attempt to delete file on completion.
+     * If true, attempts to delete file on completion.
      */
     private final boolean deleteSource;
 
@@ -52,7 +53,7 @@ public final class ZipCompressAction extends AbstractAction {
     private final int level;
 
     /**
-     * Create new instance of GzCompressAction.
+     * Creates new instance of GzCompressAction.
      *
      * @param source       file to compress, may not be null.
      * @param destination  compressed file, may not be null.
@@ -61,13 +62,8 @@ public final class ZipCompressAction extends AbstractAction {
      * @param level TODO
      */
     public ZipCompressAction(final File source, final File destination, final boolean deleteSource, final int level) {
-        if (source == null) {
-            throw new NullPointerException("source");
-        }
-
-        if (destination == null) {
-            throw new NullPointerException("destination");
-        }
+        Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(destination, "destination");
 
         this.source = source;
         this.destination = destination;
@@ -76,7 +72,7 @@ public final class ZipCompressAction extends AbstractAction {
     }
 
     /**
-     * Compress.
+     * Compresses.
      *
      * @return true if successfully compressed.
      * @throws IOException on IO exception.
@@ -87,7 +83,7 @@ public final class ZipCompressAction extends AbstractAction {
     }
 
     /**
-     * Compress a file.
+     * Compresses a file.
      *
      * @param source       file to compress, may not be null.
      * @param destination  compressed file, may not be null.
@@ -98,25 +94,22 @@ public final class ZipCompressAction extends AbstractAction {
      * @throws IOException on IO exception.
      */
     public static boolean execute(final File source, final File destination, final boolean deleteSource, final int level)
-        throws IOException {
+            throws IOException {
         if (source.exists()) {
-            final FileInputStream fis = new FileInputStream(source);
-            final FileOutputStream fos = new FileOutputStream(destination);
-            final ZipOutputStream zos = new ZipOutputStream(fos);
-            zos.setLevel(level);
+            try (final FileInputStream fis = new FileInputStream(source);
+                    final ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(destination))) {
+                zos.setLevel(level);
 
-            final ZipEntry zipEntry = new ZipEntry(source.getName());
-            zos.putNextEntry(zipEntry);
+                final ZipEntry zipEntry = new ZipEntry(source.getName());
+                zos.putNextEntry(zipEntry);
 
-            final byte[] inbuf = new byte[BUF_SIZE];
-            int n;
+                final byte[] inbuf = new byte[BUF_SIZE];
+                int n;
 
-            while ((n = fis.read(inbuf)) != -1) {
-                zos.write(inbuf, 0, n);
+                while ((n = fis.read(inbuf)) != -1) {
+                    zos.write(inbuf, 0, n);
+                }
             }
-
-            zos.close();
-            fis.close();
 
             if (deleteSource && !source.delete()) {
                 LOGGER.warn("Unable to delete " + source.toString() + '.');
@@ -129,7 +122,7 @@ public final class ZipCompressAction extends AbstractAction {
     }
 
     /**
-     * Capture exception.
+     * Captures exception.
      *
      * @param ex exception.
      */

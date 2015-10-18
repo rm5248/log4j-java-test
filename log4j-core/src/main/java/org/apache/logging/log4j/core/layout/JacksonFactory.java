@@ -49,6 +49,11 @@ abstract class JacksonFactory {
         }
 
         @Override
+        protected String getPropertNameForNanoTime() {
+            return JsonConstants.ELT_NANO_TIME;
+        }
+
+        @Override
         protected PrettyPrinter newCompactPrinter() {
             return new MinimalPrettyPrinter();
         }
@@ -77,6 +82,11 @@ abstract class JacksonFactory {
         }
 
         @Override
+        protected String getPropertNameForNanoTime() {
+            return JsonConstants.ELT_NANO_TIME;
+        }
+
+        @Override
         protected PrettyPrinter newCompactPrinter() {
             // Yes, null is the proper answer.
             return null;
@@ -96,6 +106,8 @@ abstract class JacksonFactory {
     abstract protected String getPropertNameForContextMap();
 
     abstract protected String getPropertNameForSource();
+    
+    abstract protected String getPropertNameForNanoTime();
 
     abstract protected PrettyPrinter newCompactPrinter();
 
@@ -105,13 +117,14 @@ abstract class JacksonFactory {
 
     ObjectWriter newWriter(final boolean locationInfo, final boolean properties, final boolean compact) {
         final SimpleFilterProvider filters = new SimpleFilterProvider();
-        final Set<String> except = new HashSet<String>(2);
+        final Set<String> except = new HashSet<>(2);
         if (!locationInfo) {
             except.add(this.getPropertNameForSource());
         }
         if (!properties) {
             except.add(this.getPropertNameForContextMap());
         }
+        except.add(this.getPropertNameForNanoTime());
         filters.addFilter(Log4jLogEvent.class.getName(), SimpleBeanPropertyFilter.serializeAllExcept(except));
         final ObjectWriter writer = this.newObjectMapper().writer(compact ? this.newCompactPrinter() : this.newPrettyPrinter());
         return writer.with(filters);

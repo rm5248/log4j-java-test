@@ -17,11 +17,11 @@
 package org.apache.logging.log4j.core.layout;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
 import org.apache.logging.log4j.ThreadContext;
@@ -32,8 +32,6 @@ import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.core.jackson.Log4jXmlObjectMapper;
-import org.apache.logging.log4j.core.util.Charsets;
-import org.apache.logging.log4j.core.util.Throwables;
 import org.apache.logging.log4j.message.SimpleMessage;
 import org.apache.logging.log4j.spi.AbstractLogger;
 import org.apache.logging.log4j.test.appender.ListAppender;
@@ -65,11 +63,11 @@ public class XmlLayoutTest {
     public static void setupClass() {
         ThreadContext.clearAll();
         ConfigurationFactory.setConfigurationFactory(cf);
-        final LoggerContext ctx = (LoggerContext) LogManager.getContext();
+        final LoggerContext ctx = LoggerContext.getContext();
         ctx.reconfigure();
     }
 
-    LoggerContext ctx = (LoggerContext) LogManager.getContext();
+    LoggerContext ctx = LoggerContext.getContext();
 
     Logger rootLogger = this.ctx.getLogger("");
 
@@ -120,7 +118,7 @@ public class XmlLayoutTest {
     private void testAllFeatures(final boolean includeSource, final boolean compact, final boolean includeContext) throws IOException,
             JsonParseException, JsonMappingException {
         final Log4jLogEvent expected = LogEventFixtures.createLogEvent();
-        final XmlLayout layout = XmlLayout.createLayout(includeSource, includeContext, false, compact, Charsets.UTF_8);
+        final XmlLayout layout = XmlLayout.createLayout(includeSource, includeContext, false, compact, StandardCharsets.UTF_8);
         final String str = layout.toSerializable(expected);
         // System.out.println(str);
         assertEquals(str, !compact, str.contains("\n"));
@@ -167,9 +165,7 @@ public class XmlLayoutTest {
         this.checkAttributeName("message", compact, str);
         this.checkAttributeName("localizedMessage", compact, str);
         this.checkElementName("ExtendedStackTrace", compact, str, false, true);
-        if (Throwables.isGetSuppressedAvailable()) {
-            this.checkElementName("Suppressed", compact, str, false, true);
-        }
+        this.checkElementName("Suppressed", compact, str, false, true);
         this.checkAttributeName("loggerFqcn", compact, str);
         this.checkAttributeName("endOfBatch", compact, str);
         if (includeContext) {
@@ -193,7 +189,7 @@ public class XmlLayoutTest {
     @Test
     public void testDefaultCharset() {
         final XmlLayout layout = XmlLayout.createDefaultLayout();
-        assertEquals(Charsets.UTF_8, layout.getCharset());
+        assertEquals(StandardCharsets.UTF_8, layout.getCharset());
     }
 
     /**
@@ -256,8 +252,13 @@ public class XmlLayoutTest {
     @Test
     public void testLayoutLoggerName() {
         final XmlLayout layout = XmlLayout.createLayout(false, true, true, false, null);
-        final Log4jLogEvent event = Log4jLogEvent.createEvent("a.B", null, "f.q.c.n", Level.DEBUG, 
-                new SimpleMessage("M"), null, null, null, null, "threadName", null, 1);
+        final Log4jLogEvent event = Log4jLogEvent.newBuilder() //
+                .setLoggerName("a.B") //
+                .setLoggerFqcn("f.q.c.n") //
+                .setLevel(Level.DEBUG) //
+                .setMessage(new SimpleMessage("M")) //
+                .setThreadName("threadName") //
+                .setTimeMillis(1).build();
         final String str = layout.toSerializable(event);
         assertTrue(str, str.contains("loggerName=\"a.B\""));
     }

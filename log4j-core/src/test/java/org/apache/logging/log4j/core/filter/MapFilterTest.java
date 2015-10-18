@@ -44,7 +44,7 @@ public class MapFilterTest {
 
     @After
     public void cleanup() {
-        final LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+        final LoggerContext ctx = LoggerContext.getContext(false);
         ctx.reconfigure();
         StatusLogger.getLogger().reset();
     }
@@ -91,7 +91,7 @@ public class MapFilterTest {
         assertTrue("Map does not contain key eventId", map.containsKey("eventId"));
         assertEquals("List does not contain 2 elements", 2, map.get("eventId").size());
         final Logger logger = LogManager.getLogger(MapFilterTest.class);
-        final Map<String, String> eventMap = new HashMap<String, String>();
+        final Map<String, String> eventMap = new HashMap<>();
         eventMap.put("eventId", "Login");
         logger.debug(new MapMessage(eventMap));
         final Appender app = config.getAppender("LIST");

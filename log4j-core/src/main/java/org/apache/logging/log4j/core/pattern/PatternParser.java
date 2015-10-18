@@ -16,13 +16,6 @@
  */
 package org.apache.logging.log4j.core.pattern;
 
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.core.config.plugins.util.PluginManager;
-import org.apache.logging.log4j.core.config.plugins.util.PluginType;
-import org.apache.logging.log4j.status.StatusLogger;
-import org.apache.logging.log4j.util.Strings;
-
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -30,6 +23,15 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.plugins.util.PluginManager;
+import org.apache.logging.log4j.core.config.plugins.util.PluginType;
+import org.apache.logging.log4j.core.util.NanoClockFactory;
+import org.apache.logging.log4j.status.StatusLogger;
+import org.apache.logging.log4j.util.Strings;
 
 /**
  * Most of the work of the {@link org.apache.logging.log4j.core.layout.PatternLayout} class is delegated to the
@@ -128,7 +130,7 @@ public final class PatternParser {
         final PluginManager manager = new PluginManager(converterKey);
         manager.collectPlugins(config == null ? null : config.getPluginPackages());
         final Map<String, PluginType<?>> plugins = manager.getPlugins();
-        final Map<String, Class<PatternConverter>> converters = new LinkedHashMap<String, Class<PatternConverter>>();
+        final Map<String, Class<PatternConverter>> converters = new LinkedHashMap<>();
 
         for (final PluginType<?> type : plugins.values()) {
             try {
@@ -162,16 +164,22 @@ public final class PatternParser {
 
     public List<PatternFormatter> parse(final String pattern, final boolean alwaysWriteExceptions,
             final boolean noConsoleNoAnsi) {
-        final List<PatternFormatter> list = new ArrayList<PatternFormatter>();
-        final List<PatternConverter> converters = new ArrayList<PatternConverter>();
-        final List<FormattingInfo> fields = new ArrayList<FormattingInfo>();
+        final List<PatternFormatter> list = new ArrayList<>();
+        final List<PatternConverter> converters = new ArrayList<>();
+        final List<FormattingInfo> fields = new ArrayList<>();
 
         parse(pattern, converters, fields, noConsoleNoAnsi, true);
 
         final Iterator<FormattingInfo> fieldIter = fields.iterator();
         boolean handlesThrowable = false;
 
+        NanoClockFactory.setMode(NanoClockFactory.Mode.Dummy); // LOG4J2-1074 use dummy clock by default
         for (final PatternConverter converter : converters) {
+            if (converter instanceof NanoTimePatternConverter) {
+                // LOG4J2-1074 Switch to actual clock if nanosecond timestamps are required in config.
+                // LoggerContext will notify known NanoClockFactory users that the configuration has changed.
+                NanoClockFactory.setMode(NanoClockFactory.Mode.System);
+            }
             LogEventPatternConverter pc;
             if (converter instanceof LogEventPatternConverter) {
                 pc = (LogEventPatternConverter) converter;
@@ -303,9 +311,7 @@ public final class PatternParser {
     public void parse(final String pattern, final List<PatternConverter> patternConverters,
             final List<FormattingInfo> formattingInfos, final boolean noConsoleNoAnsi,
             final boolean convertBackslashes) {
-        if (pattern == null) {
-            throw new NullPointerException("pattern");
-        }
+        Objects.requireNonNull(pattern, "pattern");
 
         final StringBuilder currentLiteral = new StringBuilder(BUF_SIZE);
 
@@ -362,7 +368,7 @@ public final class PatternParser {
                 switch (c) {
                 case '-':
                     formattingInfo = new FormattingInfo(true, formattingInfo.getMinLength(),
-                            formattingInfo.getMaxLength());
+                            formattingInfo.getMaxLength(), formattingInfo.isLeftTruncate());
                     break;
 
                 case '.':
@@ -373,7 +379,7 @@ public final class PatternParser {
 
                     if (c >= '0' && c <= '9') {
                         formattingInfo = new FormattingInfo(formattingInfo.isLeftAligned(), c - '0',
-                                formattingInfo.getMaxLength());
+                                formattingInfo.getMaxLength(), formattingInfo.isLeftTruncate());
                         state = ParserState.MIN_STATE;
                     } else {
                         i = finalizeConverter(c, pattern, i, currentLiteral, formattingInfo, converterRules,
@@ -394,7 +400,7 @@ public final class PatternParser {
                 if (c >= '0' && c <= '9') {
                     // Multiply the existing value and add the value of the number just encountered.
                     formattingInfo = new FormattingInfo(formattingInfo.isLeftAligned(), formattingInfo.getMinLength()
-                            * DECIMAL + c - '0', formattingInfo.getMaxLength());
+                            * DECIMAL + c - '0', formattingInfo.getMaxLength(), formattingInfo.isLeftTruncate());
                 } else if (c == '.') {
                     state = ParserState.DOT_STATE;
                 } else {
@@ -409,16 +415,24 @@ public final class PatternParser {
 
             case DOT_STATE:
                 currentLiteral.append(c);
-
-                if (c >= '0' && c <= '9') {
+                switch (c) {
+                case '-':
                     formattingInfo = new FormattingInfo(formattingInfo.isLeftAligned(), formattingInfo.getMinLength(),
-                            c - '0');
-                    state = ParserState.MAX_STATE;
-                } else {
-                    LOGGER.error("Error occurred in position " + i + ".\n Was expecting digit, instead got char \"" + c
-                            + "\".");
+                            formattingInfo.getMaxLength(),false);
+                    break;
 
-                    state = ParserState.LITERAL_STATE;
+                default:
+
+	                if (c >= '0' && c <= '9') {
+	                    formattingInfo = new FormattingInfo(formattingInfo.isLeftAligned(), formattingInfo.getMinLength(),
+	                            c - '0', formattingInfo.isLeftTruncate());
+	                    state = ParserState.MAX_STATE;
+	                } else {
+	                    LOGGER.error("Error occurred in position " + i + ".\n Was expecting digit, instead got char \"" + c
+	                            + "\".");
+
+	                    state = ParserState.LITERAL_STATE;
+	                }
                 }
 
                 break;
@@ -429,7 +443,7 @@ public final class PatternParser {
                 if (c >= '0' && c <= '9') {
                     // Multiply the existing value and add the value of the number just encountered.
                     formattingInfo = new FormattingInfo(formattingInfo.isLeftAligned(), formattingInfo.getMinLength(),
-                            formattingInfo.getMaxLength() * DECIMAL + c - '0');
+                            formattingInfo.getMaxLength() * DECIMAL + c - '0', formattingInfo.isLeftTruncate());
                 } else {
                     i = finalizeConverter(c, pattern, i, currentLiteral, formattingInfo, converterRules,
                             patternConverters, formattingInfos, noConsoleNoAnsi, convertBackslashes);
@@ -581,7 +595,7 @@ public final class PatternParser {
 
         final String converterId = convBuf.toString();
 
-        final List<String> options = new ArrayList<String>();
+        final List<String> options = new ArrayList<>();
         i = extractOptions(pattern, i, options);
 
         final PatternConverter pc = createConverter(converterId, currentLiteral, rules, options, noConsoleNoAnsi);

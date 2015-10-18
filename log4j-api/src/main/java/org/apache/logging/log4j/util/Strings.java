@@ -18,6 +18,7 @@ package org.apache.logging.log4j.util;
 
 /**
  * <em>Consider this class private.</em>
+ * 
  * @see <a href="http://commons.apache.org/proper/commons-lang/">Apache Commons Lang</a>
  */
 public final class Strings {
@@ -27,11 +28,33 @@ public final class Strings {
      */
     public static final String EMPTY = "";
 
-    private Strings() {
+    /**
+     * Returns a double quoted string.
+     * 
+     * @param str
+     *        a String
+     * @return {@code "str"}
+     */
+    public static String dquote(final String str) {
+        return Chars.DQUOTE + str + Chars.DQUOTE;
     }
 
     /**
-     * <p>Checks if a CharSequence is empty ("") or null.</p>
+     * Checks if a String is blank. A blank string is one that is {@code null}, empty, or when trimmed using
+     * {@link String#trim()} is empty.
+     *
+     * @param s
+     *        the String to check, may be {@code null}
+     * @return {@code true} if the String is {@code null}, empty, or trims to empty.
+     */
+    public static boolean isBlank(final String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    /**
+     * <p>
+     * Checks if a CharSequence is empty ("") or null.
+     * </p>
      *
      * <pre>
      * Strings.isEmpty(null)      = true
@@ -41,13 +64,17 @@ public final class Strings {
      * Strings.isEmpty("  bob  ") = false
      * </pre>
      *
-     * <p>NOTE: This method changed in Lang version 2.0.
-     * It no longer trims the CharSequence.
-     * That functionality is available in isBlank().</p>
+     * <p>
+     * NOTE: This method changed in Lang version 2.0. It no longer trims the CharSequence. That functionality is
+     * available in isBlank().
+     * </p>
      *
-     * <p>Copied from Apache Commons Lang org.apache.commons.lang3.StringUtils.isEmpty(CharSequence)</p>
+     * <p>
+     * Copied from Apache Commons Lang org.apache.commons.lang3.StringUtils.isEmpty(CharSequence)
+     * </p>
      *
-     * @param cs  the CharSequence to check, may be null
+     * @param cs
+     *        the CharSequence to check, may be null
      * @return {@code true} if the CharSequence is empty or null
      */
     public static boolean isEmpty(final CharSequence cs) {
@@ -55,7 +82,20 @@ public final class Strings {
     }
 
     /**
-     * <p>Checks if a CharSequence is not empty ("") and not null.</p>
+     * Checks if a String is not blank. The opposite of {@link #isBlank(String)}.
+     *
+     * @param s
+     *        the String to check, may be {@code null}
+     * @return {@code true} if the String is non-{@code null} and has content after being trimmed.
+     */
+    public static boolean isNotBlank(final String s) {
+        return !isBlank(s);
+    }
+
+    /**
+     * <p>
+     * Checks if a CharSequence is not empty ("") and not null.
+     * </p>
      *
      * <pre>
      * Strings.isNotEmpty(null)      = false
@@ -65,9 +105,12 @@ public final class Strings {
      * Strings.isNotEmpty("  bob  ") = true
      * </pre>
      *
-     * <p>Copied from Apache Commons Lang org.apache.commons.lang3.StringUtils.isNotEmpty(CharSequence)</p>
+     * <p>
+     * Copied from Apache Commons Lang org.apache.commons.lang3.StringUtils.isNotEmpty(CharSequence)
+     * </p>
      *
-     * @param cs  the CharSequence to check, may be null
+     * @param cs
+     *        the CharSequence to check, may be null
      * @return {@code true} if the CharSequence is not empty and not null
      */
     public static boolean isNotEmpty(final CharSequence cs) {
@@ -75,33 +118,24 @@ public final class Strings {
     }
 
     /**
-     * Checks if a String is blank. A blank string is one that is {@code null}, empty, or when trimmed using
-     * {@link String#trim()} is empty.
-     *
-     * @param s the String to check, may be {@code null}
-     * @return {@code true} if the String is {@code null}, empty, or trims to empty.
+     * Returns a quoted string.
+     * 
+     * @param str
+     *        a String
+     * @return {@code 'str'}
      */
-    public static boolean isBlank(final String s) {
-        return s == null || s.trim().isEmpty();
+    public static String quote(final String str) {
+        return Chars.QUOTE + str + Chars.QUOTE;
     }
 
     /**
-     * Checks if a String is not blank. The opposite of {@link #isBlank(String)}.
-     *
-     * @param s the String to check, may be {@code null}
-     * @return {@code true} if the String is non-{@code null} and has content after being trimmed.
-     */
-    public static boolean isNotBlank(final String s) {
-        return !isBlank(s);
-    }
-
-    /**
-     * <p>Removes control characters (char &lt;= 32) from both
-     * ends of this String returning {@code null} if the String is
+     * <p>
+     * Removes control characters (char &lt;= 32) from both ends of this String returning {@code null} if the String is
      * empty ("") after the trim or if it is {@code null}.
      *
-     * <p>The String is trimmed using {@link String#trim()}.
-     * Trim removes start and end characters &lt;= 32.</p>
+     * <p>
+     * The String is trimmed using {@link String#trim()}. Trim removes start and end characters &lt;= 32.
+     * </p>
      *
      * <pre>
      * Strings.trimToNull(null)          = null
@@ -111,15 +145,20 @@ public final class Strings {
      * Strings.trimToNull("    abc    ") = "abc"
      * </pre>
      *
-     * <p>Copied from Apache Commons Lang org.apache.commons.lang3.StringUtils.trimToNull(String)</p>
+     * <p>
+     * Copied from Apache Commons Lang org.apache.commons.lang3.StringUtils.trimToNull(String)
+     * </p>
      *
-     * @param str  the String to be trimmed, may be null
-     * @return the trimmed String,
-     *  {@code null} if only chars &lt;= 32, empty or null String input
+     * @param str
+     *        the String to be trimmed, may be null
+     * @return the trimmed String, {@code null} if only chars &lt;= 32, empty or null String input
      */
     public static String trimToNull(final String str) {
         final String ts = str == null ? null : str.trim();
         return isEmpty(ts) ? null : ts;
     }
 
+    private Strings() {
+        // empty
+    }
 }

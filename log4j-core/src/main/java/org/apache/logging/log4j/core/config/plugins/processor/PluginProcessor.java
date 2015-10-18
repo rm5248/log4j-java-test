@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -101,13 +102,10 @@ public class PluginProcessor extends AbstractProcessor {
     }
 
     private void writeCacheFile(final Element... elements) throws IOException {
-        final FileObject fo = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT,
-            Strings.EMPTY, PLUGIN_CACHE_FILE, elements);
-        final OutputStream out = fo.openOutputStream();
-        try {
+        final FileObject fo = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, Strings.EMPTY,
+                PLUGIN_CACHE_FILE, elements);
+        try (final OutputStream out = fo.openOutputStream()) {
             pluginCache.writeCache(out);
-        } finally {
-            out.close();
         }
     }
 
@@ -124,9 +122,7 @@ public class PluginProcessor extends AbstractProcessor {
 
         @Override
         public PluginEntry visitType(final TypeElement e, final Plugin plugin) {
-            if (plugin == null) {
-                throw new NullPointerException("Plugin annotation is null.");
-            }
+            Objects.requireNonNull(plugin, "Plugin annotation is null.");
             final PluginEntry entry = new PluginEntry();
             entry.setKey(plugin.name().toLowerCase());
             entry.setClassName(elements.getBinaryName(e).toString());
@@ -156,7 +152,7 @@ public class PluginProcessor extends AbstractProcessor {
             if (aliases == null) {
                 return DEFAULT_VALUE;
             }
-            final Collection<PluginEntry> entries = new ArrayList<PluginEntry>(aliases.value().length);
+            final Collection<PluginEntry> entries = new ArrayList<>(aliases.value().length);
             for (final String alias : aliases.value()) {
                 final PluginEntry entry = new PluginEntry();
                 entry.setKey(alias.toLowerCase());

@@ -63,12 +63,33 @@ public class StatusLoggerAdmin extends NotificationBroadcasterSupport implements
         } catch (final Exception e) {
             throw new IllegalStateException(e);
         }
+        removeListeners(contextName);
         StatusLogger.getLogger().registerListener(this);
     }
 
+    /**
+     * Add listener to StatusLogger for this context, or replace it if it already exists.
+     *
+     * @param ctxName
+     */
+    private void removeListeners(final String ctxName) {
+        final StatusLogger logger = StatusLogger.getLogger();
+        final Iterable<StatusListener> listeners = logger.getListeners();
+        // Remove any StatusLoggerAdmin listeners already registered for this context
+        for (final StatusListener statusListener : listeners) {
+            if (statusListener instanceof StatusLoggerAdmin) {
+                final StatusLoggerAdmin adminListener = (StatusLoggerAdmin) statusListener;
+                if (ctxName != null && ctxName.equals(adminListener.contextName)) {
+                    logger.removeListener(adminListener);
+                }
+            }
+        }
+    }
+
     private static MBeanNotificationInfo createNotificationInfo() {
-        final String[] notifTypes = new String[] {//
-        NOTIF_TYPE_DATA, NOTIF_TYPE_MESSAGE };
+        final String[] notifTypes = new String[] {
+                NOTIF_TYPE_DATA,
+                NOTIF_TYPE_MESSAGE };
         final String name = Notification.class.getName();
         final String description = "StatusLogger has logged an event";
         return new MBeanNotificationInfo(notifTypes, name, description);
@@ -118,11 +139,11 @@ public class StatusLoggerAdmin extends NotificationBroadcasterSupport implements
      */
     @Override
     public void log(final StatusData data) {
-        final Notification notifMsg = new Notification(NOTIF_TYPE_MESSAGE, getObjectName(), nextSeqNo(), now(),
+        final Notification notifMsg = new Notification(NOTIF_TYPE_MESSAGE, getObjectName(), nextSeqNo(), nowMillis(),
                 data.getFormattedStatus());
         sendNotification(notifMsg);
 
-        final Notification notifData = new Notification(NOTIF_TYPE_DATA, getObjectName(), nextSeqNo(), now());
+        final Notification notifData = new Notification(NOTIF_TYPE_DATA, getObjectName(), nextSeqNo(), nowMillis());
         notifData.setUserData(data);
         sendNotification(notifData);
     }
@@ -142,7 +163,7 @@ public class StatusLoggerAdmin extends NotificationBroadcasterSupport implements
         return sequenceNo.getAndIncrement();
     }
 
-    private long now() {
+    private long nowMillis() {
         return System.currentTimeMillis();
     }
 

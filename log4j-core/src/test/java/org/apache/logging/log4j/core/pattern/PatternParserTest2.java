@@ -55,15 +55,15 @@ public class PatternParserTest2 {
         cal.set(Calendar.HOUR_OF_DAY, 13);
         cal.set(Calendar.MINUTE, 24);
         cal.set(Calendar.SECOND, 59);
-        parse(pattern, convert, buf, cal.getTime(), new Integer(3));
+        parse(pattern, convert, buf, cal.getTime(), 3);
 
         assertEquals("13-24-59 \\t---", buf.toString());
     }
 
     private void parse(final String pattern, final boolean convert, final StringBuilder buf, final Date date, final int i) {
         final PatternParser parser0 = new PatternParser(null, "Converter", null);
-        final List<PatternConverter> converters = new ArrayList<PatternConverter>();
-        final List<FormattingInfo> fields = new ArrayList<FormattingInfo>();
+        final List<PatternConverter> converters = new ArrayList<>();
+        final List<FormattingInfo> fields = new ArrayList<>();
         parser0.parse(pattern, converters, fields, false, convert);
         final FormattingInfo[] infoArray = new FormattingInfo[fields.size()];
         final FormattingInfo[] patternFields = fields.toArray(infoArray);

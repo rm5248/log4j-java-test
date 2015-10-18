@@ -63,7 +63,7 @@ public final class MapRewritePolicy implements RewritePolicy {
             return source;
         }
 
-        final Map<String, String> newMap = new HashMap<String, String>(((MapMessage) msg).getData());
+        final Map<String, String> newMap = new HashMap<>(((MapMessage) msg).getData());
         switch (mode) {
             case Add: {
                 newMap.putAll(map);
@@ -78,15 +78,8 @@ public final class MapRewritePolicy implements RewritePolicy {
             }
         }
         final MapMessage message = ((MapMessage) msg).newInstance(newMap);
-        if (source instanceof Log4jLogEvent) {
-            final Log4jLogEvent event = (Log4jLogEvent) source;
-            return Log4jLogEvent.createEvent(event.getLoggerName(), event.getMarker(), event.getLoggerFqcn(),
-                event.getLevel(), message, event.getThrown(), event.getThrownProxy(), event.getContextMap(), 
-                event.getContextStack(), event.getThreadName(), event.getSource(), event.getTimeMillis());
-        }
-        return new Log4jLogEvent(source.getLoggerName(), source.getMarker(), source.getLoggerFqcn(), source.getLevel(),
-            message, source.getThrown(), source.getContextMap(), source.getContextStack(), source.getThreadName(),
-            source.getSource(), source.getTimeMillis());
+        final LogEvent result = new Log4jLogEvent.Builder(source).setMessage(message).build();
+        return result;
     }
 
     /**
@@ -131,21 +124,12 @@ public final class MapRewritePolicy implements RewritePolicy {
     public static MapRewritePolicy createPolicy(
             @PluginAttribute("mode") final String mode,
             @PluginElement("KeyValuePair") final KeyValuePair[] pairs) {
-        Mode op;
-        if (mode == null) {
-            op = Mode.Add;
-        } else {
-            op = Mode.valueOf(mode);
-            if (op == null) {
-                LOGGER.error("Undefined mode " + mode);
-                return null;
-            }
-        }
+        Mode op = mode == null ? op = Mode.Add : Mode.valueOf(mode);
         if (pairs == null || pairs.length == 0) {
             LOGGER.error("keys and values must be specified for the MapRewritePolicy");
             return null;
         }
-        final Map<String, String> map = new HashMap<String, String>();
+        final Map<String, String> map = new HashMap<>();
         for (final KeyValuePair pair : pairs) {
             final String key = pair.getKey();
             if (key == null) {

@@ -21,7 +21,7 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.junit.InitialLoggerContext;
+import org.apache.logging.log4j.junit.LoggerContextRule;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -52,17 +52,22 @@ public class RollingAppenderSizeTest {
         return Arrays.asList(
                 new Object[][]{
                         { "log4j-rolling-gz.xml", ".gz" },
-                        { "log4j-rolling-zip.xml", ".zip" }
+                        { "log4j-rolling-zip.xml", ".zip" },
+                        // Apache Commons Compress
+                        { "log4j-rolling-bzip2.xml", ".bz2" },
+                        { "log4j-rolling-deflate.xml", ".deflate" },
+                        { "log4j-rolling-pack200.xml", ".pack200" },
+                        { "log4j-rolling-xy.xml", ".xy" },
                 }
         );
     }
 
     @Rule
-    public InitialLoggerContext init;
+    public LoggerContextRule init;
 
     public RollingAppenderSizeTest(final String configFile, final String fileExtension) {
         this.fileExtension = fileExtension;
-        this.init = new InitialLoggerContext(configFile);
+        this.init = new LoggerContextRule(configFile);
     }
 
     @Before
