@@ -19,6 +19,7 @@ package org.apache.logging.log4j;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -44,7 +45,7 @@ import org.apache.logging.log4j.spi.StandardLevel;
 public final class Level implements Comparable<Level>, Serializable {
 
     private static final long serialVersionUID = 1581082L;
-    private static final ConcurrentMap<String, Level> levels = new ConcurrentHashMap<String, Level>();
+    private static final ConcurrentMap<String, Level> levels = new ConcurrentHashMap<>();
 
     /**
      * No events will be logged.
@@ -137,6 +138,20 @@ public final class Level implements Comparable<Level>, Serializable {
      */
     public StandardLevel getStandardLevel() {
         return standardLevel;
+    }
+
+    /**
+     * Compares this level against the levels passed as arguments and returns true if this level is in between the given levels.
+     *
+     * @param minLevel
+     *            The minimum level to test.
+     * @param maxLevel
+     *            The maximum level to test.
+     * @return True true if this level is in between the given levels
+     * @since 2.4
+     */
+    public boolean isInRange(final Level minLevel, final Level maxLevel) {
+        return this.intLevel >= minLevel.intLevel && this.intLevel <= maxLevel.intLevel;
     }
 
     /**
@@ -276,12 +291,11 @@ public final class Level implements Comparable<Level>, Serializable {
      * @throws java.lang.IllegalArgumentException if the Level name is not registered.
      */
     public static Level valueOf(final String name) {
-        if (name == null) {
-            throw new NullPointerException("No level name given.");
-        }
+    	Objects.requireNonNull(name, "No level name given.");
         final String levelName = name.toUpperCase(Locale.ENGLISH);
-        if (levels.containsKey(levelName)) {
-            return levels.get(levelName);
+        final Level level = levels.get(levelName);
+        if (level != null) {
+			return level;
         }
         throw new IllegalArgumentException("Unknown level constant [" + levelName + "].");
     }

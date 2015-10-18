@@ -35,14 +35,15 @@ public abstract class AbstractLoggerAdapter<L> implements LoggerAdapter<L> {
      * A map to store loggers for their given LoggerContexts.
      */
     protected final Map<LoggerContext, ConcurrentMap<String, L>> registry =
-        new WeakHashMap<LoggerContext, ConcurrentMap<String, L>>();
+        new WeakHashMap<>();
 
     @Override
     public L getLogger(final String name) {
         final LoggerContext context = getContext();
         final ConcurrentMap<String, L> loggers = getLoggersInContext(context);
-        if (loggers.containsKey(name)) {
-            return loggers.get(name);
+        final L logger = loggers.get(name);
+        if (logger != null) {
+			return logger;
         }
         loggers.putIfAbsent(name, newLogger(name, context));
         return loggers.get(name);
@@ -58,7 +59,7 @@ public abstract class AbstractLoggerAdapter<L> implements LoggerAdapter<L> {
         synchronized (registry) {
             ConcurrentMap<String, L> loggers = registry.get(context);
             if (loggers == null) {
-                loggers = new ConcurrentHashMap<String, L>();
+                loggers = new ConcurrentHashMap<>();
                 registry.put(context, loggers);
             }
             return loggers;

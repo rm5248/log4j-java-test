@@ -16,11 +16,15 @@
  */
 package org.apache.logging.log4j.core.layout;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.ThreadContext;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.BasicConfigurationFactory;
@@ -29,17 +33,14 @@ import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.core.jackson.Log4jJsonObjectMapper;
-import org.apache.logging.log4j.core.util.Charsets;
-import org.apache.logging.log4j.core.util.Throwables;
 import org.apache.logging.log4j.message.SimpleMessage;
 import org.apache.logging.log4j.spi.AbstractLogger;
 import org.apache.logging.log4j.test.appender.ListAppender;
+import org.apache.logging.log4j.util.Strings;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 /**
  * Tests the JsonLayout class.
@@ -59,17 +60,17 @@ public class JsonLayoutTest {
     public static void setupClass() {
         ThreadContext.clearAll();
         ConfigurationFactory.setConfigurationFactory(cf);
-        final LoggerContext ctx = (LoggerContext) LogManager.getContext();
+        final LoggerContext ctx = LoggerContext.getContext();
         ctx.reconfigure();
     }
 
-    LoggerContext ctx = (LoggerContext) LogManager.getContext();
+    LoggerContext ctx = LoggerContext.getContext();
 
     Logger rootLogger = this.ctx.getLogger("");
 
     private void checkAt(final String expected, final int lineIndex, final List<String> list) {
         final String trimedLine = list.get(lineIndex).trim();
-        assertTrue("Incorrect line index " + lineIndex + ": \"" + trimedLine + '"', trimedLine.equals(expected));
+        assertTrue("Incorrect line index " + lineIndex + ": " + Strings.dquote(trimedLine), trimedLine.equals(expected));
     }
 
     private void checkContains(final String expected, final List<String> list) {
@@ -101,11 +102,11 @@ public class JsonLayoutTest {
         assertTrue(str, str.contains(DQUOTE + name + DQUOTE + propSep));
     }
 
-    private void testAllFeatures(final boolean includeSource, final boolean compact, boolean eventEol, final boolean includeContext)
+    private void testAllFeatures(final boolean includeSource, final boolean compact, final boolean eventEol, final boolean includeContext)
             throws Exception {
         final Log4jLogEvent expected = LogEventFixtures.createLogEvent();
         final AbstractJacksonLayout layout = JsonLayout.createLayout(includeSource,
-                includeContext, false, compact, eventEol, Charsets.UTF_8);
+                includeContext, false, compact, eventEol, StandardCharsets.UTF_8);
         final String str = layout.toSerializable(expected);
         // System.out.println(str);
         final String propSep = this.toPropertySeparator(compact);
@@ -142,9 +143,7 @@ public class JsonLayoutTest {
         this.checkPropertyName("commonElementCount", compact, str);
         this.checkPropertyName("localizedMessage", compact, str);
         this.checkPropertyName("extendedStackTrace", compact, str);
-        if (Throwables.isGetSuppressedAvailable()) {
-            this.checkPropertyName("suppressed", compact, str);
-        }
+        this.checkPropertyName("suppressed", compact, str);
         this.checkPropertyName("loggerFqcn", compact, str);
         this.checkPropertyName("endOfBatch", compact, str);
         if (includeContext) {
@@ -168,7 +167,7 @@ public class JsonLayoutTest {
     @Test
     public void testDefaultCharset() {
         final AbstractJacksonLayout layout = JsonLayout.createDefaultLayout();
-        assertEquals(Charsets.UTF_8, layout.getCharset());
+        assertEquals(StandardCharsets.UTF_8, layout.getCharset());
     }
 
     @Test
@@ -252,9 +251,14 @@ public class JsonLayoutTest {
 
     @Test
     public void testLayoutLoggerName() throws Exception {
-        final AbstractJacksonLayout layout = JsonLayout.createLayout(false, false, false, true, false, Charsets.UTF_8);
-        final Log4jLogEvent expected = Log4jLogEvent.createEvent("a.B", null, "f.q.c.n", Level.DEBUG, 
-                new SimpleMessage("M"), null, null, null, null, "threadName", null, 1);
+        final AbstractJacksonLayout layout = JsonLayout.createLayout(false, false, false, true, false, StandardCharsets.UTF_8);
+        final Log4jLogEvent expected = Log4jLogEvent.newBuilder() //
+                .setLoggerName("a.B") //
+                .setLoggerFqcn("f.q.c.n") //
+                .setLevel(Level.DEBUG) //
+                .setMessage(new SimpleMessage("M")) //
+                .setThreadName("threadName") //
+                .setTimeMillis(1).build();
         final String str = layout.toSerializable(expected);
         assertTrue(str, str.contains("\"loggerName\":\"a.B\""));
         final Log4jLogEvent actual = new Log4jJsonObjectMapper().readValue(str, Log4jLogEvent.class);

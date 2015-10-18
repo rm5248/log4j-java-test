@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
@@ -50,9 +51,7 @@ public class MapFilter extends AbstractFilter {
     protected MapFilter(final Map<String, List<String>> map, final boolean oper, final Result onMatch,
                         final Result onMismatch) {
         super(onMatch, onMismatch);
-        if (map == null) {
-            throw new NullPointerException("key cannot be null");
-        }
+        Objects.requireNonNull(map, "map cannot be null");
         this.isAnd = oper;
         this.map = map;
     }
@@ -130,7 +129,7 @@ public class MapFilter extends AbstractFilter {
             LOGGER.error("keys and values must be specified for the MapFilter");
             return null;
         }
-        final Map<String, List<String>> map = new HashMap<String, List<String>>();
+        final Map<String, List<String>> map = new HashMap<>();
         for (final KeyValuePair pair : pairs) {
             final String key = pair.getKey();
             if (key == null) {
@@ -146,7 +145,7 @@ public class MapFilter extends AbstractFilter {
             if (list != null) {
                 list.add(value);
             } else {
-                list = new ArrayList<String>();
+                list = new ArrayList<>();
                 list.add(value);
                 map.put(pair.getKey(), list);
             }

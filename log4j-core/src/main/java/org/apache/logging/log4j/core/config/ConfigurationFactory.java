@@ -35,16 +35,19 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
 import org.apache.logging.log4j.core.config.plugins.util.PluginManager;
 import org.apache.logging.log4j.core.config.plugins.util.PluginType;
 import org.apache.logging.log4j.core.lookup.Interpolator;
 import org.apache.logging.log4j.core.lookup.StrSubstitutor;
 import org.apache.logging.log4j.core.util.FileUtils;
 import org.apache.logging.log4j.core.util.Loader;
+import org.apache.logging.log4j.core.util.NetUtils;
 import org.apache.logging.log4j.core.util.ReflectionUtil;
 import org.apache.logging.log4j.status.StatusLogger;
 import org.apache.logging.log4j.util.LoaderUtil;
 import org.apache.logging.log4j.util.PropertiesUtil;
+import org.apache.logging.log4j.util.Strings;
 
 /**
  * Factory class for parsed {@link Configuration} objects from a configuration file.
@@ -65,11 +68,11 @@ import org.apache.logging.log4j.util.PropertiesUtil;
  * </ol>
  *
  * If the ConfigurationFactory that was added returns null on a call to
- * getConfiguration the any other ConfigurationFactories found as plugins will
+ * getConfiguration then any other ConfigurationFactories found as plugins will
  * be called in their respective order. DefaultConfiguration is always called
  * last if no configuration has been returned.
  */
-public abstract class ConfigurationFactory {
+public abstract class ConfigurationFactory extends ConfigurationBuilderFactory {
     /**
      * Allow the ConfigurationFactory class to be specified as a system property.
      */
@@ -132,7 +135,7 @@ public abstract class ConfigurationFactory {
             LOCK.lock();
             try {
                 if (factories == null) {
-                    final List<ConfigurationFactory> list = new ArrayList<ConfigurationFactory>();
+                    final List<ConfigurationFactory> list = new ArrayList<>();
                     final String factoryClass = PropertiesUtil.getProperties().getStringProperty(CONFIGURATION_FACTORY_PROPERTY);
                     if (factoryClass != null) {
                         addFactory(list, factoryClass);
@@ -141,7 +144,7 @@ public abstract class ConfigurationFactory {
                     manager.collectPlugins();
                     final Map<String, PluginType<?>> plugins = manager.getPlugins();
                     final List<Class<? extends ConfigurationFactory>> ordered =
-                        new ArrayList<Class<? extends ConfigurationFactory>>(plugins.size());
+                        new ArrayList<>(plugins.size());
                     for (final PluginType<?> type : plugins.values()) {
                         try {
                             ordered.add(type.getPluginClass().asSubclass(ConfigurationFactory.class));
@@ -387,30 +390,44 @@ public abstract class ConfigurationFactory {
         public Configuration getConfiguration(final String name, final URI configLocation) {
 
             if (configLocation == null) {
-                final String config = this.substitutor.replace(
-                    PropertiesUtil.getProperties().getStringProperty(CONFIGURATION_FILE_PROPERTY));
-                if (config != null) {
+                final String configLocationStr = this.substitutor.replace(PropertiesUtil.getProperties()
+                        .getStringProperty(CONFIGURATION_FILE_PROPERTY));
+                if (configLocationStr != null) {
                     ConfigurationSource source = null;
                     try {
-                        source = getInputFromUri(FileUtils.getCorrectedFilePathUri(config));
+                        source = getInputFromUri(NetUtils.toURI(configLocationStr));
                     } catch (final Exception ex) {
                         // Ignore the error and try as a String.
                         LOGGER.catching(Level.DEBUG, ex);
                     }
                     if (source == null) {
                         final ClassLoader loader = LoaderUtil.getThreadContextClassLoader();
-                        source = getInputFromString(config, loader);
+                        source = getInputFromString(configLocationStr, loader);
                     }
                     if (source != null) {
-                        for (final ConfigurationFactory factory : factories) {
+                        for (final ConfigurationFactory factory : getFactories()) {
                             final String[] types = factory.getSupportedTypes();
                             if (types != null) {
                                 for (final String type : types) {
-                                    if (type.equals("*") || config.endsWith(type)) {
-                                        final Configuration c = factory.getConfiguration(source);
-                                        if (c != null) {
-                                            return c;
+                                    if (type.equals("*") || configLocationStr.endsWith(type)) {
+                                        final Configuration config = factory.getConfiguration(source);
+                                        if (config != null) {
+                                            return config;
                                         }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    for (final ConfigurationFactory factory : getFactories()) {
+                        final String[] types = factory.getSupportedTypes();
+                        if (types != null) {
+                            for (final String type : types) {
+                                if (type.equals("*")) {
+                                    final Configuration config = factory.getConfiguration(name, configLocation);
+                                    if (config != null) {
+                                        return config;
                                     }
                                 }
                             }
@@ -418,11 +435,13 @@ public abstract class ConfigurationFactory {
                     }
                 }
             } else {
-                for (final ConfigurationFactory factory : factories) {
+                // configLocation != null
+                final String configLocationStr = configLocation.toString();
+                for (final ConfigurationFactory factory : getFactories()) {
                     final String[] types = factory.getSupportedTypes();
                     if (types != null) {
                         for (final String type : types) {
-                            if (type.equals("*") || configLocation.toString().endsWith(type)) {
+                            if (type.equals("*") || configLocationStr.endsWith(type)) {
                                 final Configuration config = factory.getConfiguration(name, configLocation);
                                 if (config != null) {
                                     return config;
@@ -451,9 +470,9 @@ public abstract class ConfigurationFactory {
         }
 
         private Configuration getConfiguration(final boolean isTest, final String name) {
-            final boolean named = name != null && name.length() > 0;
+            final boolean named = Strings.isNotEmpty(name);
             final ClassLoader loader = LoaderUtil.getThreadContextClassLoader();
-            for (final ConfigurationFactory factory : factories) {
+            for (final ConfigurationFactory factory : getFactories()) {
                 String configName;
                 final String prefix = isTest ? TEST_PREFIX : DEFAULT_PREFIX;
                 final String [] types = factory.getSupportedTypes();
@@ -485,7 +504,7 @@ public abstract class ConfigurationFactory {
         public Configuration getConfiguration(final ConfigurationSource source) {
             if (source != null) {
                 final String config = source.getLocation();
-                for (final ConfigurationFactory factory : factories) {
+                for (final ConfigurationFactory factory : getFactories()) {
                     final String[] types = factory.getSupportedTypes();
                     if (types != null) {
                         for (final String type : types) {
@@ -505,5 +524,9 @@ public abstract class ConfigurationFactory {
             LOGGER.error("Cannot process configuration, input source is null");
             return null;
         }
+    }
+
+    static List<ConfigurationFactory> getFactories() {
+        return factories;
     }
 }

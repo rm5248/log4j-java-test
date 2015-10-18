@@ -26,7 +26,6 @@ import javax.mail.internet.InternetAddress;
 import org.apache.logging.dumbster.smtp.SimpleSmtpServer;
 import org.apache.logging.dumbster.smtp.SmtpMessage;
 import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.net.MimeMessageBuilder;
@@ -110,7 +109,7 @@ public class SmtpAppenderTest {
 
     @Test
     public void testCyclicBuffer() {
-        final CyclicBuffer<Integer> buffer = new CyclicBuffer<Integer>(
+        final CyclicBuffer<Integer> buffer = new CyclicBuffer<>(
                 Integer.class, 3);
 
         assertTrue(buffer.isEmpty());
@@ -137,7 +136,7 @@ public class SmtpAppenderTest {
                 HOST, PORT, null, null, "false", "3", null, null, "true");
         appender.start();
 
-        final LoggerContext context = (LoggerContext) LogManager.getContext();
+        final LoggerContext context = LoggerContext.getContext();
         final Logger root = context.getLogger("SMTPAppenderTest");
         root.addAppender(appender);
         root.setAdditive(false);

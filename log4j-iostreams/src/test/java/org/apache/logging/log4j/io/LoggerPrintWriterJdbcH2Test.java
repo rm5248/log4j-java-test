@@ -22,7 +22,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.junit.InitialLoggerContext;
+import org.apache.logging.log4j.junit.LoggerContextRule;
 import org.apache.logging.log4j.test.appender.ListAppender;
 import org.apache.logging.log4j.util.Strings;
 import org.h2.jdbcx.JdbcDataSource;
@@ -33,8 +33,9 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 public class LoggerPrintWriterJdbcH2Test {
+    
     @ClassRule
-    public static InitialLoggerContext context = new InitialLoggerContext("log4j2-jdbc-driver-manager.xml");
+    public static LoggerContextRule context = new LoggerContextRule("log4j2-jdbc-driver-manager.xml");
 
     private static final String H2_URL = "jdbc:h2:mem:Log4j";
 
@@ -75,11 +76,8 @@ public class LoggerPrintWriterJdbcH2Test {
         dataSource.setPassword(PASSWORD);
         dataSource.setLogWriter(createLoggerPrintWriter());
         // dataSource.setLogWriter(new PrintWriter(new OutputStreamWriter(System.out)));
-        final Connection conn = dataSource.getConnection();
-        try {
+        try (final Connection conn = dataSource.getConnection()) {
             conn.prepareCall("select 1");
-        } finally {
-            conn.close();
         }
         Assert.assertTrue(this.getListAppender().getMessages().size() > 0);
     }
@@ -88,13 +86,8 @@ public class LoggerPrintWriterJdbcH2Test {
     public void testDriverManager_setLogWriter() throws SQLException {
         DriverManager.setLogWriter(createLoggerPrintWriter());
         // DriverManager.setLogWriter(new PrintWriter(new OutputStreamWriter(System.out)));
-        try {
-            final Connection conn = this.newConnection();
-            try {
-                conn.rollback();
-            } finally {
-                conn.close();
-            }
+        try (final Connection conn = this.newConnection()) {
+            conn.rollback();
         } finally {
             DriverManager.setLogWriter(null);
         }

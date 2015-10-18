@@ -17,9 +17,9 @@
 package org.apache.logging.log4j.core.layout;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.util.Charsets;
 
 /**
  * Abstract base class for Layouts that result in a String.
@@ -27,6 +27,22 @@ import org.apache.logging.log4j.core.util.Charsets;
 public abstract class AbstractStringLayout extends AbstractLayout<String> {
 
     private static final long serialVersionUID = 1L;
+
+    /**
+     * Converts a String to a byte[].
+     * 
+     * @param str
+     *            if null, return null.
+     * @param charset
+     *            if null, use the default charset.
+     * @return a byte[]
+     */
+    static byte[] toBytes(final String str, final Charset charset) {
+        if (str != null) {
+            return str.getBytes(charset != null ? charset : Charset.defaultCharset());
+        }
+        return null;
+    }
 
     /**
      * The charset for the formatted message.
@@ -40,10 +56,10 @@ public abstract class AbstractStringLayout extends AbstractLayout<String> {
 
     protected AbstractStringLayout(final Charset charset, final byte[] header, final byte[] footer) {
         super(header, footer);
-        this.charset = charset == null ? Charsets.UTF_8 : charset;
+        this.charset = charset == null ? StandardCharsets.UTF_8 : charset;
     }
 
-    protected byte[] getBytes(String s) {
+    protected byte[] getBytes(final String s) {
         return s.getBytes(charset);
     }
 
@@ -70,4 +86,5 @@ public abstract class AbstractStringLayout extends AbstractLayout<String> {
     public byte[] toByteArray(final LogEvent event) {
         return toSerializable(event).getBytes(charset);
     }
+
 }

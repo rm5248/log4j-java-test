@@ -70,9 +70,9 @@ import org.apache.logging.log4j.util.Strings;
 @ConverterKeys({ "highlight" })
 public final class HighlightConverter extends LogEventPatternConverter implements AnsiConverter {
 
-    private static final Map<Level, String> DEFAULT_STYLES = new HashMap<Level, String>();
+    private static final Map<Level, String> DEFAULT_STYLES = new HashMap<>();
 
-    private static final Map<Level, String> LOGBACK_STYLES = new HashMap<Level, String>();
+    private static final Map<Level, String> LOGBACK_STYLES = new HashMap<>();
 
     private static final String STYLE_KEY = "STYLE";
 
@@ -80,7 +80,7 @@ public final class HighlightConverter extends LogEventPatternConverter implement
 
     private static final String STYLE_KEY_LOGBACK = "LOGBACK";
 
-    private static final Map<String, Map<Level, String>> STYLES = new HashMap<String, Map<Level, String>>();
+    private static final Map<String, Map<Level, String>> STYLES = new HashMap<>();
 
     static {
         // Default styles:
@@ -138,7 +138,7 @@ public final class HighlightConverter extends LogEventPatternConverter implement
         final String string = options[1].replaceAll(PatternParser.NO_CONSOLE_NO_ANSI + "=(true|false)", Strings.EMPTY);
         //
         final Map<String, String> styles = AnsiEscape.createMap(string, new String[] {STYLE_KEY});
-        final Map<Level, String> levelStyles = new HashMap<Level, String>(DEFAULT_STYLES);
+        final Map<Level, String> levelStyles = new HashMap<>(DEFAULT_STYLES);
         for (final Map.Entry<String, String> entry : styles.entrySet()) {
             final String key = entry.getKey().toUpperCase(Locale.ENGLISH);
             final String value = entry.getValue();
@@ -182,23 +182,30 @@ public final class HighlightConverter extends LogEventPatternConverter implement
         }
         final PatternParser parser = PatternLayout.createPatternParser(config);
         final List<PatternFormatter> formatters = parser.parse(options[0]);
-        return new HighlightConverter(formatters, createLevelStyleMap(options));
+        final boolean noConsoleNoAnsi = Arrays.toString(options).contains(PatternParser.NO_CONSOLE_NO_ANSI + "=true");
+        final boolean hideAnsi = noConsoleNoAnsi && System.console() == null;
+        return new HighlightConverter(formatters, createLevelStyleMap(options), hideAnsi);
     }
 
     private final Map<Level, String> levelStyles;
 
     private final List<PatternFormatter> patternFormatters;
 
+    private final boolean noAnsi;
+
     /**
      * Construct the converter.
      *
      * @param patternFormatters
      *            The PatternFormatters to generate the text to manipulate.
+     * @param noAnsi
+     *            If true, do not output ANSI escape codes.
      */
-    private HighlightConverter(final List<PatternFormatter> patternFormatters, final Map<Level, String> levelStyles) {
+    private HighlightConverter(final List<PatternFormatter> patternFormatters, final Map<Level, String> levelStyles, final boolean noAnsi) {
         super("style", "style");
         this.patternFormatters = patternFormatters;
         this.levelStyles = levelStyles;
+        this.noAnsi = noAnsi;
     }
 
     /**
@@ -212,8 +219,12 @@ public final class HighlightConverter extends LogEventPatternConverter implement
         }
 
         if (buf.length() > 0) {
-            toAppendTo.append(levelStyles.get(event.getLevel())).append(buf.toString()).
-                append(AnsiEscape.getDefaultStyle());
+            if (noAnsi) {
+                toAppendTo.append(buf.toString());
+            } else {
+                toAppendTo.append(levelStyles.get(event.getLevel())).append(buf.toString()).
+                    append(AnsiEscape.getDefaultStyle());
+            }
         }
     }
 

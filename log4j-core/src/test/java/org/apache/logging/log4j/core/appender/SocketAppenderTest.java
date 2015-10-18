@@ -36,7 +36,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.LoggingException;
 import org.apache.logging.log4j.ThreadContext;
 import org.apache.logging.log4j.core.Appender;
@@ -61,12 +60,12 @@ public class SocketAppenderTest {
     private static final String DYN_PORT = String.valueOf(PORTNUM2);
     private static final String ERROR_PORT = String.valueOf(AvailablePortFinder.getNextAvailable());
 
-    private static BlockingQueue<LogEvent> list = new ArrayBlockingQueue<LogEvent>(10);
+    private static BlockingQueue<LogEvent> list = new ArrayBlockingQueue<>(10);
 
     private static TCPSocketServer tcpServer;
     private static UDPSocketServer udpServer;
 
-    LoggerContext context = (LoggerContext) LogManager.getContext();
+    LoggerContext context = LoggerContext.getContext();
     Logger root = context.getLogger("SocketAppenderTest");
 
     private static int tcpCount = 0;
@@ -78,7 +77,7 @@ public class SocketAppenderTest {
         tcpServer.start();
         udpServer = new UDPSocketServer();
         udpServer.start();
-        ((LoggerContext) LogManager.getContext()).reconfigure();
+        (LoggerContext.getContext()).reconfigure();
     }
 
     @AfterClass
@@ -112,8 +111,8 @@ public class SocketAppenderTest {
         root.addAppender(appender);
         root.setAdditive(false);
         root.setLevel(Level.DEBUG);
-        String tcKey = "UUID";
-        String expectedUuidStr = UUID.randomUUID().toString();
+        final String tcKey = "UUID";
+        final String expectedUuidStr = UUID.randomUUID().toString();
         ThreadContext.put(tcKey, expectedUuidStr);
         ThreadContext.push(expectedUuidStr);
         final String expectedExMsg = "This is a test";

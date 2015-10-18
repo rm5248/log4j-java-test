@@ -67,7 +67,7 @@ public class XmlConfiguration extends AbstractConfiguration implements Reconfigu
     private static final String[] VERBOSE_CLASSES = new String[] { ResolverUtil.class.getName() };
     private static final String LOG4J_XSD = "Log4j-config.xsd";
 
-    private final List<Status> status = new ArrayList<Status>();
+    private final List<Status> status = new ArrayList<>();
     private Element rootElement;
     private boolean strict;
     private String schemaResource;
@@ -162,9 +162,9 @@ public class XmlConfiguration extends AbstractConfiguration implements Reconfigu
                 } else if ("schema".equalsIgnoreCase(key)) {
                     schemaResource = value;
                 } else if ("monitorInterval".equalsIgnoreCase(key)) {
-                    final int interval = Integer.parseInt(value);
-                    if (interval > 0 && configFile != null) {
-                        monitor = new FileConfigurationMonitor(this, configFile, listeners, interval);
+                    final int intervalSeconds = Integer.parseInt(value);
+                    if (intervalSeconds > 0 && configFile != null) {
+                        monitor = new FileConfigurationMonitor(this, configFile, listeners, intervalSeconds);
                     }
                 } else if ("advertiser".equalsIgnoreCase(key)) {
                     createAdvertiser(value, configSource, buffer, "text/xml");
@@ -236,7 +236,7 @@ public class XmlConfiguration extends AbstractConfiguration implements Reconfigu
                 return null;
             }
             final XmlConfiguration config = new XmlConfiguration(source);
-            return (config.rootElement == null) ? null : config;
+            return config.rootElement == null ? null : config;
         } catch (final IOException ex) {
             LOGGER.error("Cannot locate file {}", getConfigurationSource(), ex);
         }

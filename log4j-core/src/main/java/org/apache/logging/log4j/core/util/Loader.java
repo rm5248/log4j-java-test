@@ -19,7 +19,6 @@ package org.apache.logging.log4j.core.util;
 
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.ReflectPermission;
 import java.net.URL;
 
 import org.apache.logging.log4j.Logger;
@@ -34,14 +33,6 @@ public final class Loader {
     private static final Logger LOGGER = StatusLogger.getLogger();
 
     private static final String TSTR = "Caught Exception while in Loader.getResource. This may be innocuous.";
-
-    static {
-        final SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            sm.checkPermission(new RuntimePermission("getStackTrace"));
-            sm.checkPermission(new ReflectPermission("suppressAccessChecks"));
-        }
-    }
 
     /**
      * Returns the ClassLoader to use.
@@ -64,7 +55,7 @@ public final class Loader {
 
     // TODO: this method could use some explanation
     public static ClassLoader getClassLoader(final Class<?> class1, final Class<?> class2) {
-        final ClassLoader threadContextClassLoader = getTcl();
+        final ClassLoader threadContextClassLoader = getThreadContextClassLoader();
         final ClassLoader loader1 = class1 == null ? null : class1.getClassLoader();
         final ClassLoader loader2 = class2 == null ? null : class2.getClassLoader();
 
@@ -96,7 +87,7 @@ public final class Loader {
      */
     public static URL getResource(final String resource, final ClassLoader defaultLoader) {
         try {
-            ClassLoader classLoader = getTcl();
+            ClassLoader classLoader = getThreadContextClassLoader();
             if (classLoader != null) {
                 LOGGER.trace("Trying to find [{}] using context class loader {}.", resource, classLoader);
                 final URL url = classLoader.getResource(resource);
@@ -158,7 +149,7 @@ public final class Loader {
      */
     public static InputStream getResourceAsStream(final String resource, final ClassLoader defaultLoader) {
         try {
-            ClassLoader classLoader = getTcl();
+            ClassLoader classLoader = getThreadContextClassLoader();
             InputStream is;
             if (classLoader != null) {
                 LOGGER.trace("Trying to find [{}] using context class loader {}.", resource, classLoader);
@@ -199,10 +190,6 @@ public final class Loader {
         // code below.
         LOGGER.trace("Trying to find [{}] using ClassLoader.getSystemResource().", resource);
         return ClassLoader.getSystemResourceAsStream(resource);
-    }
-
-    private static ClassLoader getTcl() {
-        return LoaderUtil.getThreadContextClassLoader();
     }
 
     /**

@@ -21,6 +21,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -29,6 +30,11 @@ import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.ConsoleAppender;
+import org.apache.logging.log4j.core.config.builder.api.AppenderComponentBuilder;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
+import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
 import org.apache.logging.log4j.core.filter.CompositeFilter;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.junit.After;
@@ -233,13 +239,23 @@ public class TestConfigurator {
         assertNotNull("Appenders map should not be null.", map);
         assertThat(map, hasSize(greaterThan(0)));
         assertThat("Wrong configuration", map, hasKey("List"));
-
-        Thread.sleep(500);
+        
+        // Sleep and check
+        Thread.sleep(50);
+        if (!file.setLastModified(System.currentTimeMillis())) {
+            Thread.sleep(500);
+        }
         assertTrue("setLastModified should have succeeded.", file.setLastModified(System.currentTimeMillis()));
+        TimeUnit.SECONDS.sleep(FileConfigurationMonitor.MIN_INTERVAL + 1);
         for (int i = 0; i < 17; ++i) {
             logger.debug("Test message " + i);
         }
-        Thread.sleep(100);
+        
+        // Sleep and check        
+        Thread.sleep(50);            
+        if (is(theInstance(config)).matches(ctx.getConfiguration())) {
+            Thread.sleep(500);            
+        }
         final Configuration newConfig = ctx.getConfiguration();
         assertThat("Configuration not reset", newConfig, is(not(theInstance(config))));
         Configurator.shutdown(ctx);
@@ -342,6 +358,31 @@ public class TestConfigurator {
         assertNotNull("No configuration", config);
         assertEquals("Unexpected Configuration", "XMLConfigTest", config.getName());
         assertThat(config.getAppenders(), hasSize(equalTo(2)));
+    }
+
+    @Test
+    public void testBuilder() throws Exception {
+        ConfigurationBuilder<BuiltConfiguration> builder = ConfigurationBuilderFactory.newConfigurationBuilder();
+        builder.setStatusLevel(Level.ERROR);
+        builder.setConfigurationName("BuilderTest");
+        builder.add(builder.newFilter("ThresholdFilter", Filter.Result.ACCEPT, Filter.Result.NEUTRAL)
+                .addAttribute("level", Level.DEBUG));
+        AppenderComponentBuilder appenderBuilder = builder.newAppender("Stdout", "CONSOLE").addAttribute("target",
+                ConsoleAppender.Target.SYSTEM_OUT);
+        appenderBuilder.add(builder.newLayout("PatternLayout").
+                addAttribute("pattern", "%d [%t] %-5level: %msg%n%throwable"));
+        appenderBuilder.add(builder.newFilter("MarkerFilter", Filter.Result.DENY,
+                Filter.Result.NEUTRAL).addAttribute("marker", "FLOW"));
+        builder.add(appenderBuilder);
+        builder.add(builder.newLogger("org.apache.logging.log4j", Level.DEBUG).
+                add(builder.newAppenderRef("Stdout")).
+                addAttribute("additivity", false));
+        builder.add(builder.newRootLogger(Level.ERROR).add(builder.newAppenderRef("Stdout")));
+        ctx = Configurator.initialize(builder.build());
+        final Configuration config = ctx.getConfiguration();
+        assertNotNull("No configuration", config);
+        assertEquals("Unexpected Configuration", "BuilderTest", config.getName());
+        assertThat(config.getAppenders(), hasSize(equalTo(1)));
     }
 
 }

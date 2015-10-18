@@ -34,6 +34,7 @@ import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import org.apache.logging.log4j.core.net.Facility;
 import org.apache.logging.log4j.core.net.Priority;
 import org.apache.logging.log4j.core.util.NetUtils;
+import org.apache.logging.log4j.util.Chars;
 
 
 /**
@@ -56,13 +57,11 @@ public final class SyslogLayout extends AbstractStringLayout {
     /**
      * Date format used if header = true.
      */
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd HH:mm:ss ", Locale.ENGLISH);
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd HH:mm:ss", Locale.ENGLISH);
     /**
      * Host name used to identify messages from this appender.
      */
     private final String localHostname = NetUtils.getLocalHostname();
-
-
 
     protected SyslogLayout(final Facility facility, final boolean includeNL, final String escapeNL, final Charset charset) {
         super(charset);
@@ -85,9 +84,9 @@ public final class SyslogLayout extends AbstractStringLayout {
         buf.append(Priority.getPriority(facility, event.getLevel()));
         buf.append('>');
         addDate(event.getTimeMillis(), buf);
-        buf.append(' ');
+        buf.append(Chars.SPACE);
         buf.append(localHostname);
-        buf.append(' ');
+        buf.append(Chars.SPACE);
 
         String message = event.getMessage().getFormattedMessage();
         if (null != escapeNewLine) {
@@ -106,7 +105,7 @@ public final class SyslogLayout extends AbstractStringLayout {
         buf.append(dateFormat.format(new Date(timestamp)));
         //  RFC 3164 says leading space, not leading zero on days 1-9
         if (buf.charAt(index) == '0') {
-            buf.setCharAt(index, ' ');
+            buf.setCharAt(index, Chars.SPACE);
         }
     }
 
@@ -114,7 +113,7 @@ public final class SyslogLayout extends AbstractStringLayout {
      * Gets this SyslogLayout's content format. Specified by:
      * <ul>
      * <li>Key: "structured" Value: "false"</li>
-     * <li>Key: "dateFormat" Value: "MMM dd HH:mm:ss "</li>
+     * <li>Key: "dateFormat" Value: "MMM dd HH:mm:ss"</li>
      * <li>Key: "format" Value: "&lt;LEVEL&gt;TIMESTAMP PROP(HOSTNAME) MESSAGE"</li>
      * <li>Key: "formatType" Value: "logfilepatternreceiver" (format uses the keywords supported by
      * LogFilePatternReceiver)</li>
@@ -124,7 +123,7 @@ public final class SyslogLayout extends AbstractStringLayout {
      */
     @Override
     public Map<String, String> getContentFormat() {
-        final Map<String, String> result = new HashMap<String, String>();
+        final Map<String, String> result = new HashMap<>();
         result.put("structured", "false");
         result.put("formatType", "logfilepatternreceiver");
         result.put("dateFormat", dateFormat.toPattern());

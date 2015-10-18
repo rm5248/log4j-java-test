@@ -53,9 +53,9 @@ public abstract class AbstractSocketManager extends OutputStreamManager {
      * @param host The target host name.
      * @param port The target port number.
      */
-    public AbstractSocketManager(final String name, final OutputStream os, final InetAddress inetAddress, final String host,
-                                 final int port, final Layout<? extends Serializable> layout) {
-        super(os, name, layout);
+    public AbstractSocketManager(final String name, final OutputStream os, final InetAddress inetAddress,
+            final String host, final int port, final Layout<? extends Serializable> layout, final boolean writeHeader) {
+        super(os, name, layout, writeHeader);
         this.inetAddress = inetAddress;
         this.host = host;
         this.port = port;
@@ -72,7 +72,7 @@ public abstract class AbstractSocketManager extends OutputStreamManager {
      */
     @Override
     public Map<String, String> getContentFormat() {
-        final Map<String, String> result = new HashMap<String, String>(super.getContentFormat());
+        final Map<String, String> result = new HashMap<>(super.getContentFormat());
         result.put("port", Integer.toString(port));
         result.put("address", inetAddress.getHostAddress());
         return result;

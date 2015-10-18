@@ -63,7 +63,7 @@ public final class AsyncAppender extends AbstractAppender {
     private AppenderControl errorAppender;
     private AsyncThread thread;
     private static final AtomicLong threadSequence = new AtomicLong(1);
-    private static ThreadLocal<Boolean> isAppenderThread = new ThreadLocal<Boolean>();
+    private static ThreadLocal<Boolean> isAppenderThread = new ThreadLocal<>();
 
 
     private AsyncAppender(final String name, final Filter filter, final AppenderRef[] appenderRefs,
@@ -71,7 +71,7 @@ public final class AsyncAppender extends AbstractAppender {
                            final boolean ignoreExceptions, final Configuration config,
                            final boolean includeLocation) {
         super(name, filter, null, ignoreExceptions);
-        this.queue = new ArrayBlockingQueue<Serializable>(queueSize);
+        this.queue = new ArrayBlockingQueue<>(queueSize);
         this.queueSize = queueSize;
         this.blocking = blocking;
         this.config = config;
@@ -83,18 +83,19 @@ public final class AsyncAppender extends AbstractAppender {
     @Override
     public void start() {
         final Map<String, Appender> map = config.getAppenders();
-        final List<AppenderControl> appenders = new ArrayList<AppenderControl>();
+        final List<AppenderControl> appenders = new ArrayList<>();
         for (final AppenderRef appenderRef : appenderRefs) {
-            if (map.containsKey(appenderRef.getRef())) {
-                appenders.add(new AppenderControl(map.get(appenderRef.getRef()), appenderRef.getLevel(),
-                    appenderRef.getFilter()));
+            final Appender appender = map.get(appenderRef.getRef());
+            if (appender != null) {
+                appenders.add(new AppenderControl(appender, appenderRef.getLevel(), appenderRef.getFilter()));
             } else {
                 LOGGER.error("No appender named {} was configured", appenderRef);
             }
         }
         if (errorRef != null) {
-            if (map.containsKey(errorRef)) {
-                errorAppender = new AppenderControl(map.get(errorRef), null, null);
+            final Appender appender = map.get(errorRef);
+            if (appender != null) {
+                errorAppender = new AppenderControl(appender, null, null);
             } else {
                 LOGGER.error("Unable to set up error Appender. No appender named {} was configured", errorRef);
             }
@@ -150,13 +151,30 @@ public final class AsyncAppender extends AbstractAppender {
                 coreEvent.setEndOfBatch(false); // queue is definitely not empty!
                 appendSuccessful = thread.callAppenders(coreEvent);
             } else {
+                final Serializable serialized = Log4jLogEvent.serialize(coreEvent, includeLocation);
                 try {
                     // wait for free slots in the queue
-                    queue.put(Log4jLogEvent.serialize(coreEvent, includeLocation));
+                    queue.put(serialized);
                     appendSuccessful = true;
                 } catch (final InterruptedException e) {
-                    LOGGER.warn("Interrupted while waiting for a free slot in the AsyncAppender LogEvent-queue {}",
-                            getName());
+                    // LOG4J2-1049: Some applications use Thread.interrupt() to send
+                    // messages between application threads. This does not necessarily
+                    // mean that the queue is full. To prevent dropping a log message,
+                    // quickly try to offer the event to the queue again.
+                    // (Yes, this means there is a possibility the same event is logged twice.)
+                    //
+                    // Finally, catching the InterruptedException means the
+                    // interrupted flag has been cleared on the current thread.
+                    // This may interfere with the application's expectation of
+                    // being interrupted, so when we are done, we set the interrupted
+                    // flag again.
+                    appendSuccessful = queue.offer(serialized);
+                    if (!appendSuccessful) {
+                        LOGGER.warn("Interrupted while waiting for a free slot in the AsyncAppender LogEvent-queue {}",
+                        getName());
+                    }
+                    // set the interrupted flag again.
+                    Thread.currentThread().interrupt();
                 }
             }
         } else {

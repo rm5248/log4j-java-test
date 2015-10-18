@@ -85,7 +85,7 @@ public class LogManager {
         }
 
         if (factory == null) {
-            final SortedMap<Integer, LoggerContextFactory> factories = new TreeMap<Integer, LoggerContextFactory>();
+            final SortedMap<Integer, LoggerContextFactory> factories = new TreeMap<>();
             // note that the following initial call to ProviderUtil may block until a Provider has been installed when
             // running in an OSGi environment
             if (ProviderUtil.hasProviders()) {
@@ -104,6 +104,8 @@ public class LogManager {
                 if (factories.isEmpty()) {
                     LOGGER.error("Log4j2 could not find a logging implementation. Please add log4j-core to the classpath. Using SimpleLogger to log to the console...");
                     factory = new SimpleLoggerContextFactory();
+                } else if (factories.size() == 1) {
+					factory = factories.get(factories.lastKey());
                 } else {
                     final StringBuilder sb = new StringBuilder("Multiple logging implementations found: \n");
                     for (final Map.Entry<Integer, LoggerContextFactory> entry : factories.entrySet()) {
@@ -305,6 +307,20 @@ public class LogManager {
     }
 
     /**
+     * Returns a formatter Logger using the fully qualified name of the calling Class as the Logger name.
+     * <p>
+     * This logger lets you use a {@link java.util.Formatter} string in the message to format parameters.
+     * </p>
+     * @return The Logger for the calling class.
+     * @throws UnsupportedOperationException if the calling class cannot be determined.
+     * @since 2.4
+     */
+    public static Logger getFormatterLogger() {
+        return getFormatterLogger(ReflectionUtil.getCallerClass(2));
+    }
+
+
+    /**
      * Returns a formatter Logger using the fully qualified name of the Class as the Logger name.
      * <p>
      * This logger let you use a {@link java.util.Formatter} string in the message to format parameters.
@@ -399,6 +415,17 @@ public class LogManager {
             StringFormatterMessageFactory.INSTANCE);
     }
 
+    private static Class<?> callerClass(final Class<?> clazz) {
+        if (clazz != null) {
+            return clazz;
+        }
+        final Class<?> candidate = ReflectionUtil.getCallerClass(3);
+        if (candidate == null) {
+            throw new UnsupportedOperationException("No class provided, and an appropriate one cannot be found.");
+        }
+        return candidate;
+    }
+
     /**
      * Returns a Logger with the name of the calling class.
      * @return The Logger for the calling class.
@@ -416,14 +443,8 @@ public class LogManager {
      * @throws UnsupportedOperationException if {@code clazz} is {@code null} and the calling class cannot be determined.
      */
     public static Logger getLogger(final Class<?> clazz) {
-        if (clazz == null) {
-            final Class<?> candidate = ReflectionUtil.getCallerClass(2);
-            if (candidate == null) {
-                throw new UnsupportedOperationException("No class provided, and an appropriate one cannot be found.");
-            }
-            return getLogger(candidate);
-        }
-        return getContext(clazz.getClassLoader(), false).getLogger(clazz.getName());
+        final Class<?> cls = callerClass(clazz);
+        return getContext(cls.getClassLoader(), false).getLogger(cls.getName());
     }
 
     /**
@@ -436,14 +457,8 @@ public class LogManager {
      * @throws UnsupportedOperationException if {@code clazz} is {@code null} and the calling class cannot be determined.
      */
     public static Logger getLogger(final Class<?> clazz, final MessageFactory messageFactory) {
-        if (clazz == null) {
-            final Class<?> candidate = ReflectionUtil.getCallerClass(2);
-            if (candidate == null) {
-                throw new UnsupportedOperationException("No class provided, and an appropriate one cannot be found.");
-            }
-            return getLogger(candidate, messageFactory);
-        }
-        return getContext(clazz.getClassLoader(), false).getLogger(clazz.getName(), messageFactory);
+        final Class<?> cls = callerClass(clazz);
+        return getContext(cls.getClassLoader(), false).getLogger(cls.getName(), messageFactory);
     }
 
     /**

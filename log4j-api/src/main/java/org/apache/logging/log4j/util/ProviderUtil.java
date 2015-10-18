@@ -49,7 +49,7 @@ public final class ProviderUtil {
 
     private static final Logger LOGGER = StatusLogger.getLogger();
 
-    protected static final Collection<Provider> PROVIDERS = new HashSet<Provider>();
+    protected static final Collection<Provider> PROVIDERS = new HashSet<>();
 
     /**
      * Guards the ProviderUtil singleton instance from lazy initialization. This is primarily used for OSGi support.
@@ -117,14 +117,16 @@ public final class ProviderUtil {
         if (INSTANCE == null) {
             try {
                 STARTUP_LOCK.lockInterruptibly();
-                if (INSTANCE == null) {
-                    INSTANCE = new ProviderUtil();
+                try {
+                    if (INSTANCE == null) {
+                        INSTANCE = new ProviderUtil();
+                    }
+                } finally {
+                    STARTUP_LOCK.unlock();
                 }
             } catch (final InterruptedException e) {
                 LOGGER.fatal("Interrupted before Log4j Providers could be loaded.", e);
                 Thread.currentThread().interrupt();
-            } finally {
-                STARTUP_LOCK.unlock();
             }
         }
     }

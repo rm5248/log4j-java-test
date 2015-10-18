@@ -26,6 +26,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.logging.log4j.util.StringBuilders;
 import org.apache.logging.log4j.util.Strings;
 
 /**
@@ -73,7 +74,7 @@ public class ThreadDumpMessage implements Message {
     public String toString() {
         final StringBuilder sb = new StringBuilder("ThreadDumpMessage[");
         if (this.title.length() > 0) {
-            sb.append("Title=\"").append(this.title).append('"');
+            StringBuilders.appendKeyDqValue(sb, "Title", this.title);
         }
         sb.append(']');
         return sb.toString();
@@ -171,7 +172,7 @@ public class ThreadDumpMessage implements Message {
         public Map<ThreadInformation, StackTraceElement[]> createThreadInfo() {
             final Map<Thread, StackTraceElement[]> map = Thread.getAllStackTraces();
             final Map<ThreadInformation, StackTraceElement[]> threads =
-                new HashMap<ThreadInformation, StackTraceElement[]>(map.size());
+                new HashMap<>(map.size());
             for (final Map.Entry<Thread, StackTraceElement[]> entry : map.entrySet()) {
                 threads.put(new BasicThreadInformation(entry.getKey()), entry.getValue());
             }
@@ -189,7 +190,7 @@ public class ThreadDumpMessage implements Message {
             final ThreadInfo[] array = bean.dumpAllThreads(true, true);
 
             final Map<ThreadInformation, StackTraceElement[]>  threads =
-                new HashMap<ThreadInformation, StackTraceElement[]>(array.length);
+                new HashMap<>(array.length);
             for (final ThreadInfo info : array) {
                 threads.put(new ExtendedThreadInformation(info), info.getStackTrace());
             }

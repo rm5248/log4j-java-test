@@ -17,11 +17,13 @@
 package org.apache.logging.log4j.core;
 
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.junit.InitialLoggerContext;
+import org.apache.logging.log4j.junit.LoggerContextRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -34,7 +36,7 @@ public class FileConfigTest {
     private static final String CONFIG = "target/test-classes/log4j-test2.xml";
 
     @ClassRule
-    public static InitialLoggerContext context = new InitialLoggerContext(CONFIG);
+    public static LoggerContextRule context = new LoggerContextRule(CONFIG);
 
     private final org.apache.logging.log4j.Logger logger = context.getLogger("LoggerTest");
 
@@ -46,18 +48,21 @@ public class FileConfigTest {
     @Test
     public void testReconfiguration() throws Exception {
         final Configuration oldConfig = context.getConfiguration();
-        final int MONITOR_INTERVAL_SECONDS = 1;
+        final int MONITOR_INTERVAL_SECONDS = 5;
         final File file = new File(CONFIG);
         final long orig = file.lastModified();
         final long newTime = orig + 10000;
-        file.setLastModified(newTime);
-        int sleepMillis = (MONITOR_INTERVAL_SECONDS + 1) * 1000;
-        Thread.sleep(sleepMillis);
+        assertTrue("setLastModified should have succeeded.", file.setLastModified(newTime));
+        TimeUnit.SECONDS.sleep(MONITOR_INTERVAL_SECONDS + 1);
         for (int i = 0; i < 17; ++i) {
             logger.debug("Reconfigure");
         }
-        Thread.sleep(sleepMillis);
-        final Configuration newConfig = context.getConfiguration();
+        int loopCount = 0;
+        Configuration newConfig;
+        do {
+            Thread.sleep(100);
+            newConfig = context.getConfiguration();
+        } while (newConfig == oldConfig && loopCount < 5);
         assertNotSame("Reconfiguration failed", newConfig, oldConfig);
     }
 }

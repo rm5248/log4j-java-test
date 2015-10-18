@@ -23,12 +23,12 @@ import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import org.apache.logging.log4j.core.util.Integers;
 
 /**
- * Triggering Policy that causes a rollover based on time.
+ * Rolls a file over based on time.
  */
 @Plugin(name = "TimeBasedTriggeringPolicy", category = "Core", printObject = true)
 public final class TimeBasedTriggeringPolicy implements TriggeringPolicy {
 
-    private long nextRollover;
+    private long nextRolloverMillis;
     private final int interval;
     private final boolean modulate;
 
@@ -39,8 +39,16 @@ public final class TimeBasedTriggeringPolicy implements TriggeringPolicy {
         this.modulate = modulate;
     }
 
+    public int getInterval() {
+        return interval;
+    }
+
+    public long getNextRolloverMillis() {
+        return nextRolloverMillis;
+    }
+
     /**
-     * Initialize the policy.
+     * Initializes the policy.
      * @param manager The RollingFileManager.
      */
     @Override
@@ -50,11 +58,11 @@ public final class TimeBasedTriggeringPolicy implements TriggeringPolicy {
         // LOG4J2-531: call getNextTime twice to force initialization of both prevFileTime and nextFileTime
         manager.getPatternProcessor().getNextTime(manager.getFileTime(), interval, modulate);
         
-        nextRollover = manager.getPatternProcessor().getNextTime(manager.getFileTime(), interval, modulate);
+        nextRolloverMillis = manager.getPatternProcessor().getNextTime(manager.getFileTime(), interval, modulate);
     }
 
     /**
-     * Determine whether a rollover should occur.
+     * Determines whether a rollover should occur.
      * @param event   A reference to the currently event.
      * @return true if a rollover should occur.
      */
@@ -63,21 +71,16 @@ public final class TimeBasedTriggeringPolicy implements TriggeringPolicy {
         if (manager.getFileSize() == 0) {
             return false;
         }
-        final long now = event.getTimeMillis();
-        if (now > nextRollover) {
-            nextRollover = manager.getPatternProcessor().getNextTime(now, interval, modulate);
+        final long nowMillis = event.getTimeMillis();
+        if (nowMillis > nextRolloverMillis) {
+            nextRolloverMillis = manager.getPatternProcessor().getNextTime(nowMillis, interval, modulate);
             return true;
         }
         return false;
     }
 
-    @Override
-    public String toString() {
-        return "TimeBasedTriggeringPolicy";
-    }
-
     /**
-     * Create a TimeBasedTriggeringPolicy.
+     * Creates a TimeBasedTriggeringPolicy.
      * @param interval The interval between rollovers.
      * @param modulate If true the time will be rounded to occur on a boundary aligned with the increment.
      * @return a TimeBasedTriggeringPolicy.
@@ -90,4 +93,11 @@ public final class TimeBasedTriggeringPolicy implements TriggeringPolicy {
         final boolean mod = Boolean.parseBoolean(modulate);
         return new TimeBasedTriggeringPolicy(increment, mod);
     }
+
+    @Override
+    public String toString() {
+        return "TimeBasedTriggeringPolicy(nextRolloverMillis=" + nextRolloverMillis + ", interval=" + interval
+                + ", modulate=" + modulate + ")";
+    }
+
 }

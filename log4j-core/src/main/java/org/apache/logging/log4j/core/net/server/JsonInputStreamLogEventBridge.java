@@ -21,6 +21,7 @@ import java.nio.charset.Charset;
 
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.jackson.Log4jJsonObjectMapper;
+import org.apache.logging.log4j.util.Chars;
 
 /**
  * Reads and logs JSON {@link LogEvent}s from an {@link InputStream}..
@@ -31,7 +32,7 @@ public class JsonInputStreamLogEventBridge extends InputStreamLogEventBridge {
     private static final char EVENT_END_MARKER = '}';
     private static final char EVENT_START_MARKER = '{';
     private static final char JSON_ESC = '\\';
-    private static final char JSON_STR_DELIM = '"';
+    private static final char JSON_STR_DELIM = Chars.DQUOTE;
 
     public JsonInputStreamLogEventBridge() {
         this(1024, Charset.defaultCharset());
@@ -54,8 +55,10 @@ public class JsonInputStreamLogEventBridge extends InputStreamLogEventBridge {
         boolean inEsc = false;
         for (int i = start; i < charArray.length; i++) {
             final char c = charArray[i];
-            if (!inEsc) {
-                inEsc = false;
+            if (inEsc) {
+            	// Skip this char and continue
+            	inEsc = false;
+            } else { 
                 switch (c) {
                 case EVENT_START_MARKER:
                     if (!inStr) {

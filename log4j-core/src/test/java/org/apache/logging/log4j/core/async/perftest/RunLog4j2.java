@@ -18,8 +18,7 @@ package org.apache.logging.log4j.core.async.perftest;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.LifeCycle;
-
+import org.apache.logging.log4j.core.CoreLoggerContexts;
 import com.lmax.disruptor.collections.Histogram;
 
 public class RunLog4j2 implements IPerfTestRunner {
@@ -61,7 +60,7 @@ public class RunLog4j2 implements IPerfTestRunner {
 
     @Override
     public void shutdown() {
-        ((LifeCycle) LogManager.getContext()).stop(); // stop async thread
+        CoreLoggerContexts.stopLoggerContext(); // stop async thread
     }
 
 

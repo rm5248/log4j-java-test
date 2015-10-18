@@ -22,6 +22,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.apache.logging.log4j.util.EnglishEnums;
+import org.apache.logging.log4j.util.StringBuilders;
 import org.apache.logging.log4j.util.Strings;
 
 /**
@@ -54,7 +55,7 @@ public class MapMessage implements MultiformatMessage {
      * Constructor.
      */
     public MapMessage() {
-        data = new TreeMap<String, String>();
+        data = new TreeMap<>();
     }
 
     /**
@@ -62,7 +63,7 @@ public class MapMessage implements MultiformatMessage {
      * @param map The Map.
      */
     public MapMessage(final Map<String, String> map) {
-        this.data = map instanceof SortedMap ? (SortedMap<String, String>) map : new TreeMap<String, String>(map);
+        this.data = map instanceof SortedMap ? (SortedMap<String, String>) map : new TreeMap<>(map);
     }
 
     @Override
@@ -248,7 +249,7 @@ public class MapMessage implements MultiformatMessage {
                 sb.append(' ');
             }
             first = false;
-            sb.append(entry.getKey()).append("=\"").append(entry.getValue()).append('"');
+            StringBuilders.appendKeyDqValue(sb, entry);
         }
     }
 
@@ -260,8 +261,8 @@ public class MapMessage implements MultiformatMessage {
                 sb.append(", ");
             }
             first = false;
-            sb.append('"').append(entry.getKey()).append("\":");
-            sb.append('"').append(entry.getValue()).append('"');
+            StringBuilders.appendDqValue(sb, entry.getKey()).append(':');
+            StringBuilders.appendDqValue(sb, entry.getValue());
         }
         sb.append('}');
     }
@@ -275,7 +276,7 @@ public class MapMessage implements MultiformatMessage {
                 sb.append(", ");
             }
             first = false;
-            sb.append(entry.getKey()).append("=\"").append(entry.getValue()).append('"');
+            StringBuilders.appendKeyDqValue(sb, entry);
         }
         sb.append('}');
     }

@@ -43,6 +43,7 @@
       </item>
       <item name="Runtime Dependencies" href="/runtime-dependencies.html"/>
       <item name="FAQ" href="/faq.html"/>
+      <item name="Articles" href="/articles.html"/>
     </menu>
 
     <menu name="Manual" inherit="top" img="icon-book">
@@ -66,6 +67,7 @@
         <item name="Configuration Syntax" href="/manual/configuration.html#ConfigurationSyntax" />
         <item name="XML Syntax" href="/manual/configuration.html#XML"/>
         <item name="JSON Syntax" href="/manual/configuration.html#JSON"/>
+        <item name="Properties Syntax" href="/manual/configuration.html#Properties"/>
         <item name="Configuring Loggers" href="/manual/configuration.html#Loggers"/>
         <item name="Configuring Appenders" href="/manual/configuration.html#Appenders"/>
         <item name="Configuring Filters" href="/manual/configuration.html#Filters"/>
@@ -100,6 +102,7 @@
         <item name="Java" href="/manual/lookups.html#JavaLookup"/>
         <item name="JNDI" href="/manual/lookups.html#JndiLookup"/>
         <item name="JVM Arguments" href="/manual/lookups.html#JmxRuntimeInputArgumentsLookup"/>
+        <item name="Log4j Config" href="/manual/lookups.html#Log4jConfigLookup"/>
         <item name="Main Arguments" href="/manual/lookups.html#AppMainArgsLookup"/>
         <item name="Map" href="/manual/lookups.html#MapLookup"/>
         <item name="Structured Data" href="/manual/lookups.html#StructuredDataLookup"/>
@@ -128,6 +131,7 @@
         <item name="SMTP" href="/manual/appenders.html#SMTPAppender"/>
         <item name="Socket" href="/manual/appenders.html#SocketAppender"/>
         <item name="Syslog" href="/manual/appenders.html#SyslogAppender"/>
+        <item name="ZeroMQ" href="/manual/appenders.html#ZeroMQAppender"/>        
       </item>
 
       <item name="Layouts" href="/manual/layouts.html" collapse="true">
@@ -181,8 +185,12 @@
       </item>
 
       <item name="Extending Log4j Configuration" href="/manual/customconfig.html" collapse="true">
-        <item name="ConfigurationFactory" href="/manual/customconfig.html#ConfigurationFactory"/>
-        <item name="Manual" href="/manual/customconfig.html#AddingToCurrent"/>
+        <item name="ConfigurationBuilder API" href="/manual/customconfig.html#ConfigurationBuilder"/>
+        <item name="Understanding ConfigurationFactory" href="/manual/customconfig.html#ConfigurationFactory"/>
+        <item name="Example" href="/manual/customconfig.html#Example"/>
+        <item name="Using Configurator" href="/manual/customconfig.html#Configurator"/>
+        <item name="Config File and Code" href="/manual/customconfig.html#Hybrid"/>
+        <item name="After Initialization" href="/manual/customconfig.html#AddingToCurrent"/>
       </item>
 
       <item name="Custom Log Levels" href="/manual/customloglevels.html" collapse="true">
@@ -209,6 +217,7 @@
       <item name="Log4j Web Application Support" href="log4j-web/index.html"/>
       <item name="Log4j NoSQL support" href="log4j-nosql/index.html"/>
       <item name="Log4j IO Streams" href="log4j-iostreams/index.html"/>
+      <item name="Log4j Liquibase Binding" href="log4j-liquibase/index.html"/>
     </menu>
 
     <menu name="Project Information" img="icon-info-sign">

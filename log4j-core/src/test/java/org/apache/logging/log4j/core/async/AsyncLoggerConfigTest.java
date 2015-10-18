@@ -22,8 +22,11 @@ import java.io.FileReader;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.LifeCycle;
+import org.apache.logging.log4j.core.CoreLoggerContexts;
+import org.apache.logging.log4j.core.config.AppenderRef;
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
+import org.apache.logging.log4j.core.config.DefaultConfiguration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -33,32 +36,46 @@ public class AsyncLoggerConfigTest {
 
     @BeforeClass
     public static void beforeClass() {
-        System.setProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY,
-                "AsyncLoggerConfigTest.xml");
+        System.setProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY, "AsyncLoggerConfigTest.xml");
     }
 
     @Test
     public void testAdditivity() throws Exception {
-        final File f = new File("target", "AsyncLoggerConfigTest.log");
-        assertTrue("Deleted old file before test", !f.exists() || f.delete());
-        
+        final File file = new File("target", "AsyncLoggerConfigTest.log");
+        assertTrue("Deleted old file before test", !file.exists() || file.delete());
+
         final Logger log = LogManager.getLogger("com.foo.Bar");
         final String msg = "Additive logging: 2 for the price of 1!";
         log.info(msg);
-        ((LifeCycle) LogManager.getContext()).stop(); // stop async thread
-
-        final BufferedReader reader = new BufferedReader(new FileReader(f));
+        CoreLoggerContexts.stopLoggerContext(file); // stop async thread
+        
+        final BufferedReader reader = new BufferedReader(new FileReader(file));
         final String line1 = reader.readLine();
         final String line2 = reader.readLine();
         reader.close();
-        f.delete();
+        file.delete();
         assertNotNull("line1", line1);
         assertNotNull("line2", line2);
         assertTrue("line1 correct", line1.contains(msg));
         assertTrue("line2 correct", line2.contains(msg));
 
         final String location = "testAdditivity";
-        assertTrue("location",
-                line1.contains(location) || line2.contains(location));
+        assertTrue("location", line1.contains(location) || line2.contains(location));
+    }
+    
+    @Test
+    public void testIncludeLocationDefaultsToFalse() {
+    	final LoggerConfig rootLoggerConfig = 
+    			AsyncLoggerConfig.RootLogger.createLogger(
+    					null, "INFO", null, new AppenderRef[0], null, new DefaultConfiguration(), null);
+    	assertFalse("Include location should default to false for async logggers",
+    			    rootLoggerConfig.isIncludeLocation());
+    	
+    	final LoggerConfig loggerConfig =
+    	        AsyncLoggerConfig.createLogger(
+    	        		null, "INFO", "com.foo.Bar", null, new AppenderRef[0], null, new DefaultConfiguration(),
+    	        		null);
+    	assertFalse("Include location should default to false for async logggers",
+    			    loggerConfig.isIncludeLocation());
     }
 }

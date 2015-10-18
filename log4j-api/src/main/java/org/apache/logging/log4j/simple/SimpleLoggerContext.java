@@ -60,7 +60,7 @@ public class SimpleLoggerContext implements LoggerContext {
 
     private final PrintStream stream;
 
-    private final ConcurrentMap<String, ExtendedLogger> loggers = new ConcurrentHashMap<String, ExtendedLogger>();
+    private final ConcurrentMap<String, ExtendedLogger> loggers = new ConcurrentHashMap<>();
 
     public SimpleLoggerContext() {
         props = new PropertiesUtil("log4j2.simplelog.properties");
@@ -99,12 +99,11 @@ public class SimpleLoggerContext implements LoggerContext {
 
     @Override
     public ExtendedLogger getLogger(final String name, final MessageFactory messageFactory) {
-        if (loggers.containsKey(name)) {
-            final ExtendedLogger logger = loggers.get(name);
-            AbstractLogger.checkMessageFactory(logger, messageFactory);
-            return logger;
+        final ExtendedLogger extendedLogger = loggers.get(name);
+        if (extendedLogger != null) {
+			AbstractLogger.checkMessageFactory(extendedLogger, messageFactory);
+            return extendedLogger;
         }
-
         loggers.putIfAbsent(name, new SimpleLogger(name, defaultLevel, showLogName, showShortName, showDateTime,
                 showContextMap, dateTimeFormat, messageFactory, props, stream));
         return loggers.get(name);

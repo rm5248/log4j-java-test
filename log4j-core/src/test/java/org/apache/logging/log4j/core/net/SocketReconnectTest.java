@@ -26,7 +26,7 @@ import java.util.List;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.appender.AppenderLoggingException;
 import org.apache.logging.log4j.core.util.Constants;
-import org.apache.logging.log4j.junit.InitialLoggerContext;
+import org.apache.logging.log4j.junit.LoggerContextRule;
 import org.apache.logging.log4j.test.AvailablePortFinder;
 import org.junit.ClassRule;
 import org.junit.Ignore;
@@ -47,12 +47,12 @@ public class SocketReconnectTest {
         "................................................................" + Constants.LINE_SEPARATOR;
 
     @ClassRule
-    public static InitialLoggerContext context = new InitialLoggerContext(CONFIG);
+    public static LoggerContextRule context = new LoggerContextRule(CONFIG);
 
     @Test
     public void testReconnect() throws Exception {
 
-        final List<String> list = new ArrayList<String>();
+        final List<String> list = new ArrayList<>();
         TestSocketServer server = new TestSocketServer(list);
         server.start();
         Thread.sleep(300);

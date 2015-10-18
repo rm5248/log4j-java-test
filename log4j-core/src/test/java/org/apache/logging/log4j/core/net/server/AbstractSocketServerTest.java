@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
@@ -69,12 +68,14 @@ public abstract class AbstractSocketServerTest {
     private static final String MESSAGE = "This is test message";
 
     private static final String MESSAGE_2 = "This is test message 2";
-
+    
+    private static final String MESSAGE_WITH_SPECIAL_CHARS = "{This}\n[is]\"n\"a\"\r\ntrue:\n\ttest,\nmessage";
+    
     static final int PORT_NUM = AvailablePortFinder.getNextAvailable();
 
     static final String PORT = String.valueOf(PORT_NUM);
 
-    private final LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+    private final LoggerContext ctx = LoggerContext.getContext(false);
 
     private final boolean expectLengthException;
 
@@ -158,6 +159,13 @@ public abstract class AbstractSocketServerTest {
             testServer(m1, m2);
         }
     }
+    
+    
+    @Test
+    public void testMessagesWithSpecialChars() throws Exception {
+        testServer(MESSAGE_WITH_SPECIAL_CHARS);
+    }
+    
 
     private void testServer(final int size) throws Exception {
         final String[] messages = new String[size];

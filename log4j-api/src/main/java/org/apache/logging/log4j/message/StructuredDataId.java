@@ -18,12 +18,14 @@ package org.apache.logging.log4j.message;
 
 import java.io.Serializable;
 
+import org.apache.logging.log4j.util.Strings;
+
 /**
  * The StructuredData identifier.
  */
 public class StructuredDataId implements Serializable {
 
-    private static final String AT = "@";
+    private static final String AT_SIGN = "@";
 
     /**
      * RFC 5424 Time Quality.
@@ -64,7 +66,7 @@ public class StructuredDataId implements Serializable {
                 throw new IllegalArgumentException(String.format("Length of id %s exceeds maximum of %d characters",
                         name, MAX_LENGTH));
             }
-            index = name.indexOf(AT);
+            index = name.indexOf(AT_SIGN);
         }
 
         if (index > 0) {
@@ -91,15 +93,15 @@ public class StructuredDataId implements Serializable {
         if (name == null) {
             throw new IllegalArgumentException("No structured id name was supplied");
         }
-        if (name.contains(AT)) {
-            throw new IllegalArgumentException("Structured id name cannot contain an '" + AT + '\'');
+        if (name.contains(AT_SIGN)) {
+            throw new IllegalArgumentException("Structured id name cannot contain an " + Strings.quote(AT_SIGN));
         }
         if (enterpriseNumber <= 0) {
             throw new IllegalArgumentException("No enterprise number was supplied");
         }
         this.name = name;
         this.enterpriseNumber = enterpriseNumber;
-        final String id = enterpriseNumber < 0 ? name : name + AT + enterpriseNumber;
+        final String id = name + AT_SIGN + enterpriseNumber;
         if (id.length() > MAX_LENGTH) {
             throw new IllegalArgumentException("Length of id exceeds maximum of 32 characters: " + id);
         }
@@ -187,6 +189,6 @@ public class StructuredDataId implements Serializable {
 
     @Override
     public String toString() {
-        return isReserved() ? name : name + AT + enterpriseNumber;
+        return isReserved() ? name : name + AT_SIGN + enterpriseNumber;
     }
 }

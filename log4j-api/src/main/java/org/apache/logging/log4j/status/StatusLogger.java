@@ -38,7 +38,7 @@ import org.apache.logging.log4j.util.PropertiesUtil;
 import org.apache.logging.log4j.util.Strings;
 
 /**
- * Mechanism to record events that occur in the logging system.
+ * Records events that occur in the logging system.
  */
 public final class StatusLogger extends AbstractLogger {
 
@@ -62,11 +62,13 @@ public final class StatusLogger extends AbstractLogger {
 
     private final SimpleLogger logger;
 
-    private final Collection<StatusListener> listeners = new CopyOnWriteArrayList<StatusListener>();
+    private final Collection<StatusListener> listeners = new CopyOnWriteArrayList<>();
+    
     @SuppressWarnings("NonSerializableFieldInSerializableClass") // ReentrantReadWriteLock is Serializable
     private final ReadWriteLock listenersLock = new ReentrantReadWriteLock();
 
-    private final Queue<StatusData> messages = new BoundedQueue<StatusData>(MAX_ENTRIES);
+    private final Queue<StatusData> messages = new BoundedQueue<>(MAX_ENTRIES);
+    
     @SuppressWarnings("NonSerializableFieldInSerializableClass") // ReentrantLock is Serializable
     private final Lock msgLock = new ReentrantLock();
 
@@ -91,7 +93,7 @@ public final class StatusLogger extends AbstractLogger {
     }
 
     /**
-     * Register a new listener.
+     * Registers a new listener.
      * @param listener The StatusListener to register.
      */
     public void registerListener(final StatusListener listener) {
@@ -108,7 +110,7 @@ public final class StatusLogger extends AbstractLogger {
     }
 
     /**
-     * Remove a StatusListener.
+     * Removes a StatusListener.
      * @param listener The StatusListener to remove.
      */
     public void removeListener(final StatusListener listener) {
@@ -117,8 +119,8 @@ public final class StatusLogger extends AbstractLogger {
         try {
             listeners.remove(listener);
             int lowest = Level.toLevel(DEFAULT_STATUS_LEVEL, Level.WARN).intLevel();
-            for (final StatusListener l : listeners) {
-                final int level = l.getStatusLevel().intLevel();
+            for (final StatusListener statusListener : listeners) {
+                final int level = statusListener.getStatusLevel().intLevel();
                 if (lowest < level) {
                     lowest = level;
                 }
@@ -168,7 +170,7 @@ public final class StatusLogger extends AbstractLogger {
     public List<StatusData> getStatusData() {
         msgLock.lock();
         try {
-            return new ArrayList<StatusData>(messages);
+            return new ArrayList<>(messages);
         } finally {
             msgLock.unlock();
         }
@@ -192,7 +194,7 @@ public final class StatusLogger extends AbstractLogger {
     }
 
     /**
-     * Add an event.
+     * Adds an event.
      * @param marker The Marker
      * @param fqcn   The fully qualified class name of the <b>caller</b>
      * @param level  The logging level
@@ -205,7 +207,7 @@ public final class StatusLogger extends AbstractLogger {
         if (fqcn != null) {
             element = getStackTraceElement(fqcn, Thread.currentThread().getStackTrace());
         }
-        final StatusData data = new StatusData(element, level, msg, t);
+        final StatusData data = new StatusData(element, level, msg, t, null);
         msgLock.lock();
         try {
             messages.add(data);
@@ -276,7 +278,7 @@ public final class StatusLogger extends AbstractLogger {
     }
 
     /**
-     * Queue for status events.
+     * Queues for status events.
      * @param <E> Object type to be stored in the queue.
      */
     private class BoundedQueue<E> extends ConcurrentLinkedQueue<E> {
