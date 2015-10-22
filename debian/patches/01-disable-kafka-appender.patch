@@ -1,0 +1,17 @@
+Description: Disable the Kafka appender (not yet in Debian)
+Author: Emmanuel Bourg <ebourg@apache.org>
+Forwarded: not-needed
+--- a/log4j-core/pom.xml
++++ b/log4j-core/pom.xml
+@@ -267,6 +267,11 @@
+       <plugin>
+         <artifactId>maven-compiler-plugin</artifactId>
+         <version>${compiler.plugin.version}</version>
++        <configuration>
++          <excludes>
++            <exclude>**/kafka/**</exclude>
++          </excludes>
++        </configuration>
+         <executions>
+           <execution>
+             <!-- disable annotation processing for first pass -->

@@ -13,22 +13,26 @@ commons-httpclient commons-httpclient * * * *
 javax.jmdns jmdns * * * *
 junit junit * * * *
 log4j log4j * * * *
+net.javacrumbs.json-unit json-unit * * * *
+org.apache.activemq activemq-broker * * * *
 org.apache.felix org.apache.felix.framework * * * *
+org.apache.kafka kafka-clients * * * *
 org.apache.maven maven-core * * * *
 org.apache.maven.plugins maven-changes-plugin * * * *
 org.apache.maven.plugins maven-checkstyle-plugin * * * *
+org.apache.maven.plugins maven-failsafe-plugin * * * *
 org.apache.maven.plugins maven-jxr-plugin * * * *
 org.apache.maven.plugins maven-pdf-plugin * * * *
 org.apache.maven.plugins maven-pmd-plugin * * * *
 org.apache.maven.plugins maven-project-info-reports-plugin * * * *
 org.apache.maven.plugins maven-remote-resources-plugin * * * *
 org.apache.maven.plugins maven-surefire-plugin * * * *
-org.apache.maven.plugins maven-failsafe-plugin * * * *
 org.apache.maven.wagon wagon-ssh * * * *
 org.apache.rat apache-rat-plugin * * * *
 org.apache.velocity velocity * * * *
 org.codehaus.mojo cobertura-maven-plugin * * * *
 org.codehaus.mojo findbugs-maven-plugin * * * *
+org.codehaus.woodstox woodstox-core-asl * * * *
 org.easymock easymock * * * *
 org.eclipse.osgi org.eclipse.osgi * * * *
 org.eclipse.persistence org.eclipse.persistence.jpa * * * *
@@ -36,7 +40,3 @@ org.hsqldb hsqldb * * * *
 org.mockejb mockejb * * * *
 org.slf4j slf4j-ext * * * *
 org.springframework spring-test * * * *
-org.codehaus.woodstox woodstox-core-asl * * * *
-net.javacrumbs.json-unit json-unit * * * *
-org.apache.activemq activemq-broker * * * *
-

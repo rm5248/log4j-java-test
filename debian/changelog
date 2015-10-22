@@ -5,6 +5,7 @@ apache-log4j2 (2.4-1) UNRELEASED; urgency=medium
     - New dependencies on libcommons-compress-java, libcommons-csv-java
       and libjeromq-java
     - Ignore the new liquibase module
+    - Disabled the new Kafka appender
 
  -- Emmanuel Bourg <ebourg@apache.org>  Sun, 18 Oct 2015 22:32:22 +0200
 
