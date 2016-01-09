@@ -1,3 +1,13 @@
+apache-log4j2 (2.4-2) unstable; urgency=medium
+
+  * Team upload.
+  * maven.rules: Fix substitution rules for javax.servlet API.
+    Thanks to Chris Lamb for the report. (Closes: #809619)
+  * Switch from cdbs to dh sequencer.
+  * Vcs-Browser: Use https.
+
+ -- Markus Koschany <apo@debian.org>  Sat, 09 Jan 2016 14:23:29 +0100
+
 apache-log4j2 (2.4-1) unstable; urgency=medium
 
   * Team upload.
