@@ -1,12 +1,11 @@
 #!/usr/bin/make -f
+export JAVA_HOME=/usr/lib/jvm/default-java
 
-include /usr/share/cdbs/1/rules/debhelper.mk
-include /usr/share/cdbs/1/class/maven.mk
+%:
+	dh $@ --parallel --buildsystem=maven
 
-JAVA_HOME := /usr/lib/jvm/default-java
-
-DEB_MAVEN_DOC_TARGET := install javadoc:javadoc javadoc:aggregate
-DEB_INSTALL_CHANGELOGS_ALL := RELEASE-NOTES.txt
+override_dh_installchangelogs:
+	dh_installchangelogs RELEASE-NOTES.txt
 
 get-orig-source:
-	uscan --download-version $(DEB_UPSTREAM_VERSION) --force-download --rename
+	uscan --download-current-version --force-download --rename
