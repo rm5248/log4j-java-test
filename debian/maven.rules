@@ -11,13 +11,10 @@ org.mongodb mongo-java-driver s/jar/bundle/ s/.*/debian/ * *
 com.fasterxml.jackson.core jackson-core * s/.*/2.x/ * *
 com.fasterxml.jackson.core jackson-databind * s/.*/2.x/ * *
 commons-logging s/commons-logging-api/commons-logging/ * s/.*/debian/ * *
-javax.servlet s/javax\.servlet-api/servlet-api * s/.*/3.0/ * *
 org.eclipse.persistence javax.persistence * s/.*/2.x/ * *
 org.eclipse.persistence javax.persistence * s/2\..*/2.x/ * *
 org.osgi s/core/org.osgi.core/ * s/.*/debian/ * *
-s/org.apache.tomcat/javax.el/ el-api jar s/.*/2.1/ * *
-s/org.apache.tomcat/javax.servlet/ jsp-api jar s/.*/2.1/ * *
-s/org.apache.tomcat/javax.servlet/ servlet-api jar s/.*/2.5/ * *
+s/javax.servlet/org.apache.tomcat/ s/javax.servlet-api/tomcat-servlet-api/ jar s/.*/3.0/ * *
 s/org.apache.felix/org.osgi/ org.osgi.core * * * *
 org.apache.commons commons-lang3 jar s/3\..*/3.x/ * *
 s/org\.jboss\.spec\.javax\.jms/org.apache.geronimo.specs/ s/jboss-jms-api_1\.1_spec/geronimo-jms_1.1_spec/ * s/.*/debian/ * *
