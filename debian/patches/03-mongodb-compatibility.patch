@@ -1,0 +1,14 @@
+Description: Fixes the compatibility with the version of the MongoDB driver in Debian
+Author: Emmanuel Bourg <ebourg@apache.org>
+Forwarded: not-needed
+--- a/log4j-nosql/src/main/java/org/apache/logging/log4j/nosql/appender/mongodb/MongoDbProvider.java
++++ b/log4j-nosql/src/main/java/org/apache/logging/log4j/nosql/appender/mongodb/MongoDbProvider.java
+@@ -160,7 +160,7 @@
+             if (Strings.isNotEmpty(userName) && Strings.isNotEmpty(password)) {
+                 description += ", username=" + userName + ", passwordHash="
+                         + NameUtil.md5(password + MongoDbProvider.class.getName());
+-                credentials.add(MongoCredential.createCredential(userName, databaseName, password.toCharArray()));
++                credentials.add(MongoCredential.createMongoCRCredential(userName, databaseName, password.toCharArray()));
+             }
+             try {
+                 if (Strings.isNotEmpty(server)) {

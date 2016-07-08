@@ -1,0 +1,14 @@
+Description: Fixes the compatibility with the version of jackson in Debian
+Author: Emmanuel Bourg <ebourg@apache.org>
+Forwarded: not-needed
+--- a/log4j-core/src/main/java/org/apache/logging/log4j/core/net/server/InputStreamLogEventBridge.java
++++ b/log4j-core/src/main/java/org/apache/logging/log4j/core/net/server/InputStreamLogEventBridge.java
+@@ -45,7 +45,7 @@
+         this.bufferSize = bufferSize;
+         this.charset = charset;
+         this.eventEndMarker = eventEndMarker;
+-        this.objectReader = mapper.readerFor(Log4jLogEvent.class);
++        this.objectReader = mapper.reader(Log4jLogEvent.class);
+     }
+ 
+     abstract protected int[] getEventIndices(final String text, int beginIndex);
