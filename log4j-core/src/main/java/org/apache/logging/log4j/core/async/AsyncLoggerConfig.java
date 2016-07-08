@@ -70,26 +70,7 @@ public class AsyncLoggerConfig extends LoggerConfig {
 
     private static final long serialVersionUID = 1L;
 
-    private AsyncLoggerConfigHelper helper;
-
-    /**
-     * Default constructor.
-     */
-    public AsyncLoggerConfig() {
-        super();
-    }
-
-    /**
-     * Constructor that sets the name, level and additive values.
-     *
-     * @param name The Logger name.
-     * @param level The Level.
-     * @param additive true if the Logger is additive, false otherwise.
-     */
-    public AsyncLoggerConfig(final String name, final Level level,
-            final boolean additive) {
-        super(name, level, additive);
-    }
+    private AsyncLoggerConfigDelegate delegate;
 
     protected AsyncLoggerConfig(final String name,
             final List<AppenderRef> appenders, final Filter filter,
@@ -98,6 +79,7 @@ public class AsyncLoggerConfig extends LoggerConfig {
             final boolean includeLocation) {
         super(name, appenders, filter, level, additive, properties, config,
                 includeLocation);
+        delegate = config.getAsyncLoggerConfigDelegate();
     }
 
     /**
@@ -111,7 +93,7 @@ public class AsyncLoggerConfig extends LoggerConfig {
         event.getThreadName();
 
         // pass on the event to a separate thread
-        if (!helper.callAppendersFromAnotherThread(event)) {
+        if (!delegate.tryCallAppendersInBackground(event, this)) {
             super.callAppenders(event);
         }
     }
@@ -128,20 +110,12 @@ public class AsyncLoggerConfig extends LoggerConfig {
     @Override
     public void start() {
         LOGGER.trace("AsyncLoggerConfig[{}] starting...", displayName());
-        this.setStarting();
-        if (helper == null) {
-            helper = new AsyncLoggerConfigHelper(this);
-        } else {
-            AsyncLoggerConfigHelper.claim(); // LOG4J2-336
-        }
         super.start();
     }
 
     @Override
     public void stop() {
         LOGGER.trace("AsyncLoggerConfig[{}] stopping...", displayName());
-        this.setStopping();
-        AsyncLoggerConfigHelper.release();
         super.stop();
     }
 
@@ -153,7 +127,7 @@ public class AsyncLoggerConfig extends LoggerConfig {
      * @return a new {@code RingBufferAdmin} that instruments the ringbuffer
      */
     public RingBufferAdmin createRingBufferAdmin(final String contextName) {
-        return helper.createRingBufferAdmin(contextName, getName());
+        return delegate.createRingBufferAdmin(contextName, getName());
     }
 
     /**

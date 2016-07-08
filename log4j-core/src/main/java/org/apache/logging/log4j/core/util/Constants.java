@@ -36,6 +36,9 @@ public final class Constants {
      */
     public static final String LOG4J_CONTEXT_SELECTOR = "Log4jContextSelector";
 
+    /**
+     * Property name for the default status (internal log4j logging) level to use if not specified in configuration.
+     */
     public static final String LOG4J_DEFAULT_STATUS_LEVEL = "Log4jDefaultStatusLevel";
 
     /**
@@ -46,7 +49,8 @@ public final class Constants {
     /**
      * Line separator.
      */
-    public static final String LINE_SEPARATOR = PropertiesUtil.getProperties().getStringProperty("line.separator", "\n");
+    public static final String LINE_SEPARATOR = PropertiesUtil.getProperties().getStringProperty("line.separator",
+            "\n");
 
     /**
      * Number of milliseconds in a second.
@@ -60,6 +64,12 @@ public final class Constants {
      */
     @Deprecated
     public static final Charset UTF_8 = StandardCharsets.UTF_8;
+
+    /**
+     * Supports user request LOG4J2-898 to have the option to format a message in the background thread.
+     */
+    public static final boolean FORMAT_MESSAGES_IN_BACKGROUND = PropertiesUtil.getProperties().getBooleanProperty(
+            "log4j.format.msg.async", false);
 
     /**
      * Prevent class instantiation.

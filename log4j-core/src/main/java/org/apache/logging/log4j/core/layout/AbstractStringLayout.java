@@ -16,11 +16,16 @@
  */
 package org.apache.logging.log4j.core.layout;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.StringLayout;
+import org.apache.logging.log4j.core.util.StringEncoder;
 
 /**
  * Abstract base class for Layouts that result in a String.
@@ -32,7 +37,7 @@ import org.apache.logging.log4j.core.LogEvent;
  * Implementation note: prefer String.getBytes(String) to String.getBytes(Charset) for performance reasons. See
  * https://issues.apache.org/jira/browse/LOG4J2-935 for details.
  */
-public abstract class AbstractStringLayout extends AbstractLayout<String> {
+public abstract class AbstractStringLayout extends AbstractLayout<String> implements StringLayout {
 
     /**
      * Default length for new StringBuilder instances: {@value} .
@@ -46,8 +51,8 @@ public abstract class AbstractStringLayout extends AbstractLayout<String> {
     /**
      * The charset for the formatted message.
      */
-    // TODO: Charset is not serializable. Implement read/writeObject() ?
-    private final Charset charset;
+    // LOG4J2-1099: charset cannot be final due to serialization needs, so we serialize as charset name instead
+    private transient Charset charset;
     private final String charsetName;
     private final boolean useCustomEncoding;
 
@@ -55,6 +60,13 @@ public abstract class AbstractStringLayout extends AbstractLayout<String> {
         this(charset, null, null);
     }
 
+    /**
+     * Builds a new layout.
+     * @param charset the charset used to encode the header bytes, footer bytes and anything else that needs to be 
+     *      converted from strings to bytes.
+     * @param header the header bytes
+     * @param footer the footer bytes
+     */
     protected AbstractStringLayout(final Charset charset, final byte[] header, final byte[] footer) {
         super(header, footer);
         this.charset = charset == null ? StandardCharsets.UTF_8 : charset;
@@ -75,26 +87,15 @@ public abstract class AbstractStringLayout extends AbstractLayout<String> {
         }
     }
 
-    /**
-     * Converts a String to a byte[].
-     * 
-     * @param str if null, return null.
-     * @param charset if null, use the default charset.
-     * @return a byte[]
-     */
-    static byte[] toBytes(final String str, final Charset charset) {
-        if (str != null) {
-            if (StandardCharsets.ISO_8859_1.equals(charset)) {
-                return encodeSingleByteChars(str);
-            }
-            final Charset actual = charset != null ? charset : Charset.defaultCharset();
-            try { // LOG4J2-935: String.getBytes(String) gives better performance
-                return str.getBytes(actual.name());
-            } catch (UnsupportedEncodingException e) {
-                return str.getBytes(actual);
-            }
-        }
-        return null;
+    private void writeObject(final ObjectOutputStream out) throws IOException {
+        out.defaultWriteObject();
+        out.writeUTF(charset.name());
+    }
+
+    private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        final String csName = in.readUTF();
+        charset = Charset.forName(csName);
     }
 
     /**
@@ -114,7 +115,7 @@ public abstract class AbstractStringLayout extends AbstractLayout<String> {
 
     protected byte[] getBytes(final String s) {
         if (useCustomEncoding) { // rely on branch prediction to eliminate this check if false
-            return encodeSingleByteChars(s);
+            return StringEncoder.encodeSingleByteChars(s);
         }
         try { // LOG4J2-935: String.getBytes(String) gives better performance
             return s.getBytes(charsetName);
@@ -123,64 +124,8 @@ public abstract class AbstractStringLayout extends AbstractLayout<String> {
         }
     }
 
-    /**
-     * Encode the specified string by casting each character to a byte.
-     * 
-     * @param s the string to encode
-     * @return the encoded String
-     * @see https://issues.apache.org/jira/browse/LOG4J2-1151
-     */
-    private static byte[] encodeSingleByteChars(String s) {
-        final int length = s.length();
-        final byte[] result = new byte[length];
-        encodeString(s, 0, length, result);
-        return result;
-    }
-
-    // LOG4J2-1151
-    /*
-     * Implementation note: this is the fast path. If the char array contains only ISO-8859-1 characters, all the work
-     * will be done here.
-     */
-    private static int encodeIsoChars(String charArray, int charIndex, byte[] byteArray, int byteIndex, int length) {
-        int i = 0;
-        for (; i < length; i++) {
-            char c = charArray.charAt(charIndex++);
-            if (c > 255) {
-                break;
-            }
-            byteArray[(byteIndex++)] = ((byte) c);
-        }
-        return i;
-    }
-
-    // LOG4J2-1151
-    private static int encodeString(String charArray, int charOffset, int charLength, byte[] byteArray) {
-        int byteOffset = 0;
-        int length = Math.min(charLength, byteArray.length);
-        int charDoneIndex = charOffset + length;
-        while (charOffset < charDoneIndex) {
-            int done = encodeIsoChars(charArray, charOffset, byteArray, byteOffset, length);
-            charOffset += done;
-            byteOffset += done;
-            if (done != length) {
-                char c = charArray.charAt(charOffset++);
-                if ((Character.isHighSurrogate(c)) && (charOffset < charDoneIndex)
-                        && (Character.isLowSurrogate(charArray.charAt(charOffset)))) {
-                    if (charLength > byteArray.length) {
-                        charDoneIndex++;
-                        charLength--;
-                    }
-                    charOffset++;
-                }
-                byteArray[(byteOffset++)] = '?';
-                length = Math.min(charDoneIndex - charOffset, byteArray.length - byteOffset);
-            }
-        }
-        return byteOffset;
-    }
-
-    protected Charset getCharset() {
+    @Override
+    public Charset getCharset() {
         return charset;
     }
 

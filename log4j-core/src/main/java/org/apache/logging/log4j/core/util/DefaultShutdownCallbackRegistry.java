@@ -38,9 +38,9 @@ import org.apache.logging.log4j.status.StatusLogger;
  * @since 2.1
  */
 public class DefaultShutdownCallbackRegistry implements ShutdownCallbackRegistry, LifeCycle, Runnable, Serializable {
-
-    private static final long serialVersionUID = 1L;
+    /** Status logger. */
     protected static final Logger LOGGER = StatusLogger.getLogger();
+    private static final long serialVersionUID = 1L;
 
     private final AtomicReference<State> state = new AtomicReference<>(State.INITIALIZED);
     private final ThreadFactory threadFactory;
@@ -95,9 +95,9 @@ public class DefaultShutdownCallbackRegistry implements ShutdownCallbackRegistry
 
                 @Override
                 public void run() {
-                    final Runnable hook = this.hook.get();
-                    if (hook != null) {
-                        hook.run();
+                    final Runnable runnableHook = this.hook.get();
+                    if (runnableHook != null) {
+                        runnableHook.run();
                         this.hook.clear();
                     }
                 }

@@ -121,7 +121,7 @@ public final class RollingRandomAccessFileAppender extends AbstractOutputStreamA
      * @return the buffer size
      */
     public int getBufferSize() {
-        return ((RollingRandomAccessFileManager) getManager()).getBufferSize();
+        return getManager().getBufferSize();
     }
 
     /**
@@ -196,7 +196,7 @@ public final class RollingRandomAccessFileAppender extends AbstractOutputStreamA
 
         if (strategy == null) {
             strategy = DefaultRolloverStrategy.createStrategy(null, null, null,
-                    String.valueOf(Deflater.DEFAULT_COMPRESSION), config);
+                    String.valueOf(Deflater.DEFAULT_COMPRESSION), null, true, config);
         }
 
         if (layout == null) {

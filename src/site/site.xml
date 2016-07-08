@@ -44,6 +44,7 @@
       <item name="Runtime Dependencies" href="/runtime-dependencies.html"/>
       <item name="FAQ" href="/faq.html"/>
       <item name="Articles" href="/articles.html"/>
+      <item name="Thanks" href="/thanks.html"/>
     </menu>
 
     <menu name="Manual" inherit="top" img="icon-book">
@@ -72,6 +73,8 @@
         <item name="Configuring Appenders" href="/manual/configuration.html#Appenders"/>
         <item name="Configuring Filters" href="/manual/configuration.html#Filters"/>
         <item name="Property Substitution" href="/manual/configuration.html#PropertySubstitution"/>
+        <item name="Lookup Variables" href="/manual/configuration.html#RuntimeLookup"/>
+        <item name="Scripts" href="/manual/configuration.html#Scripts"/>
         <item name="XInclude" href="/manual/configuration.html#XInclude"/>
         <item name="Status Messages" href="/manual/configuration.html#StatusMessages"/>
         <item name="Unit Testing in Maven" href="/manual/configuration.html#UnitTestingInMaven"/>
@@ -85,14 +88,6 @@
         <item name="Configuration Lookups" href="/manual/webapp.html#WebLookup" />
         <item name="JavaServer Pages Logging" href="/manual/webapp.html#JspLogging" />
         <item name="Asynchronous Requests" href="/manual/webapp.html#Async" />
-      </item>
-
-      <item name="Plugins" href="/manual/plugins.html" collapse="true">
-        <item name="Core" href="/manual/plugins.html#Core"/>
-        <item name="Converters" href="/manual/plugins.html#Converters"/>
-        <item name="Key Providers" href="/manual/plugins.html#KeyProviders"/>
-        <item name="Lookups" href="/manual/plugins.html#Lookups"/>
-        <item name="Preloading" href="/manual/plugins.html#Plugin_Preloading"/>
       </item>
 
       <item name="Lookups" href="/manual/lookups.html" collapse="true">
@@ -155,6 +150,7 @@
         <item name="Map" href="/manual/filters.html#MapFilter"/>
         <item name="Marker" href="/manual/filters.html#MarkerFilter"/>
         <item name="Regex" href="/manual/filters.html#RegexFilter"/>
+        <item name="Script" href="/manual/filters.html#Script"/>
         <item name="Structured Data" href="/manual/filters.html#StructuredDataFilter"/>
         <item name="Thread Context Map" href="/manual/filters.html#ThreadContextMapFilter"/>
         <item name="Threshold" href="/manual/filters.html#ThresholdFilter"/>
@@ -186,6 +182,14 @@
         <item name="Custom Plugins" href="/manual/extending.html#Custom_Plugins"/>
       </item>
 
+      <item name="Plugins" href="/manual/plugins.html" collapse="true">
+        <item name="Core" href="/manual/plugins.html#Core"/>
+        <item name="Converters" href="/manual/plugins.html#Converters"/>
+        <item name="Key Providers" href="/manual/plugins.html#KeyProviders"/>
+        <item name="Lookups" href="/manual/plugins.html#Lookups"/>
+        <item name="Preloading" href="/manual/plugins.html#Plugin_Preloading"/>
+      </item>
+
       <item name="Programmatic Log4j Configuration" href="/manual/customconfig.html" collapse="true">
         <item name="ConfigurationBuilder API" href="/manual/customconfig.html#ConfigurationBuilder"/>
         <item name="Understanding ConfigurationFactory" href="/manual/customconfig.html#ConfigurationFactory"/>
@@ -193,6 +197,7 @@
         <item name="Using Configurator" href="/manual/customconfig.html#Configurator"/>
         <item name="Config File and Code" href="/manual/customconfig.html#Hybrid"/>
         <item name="After Initialization" href="/manual/customconfig.html#AddingToCurrent"/>
+        <item name="Appending to Writers &amp; OutputStreams" href="/manual/customconfig.html#AppendingToWritersAndOutputStreams"/>        
       </item>
 
       <item name="Custom Log Levels" href="/manual/customloglevels.html" collapse="true">

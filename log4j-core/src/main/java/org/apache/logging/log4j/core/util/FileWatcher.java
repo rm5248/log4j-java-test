@@ -14,24 +14,14 @@
  * See the license for the specific language governing permissions and
  * limitations under the license.
  */
-package org.apache.logging.log4j.core.config;
+package org.apache.logging.log4j.core.util;
+
+import java.io.File;
 
 /**
- * Interface that must be implemented to provide notification of configuration changes.
+ * Watches for changes in a Path and performs an action when the file is modified.
  */
-public interface ConfigurationMonitor {
+public interface FileWatcher {
 
-    /**
-     * Called to determine if the configuration has changed.
-     */
-    void checkConfiguration();
-
-    /**
-     * Determines how to log events reliably during or after a configuration change.
-     * 
-     * @param loggerConfig the LoggerConfig the resulting {@code ReliabilityStrategy} is associated with
-     * @return a ReliabilityStrategy that helps the specified LoggerConfig to log events reliably during or after a
-     *         configuration change
-     */
-    ReliabilityStrategy getReliabilityStrategy(final LoggerConfig loggerConfig);
+    void fileModified(File file);
 }

@@ -16,6 +16,7 @@
  */
 package org.apache.logging.log4j.core;
 
+import java.io.ObjectStreamException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -72,10 +73,14 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
         privateConfig = new PrivateConfig(context.getConfiguration(), this);
     }
 
+    protected Object writeReplace() throws ObjectStreamException {
+        return new LoggerProxy(getName(), getMessageFactory());
+    }
+
     /**
      * This method is only used for 1.x compatibility. Returns the parent of this Logger. If it doesn't already exist
      * return a temporary Logger.
-     * 
+     *
      * @return The parent Logger.
      */
     public Logger getParent() {
@@ -84,10 +89,12 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
         if (lc == null) {
             return null;
         }
-        if (context.hasLogger(lc.getName())) {
-            return context.getLogger(lc.getName(), getMessageFactory());
+        final String lcName = lc.getName();
+        final MessageFactory messageFactory = getMessageFactory();
+        if (context.hasLogger(lcName, messageFactory)) {
+            return context.getLogger(lcName, messageFactory);
         }
-        return new Logger(context, lc.getName(), this.getMessageFactory());
+        return new Logger(context, lcName, messageFactory);
     }
 
     /**
@@ -135,9 +142,6 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
     public void logMessage(final String fqcn, final Level level, final Marker marker, final Message message,
             final Throwable t) {
         final Message msg = message == null ? new SimpleMessage(Strings.EMPTY) : message;
-
-        // check if we need to reconfigure
-        privateConfig.config.getConfigurationMonitor().checkConfiguration();
 
         final ReliabilityStrategy strategy = privateConfig.loggerConfig.getReliabilityStrategy();
         strategy.log(this, getName(), fqcn, marker, level, msg, t);
@@ -269,14 +273,21 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
     }
 
     /**
-     * Associates the Logger with a new Configuration. This method is not exposed through the public API.
+     * Associates this Logger with a new Configuration. This method is not
+     * exposed through the public API.
+     * <p>
+     * There are two ways this could be used to guarantee all threads are aware
+     * of changes to config.
+     * <ol>
+     * <li>Synchronize this method. Accessors don't need to be synchronized as
+     * Java will treat all variables within a synchronized block as volatile.
+     * </li>
+     * <li>Declare the variable volatile. Option 2 is used here as the
+     * performance cost is very low and it does a better job at documenting how
+     * it is used.</li>
      *
-     * There are two ways that could be used to guarantee all threads are aware of changes to config. 1. synchronize
-     * this method. Accessors don't need to be synchronized as Java will treat all variables within a synchronized block
-     * as volatile. 2. Declare the variable volatile. Option 2 is used here as the performance cost is very low and it
-     * does a better job at documenting how it is used.
-     *
-     * @param newConfig The new Configuration.
+     * @param newConfig
+     *            The new Configuration.
      */
     protected void updateConfiguration(final Configuration newConfig) {
         this.privateConfig = new PrivateConfig(newConfig, this);
@@ -285,9 +296,7 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
     /**
      * The binding between a Logger and its configuration.
      */
-    // TODO: Should not be Serializable per EJ item 74 (2nd Ed)?
-    protected class PrivateConfig implements Serializable {
-        private static final long serialVersionUID = 1L;
+    protected class PrivateConfig {
         // config fields are public to make them visible to Logger subclasses
         /** LoggerConfig to delegate the actual logging to. */
         public final LoggerConfig loggerConfig; // SUPPRESS CHECKSTYLE
@@ -323,12 +332,10 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
 
         // LOG4J2-151: changed visibility to public
         public void logEvent(final LogEvent event) {
-            config.getConfigurationMonitor().checkConfiguration();
             loggerConfig.log(event);
         }
 
         boolean filter(final Level level, final Marker marker, final String msg) {
-            config.getConfigurationMonitor().checkConfiguration();
             final Filter filter = config.getFilter();
             if (filter != null) {
                 final Filter.Result r = filter.filter(logger, level, marker, msg);
@@ -340,7 +347,6 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
         }
 
         boolean filter(final Level level, final Marker marker, final String msg, final Throwable t) {
-            config.getConfigurationMonitor().checkConfiguration();
             final Filter filter = config.getFilter();
             if (filter != null) {
                 final Filter.Result r = filter.filter(logger, level, marker, msg, t);
@@ -352,7 +358,6 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
         }
 
         boolean filter(final Level level, final Marker marker, final String msg, final Object... p1) {
-            config.getConfigurationMonitor().checkConfiguration();
             final Filter filter = config.getFilter();
             if (filter != null) {
                 final Filter.Result r = filter.filter(logger, level, marker, msg, p1);
@@ -364,7 +369,6 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
         }
 
         boolean filter(final Level level, final Marker marker, final Object msg, final Throwable t) {
-            config.getConfigurationMonitor().checkConfiguration();
             final Filter filter = config.getFilter();
             if (filter != null) {
                 final Filter.Result r = filter.filter(logger, level, marker, msg, t);
@@ -376,7 +380,6 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
         }
 
         boolean filter(final Level level, final Marker marker, final Message msg, final Throwable t) {
-            config.getConfigurationMonitor().checkConfiguration();
             final Filter filter = config.getFilter();
             if (filter != null) {
                 final Filter.Result r = filter.filter(logger, level, marker, msg, t);
@@ -385,6 +388,28 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
                 }
             }
             return level != null && intLevel >= level.intLevel();
+        }
+    }
+
+    /**
+     * Serialization proxy class for Logger. Since the LoggerContext and config information can be reconstructed on the
+     * fly, the only information needed for a Logger are what's available in AbstractLogger.
+     *
+     * @since 2.5
+     */
+    protected static class LoggerProxy implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        private final String name;
+        private final MessageFactory messageFactory;
+
+        public LoggerProxy(String name, MessageFactory messageFactory) {
+            this.name = name;
+            this.messageFactory = messageFactory;
+        }
+
+        protected Object readResolve() throws ObjectStreamException {
+            return new Logger(LoggerContext.getContext(), name, messageFactory);
         }
     }
 
@@ -401,5 +426,22 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
         }
         final String contextName = context.getName();
         return contextName == null ? nameLevel : nameLevel + " in " + contextName;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final Logger that = (Logger) o;
+        return getName().equals(that.getName());
+    }
+
+    @Override
+    public int hashCode() {
+        return getName().hashCode();
     }
 }

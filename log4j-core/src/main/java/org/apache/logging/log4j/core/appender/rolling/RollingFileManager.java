@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
@@ -31,6 +32,7 @@ import org.apache.logging.log4j.core.appender.FileManager;
 import org.apache.logging.log4j.core.appender.ManagerFactory;
 import org.apache.logging.log4j.core.appender.rolling.action.AbstractAction;
 import org.apache.logging.log4j.core.appender.rolling.action.Action;
+import org.apache.logging.log4j.core.util.Log4jThread;
 
 /**
  * The Rolling File Manager.
@@ -43,8 +45,14 @@ public class RollingFileManager extends FileManager {
     private long initialTime;
     private final PatternProcessor patternProcessor;
     private final Semaphore semaphore = new Semaphore(1);
-    private final TriggeringPolicy triggeringPolicy;
-    private final RolloverStrategy rolloverStrategy;
+    private volatile TriggeringPolicy triggeringPolicy;
+    private volatile RolloverStrategy rolloverStrategy;
+
+    private static final AtomicReferenceFieldUpdater<RollingFileManager, TriggeringPolicy> triggeringPolicyUpdater =
+            AtomicReferenceFieldUpdater.newUpdater(RollingFileManager.class, TriggeringPolicy.class, "triggeringPolicy");
+
+    private static final AtomicReferenceFieldUpdater<RollingFileManager, RolloverStrategy> rolloverStrategyUpdater =
+            AtomicReferenceFieldUpdater.newUpdater(RollingFileManager.class, RolloverStrategy.class, "rolloverStrategy");
 
     protected RollingFileManager(final String fileName, final String pattern, final OutputStream os,
             final boolean append, final long size, final long time, final TriggeringPolicy triggeringPolicy,
@@ -107,18 +115,24 @@ public class RollingFileManager extends FileManager {
      * @param event The LogEvent.
      */
     public synchronized void checkRollover(final LogEvent event) {
-        if (triggeringPolicy.isTriggeringEvent(event) && rollover(rolloverStrategy)) {
+        if (triggeringPolicy.isTriggeringEvent(event)) {
+            rollover();
+        }
+    }
+
+    public synchronized void rollover() {
+        if (rollover(rolloverStrategy)) {
             try {
                 size = 0;
                 initialTime = System.currentTimeMillis();
                 createFileAfterRollover();
-            } catch (final IOException ex) {
-                LOGGER.error("FileManager (" + getFileName() + ") " + ex);
+            } catch (final IOException e) {
+                logError("failed to create file after rollover", e);
             }
         }
     }
 
-    protected void createFileAfterRollover() throws IOException {
+    protected void createFileAfterRollover() throws IOException  {
         final OutputStream os = new FileOutputStream(getFileName(), isAppend());
         if (getBufferSize() > 0) { // negative buffer size means no buffering
             setOutputStream(new BufferedOutputStream(os, getBufferSize()));
@@ -135,17 +149,30 @@ public class RollingFileManager extends FileManager {
         return patternProcessor;
     }
 
+    public void setTriggeringPolicy(final TriggeringPolicy triggeringPolicy)
+    {
+        triggeringPolicy.initialize(this);
+        triggeringPolicyUpdater.compareAndSet(this, this.triggeringPolicy, triggeringPolicy);
+    }
+
+    public void setRolloverStrategy(final RolloverStrategy rolloverStrategy)
+    {
+        rolloverStrategyUpdater.compareAndSet(this, this.rolloverStrategy, rolloverStrategy);
+    }
+
     /**
-     * Returns the triggering policy
+     * Returns the triggering policy.
+     * @param <T> TriggeringPolicy type
      * @return The TriggeringPolicy
      */
+    @SuppressWarnings("unchecked")
     public <T extends TriggeringPolicy> T getTriggeringPolicy() {
-        // TODO We could parameterize this class with a TriggeringPolicy instead of type casting here. 
+        // TODO We could parameterize this class with a TriggeringPolicy instead of type casting here.
         return (T) this.triggeringPolicy;
     }
 
     /**
-     * Returns the rollover strategy
+     * Returns the rollover strategy.
      * @return The RolloverStrategy
      */
     public RolloverStrategy getRolloverStrategy() {
@@ -157,8 +184,8 @@ public class RollingFileManager extends FileManager {
         try {
             // Block until the asynchronous operation is completed.
             semaphore.acquire();
-        } catch (final InterruptedException ie) {
-            LOGGER.error("Thread interrupted while attempting to check rollover", ie);
+        } catch (final InterruptedException e) {
+            logError("Thread interrupted while attempting to check rollover", e);
             return false;
         }
 
@@ -175,13 +202,13 @@ public class RollingFileManager extends FileManager {
                     try {
                         success = descriptor.getSynchronous().execute();
                     } catch (final Exception ex) {
-                        LOGGER.error("Error in synchronous task", ex);
+                        logError("caught error in synchronous task", ex);
                     }
                 }
 
                 if (success && descriptor.getAsynchronous() != null) {
                     LOGGER.debug("RollingFileManager executing async {}", descriptor.getAsynchronous());
-                    thread = new Thread(new AsyncAction(descriptor.getAsynchronous(), this));
+                    thread = new Log4jThread(new AsyncAction(descriptor.getAsynchronous(), this));
                     thread.start();
                 }
                 return true;
@@ -283,6 +310,24 @@ public class RollingFileManager extends FileManager {
             this.advertiseURI = advertiseURI;
             this.layout = layout;
         }
+
+        public TriggeringPolicy getTriggeringPolicy()
+        {
+            return this.policy;
+        }
+
+        public RolloverStrategy getRolloverStrategy()
+        {
+            return this.strategy;
+        }
+    }
+
+    @Override
+    public void updateData(final Object data)
+    {
+        final FactoryData factoryData = (FactoryData) data;
+        setRolloverStrategy(factoryData.getRolloverStrategy());
+        setTriggeringPolicy(factoryData.getTriggeringPolicy());
     }
 
     /**

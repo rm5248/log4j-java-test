@@ -16,17 +16,20 @@
  */
 package org.apache.logging.log4j.core.config;
 
+import java.util.List;
+import java.util.Map;
+
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.async.AsyncLoggerConfigDelegate;
 import org.apache.logging.log4j.core.filter.Filterable;
 import org.apache.logging.log4j.core.lookup.StrSubstitutor;
 import org.apache.logging.log4j.core.net.Advertiser;
-
-import java.util.List;
-import java.util.Map;
+import org.apache.logging.log4j.core.script.ScriptManager;
+import org.apache.logging.log4j.core.util.WatchManager;
 
 /**
  * Interface that must be implemented to create a configuration.
@@ -55,6 +58,7 @@ public interface Configuration extends Filterable {
     /**
      * Returns the Appender with the specified name.
      * 
+     * @param <T> The expected Appender type.
      * @param name The name of the Appender.
      * @return the Appender with the specified name or null if the Appender cannot be located.
      */
@@ -109,15 +113,13 @@ public interface Configuration extends Filterable {
 
     void addComponent(String name, Object object);
 
-    void setConfigurationMonitor(ConfigurationMonitor monitor);
-
-    ConfigurationMonitor getConfigurationMonitor();
-
     void setAdvertiser(Advertiser advertiser);
 
     Advertiser getAdvertiser();
 
     boolean isShutdownHookEnabled();
+
+    ConfigurationScheduler getScheduler();
 
     /**
      * Returns the source of this configuration.
@@ -143,5 +145,31 @@ public interface Configuration extends Filterable {
      * @return the custom levels defined in the current configuration
      */
     List<CustomLevelConfig> getCustomLevels();
+
+    ScriptManager getScriptManager();
+
+    /**
+     * Returns the {@code AsyncLoggerConfigDelegate} shared by all
+     * {@code AsyncLoggerConfig} instances defined in this Configuration.
+     * 
+     * @return the {@code AsyncLoggerConfigDelegate}
+     */
+	AsyncLoggerConfigDelegate getAsyncLoggerConfigDelegate();
+
+    /**
+     * Return the WatchManager.
+     * @return the WatchManager.
+     */
+    WatchManager getWatchManager();
+
+    /*
+     * (non-Javadoc)
+     *
+     * @see
+     * org.apache.logging.log4j.core.config.ReliabilityStrategyFactory#getReliabilityStrategy(org.apache.logging.log4j
+     * .core.config.LoggerConfig)
+     */
+
+    ReliabilityStrategy getReliabilityStrategy(LoggerConfig loggerConfig);
 
 }
