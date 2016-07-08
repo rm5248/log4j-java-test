@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.config.Node;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
@@ -49,28 +50,26 @@ import org.apache.logging.log4j.core.util.Transform;
 @Plugin(name = "HtmlLayout", category = Node.CATEGORY, elementType = Layout.ELEMENT_TYPE, printObject = true)
 public final class HtmlLayout extends AbstractStringLayout {
 
-    private static final long serialVersionUID = 1L;
-
-    private static final int BUF_SIZE = 256;
-
-    private static final String TRACE_PREFIX = "<br />&nbsp;&nbsp;&nbsp;&nbsp;";
-
-    private static final String REGEXP = Constants.LINE_SEPARATOR.equals("\n") ? "\n" : Constants.LINE_SEPARATOR + "|\n";
-
-    private static final String DEFAULT_TITLE = "Log4j Log Messages";
-
-    private static final String DEFAULT_CONTENT_TYPE = "text/html";
-
+    /**
+     * Default font family: {@value}.
+     */
     public static final String DEFAULT_FONT_FAMILY = "arial,sans-serif";
 
-    private final long jvmStartTime = ManagementFactory.getRuntimeMXBean().getStartTime();
+    private static final long serialVersionUID = 1L;
+    private static final String TRACE_PREFIX = "<br />&nbsp;&nbsp;&nbsp;&nbsp;";
+    private static final String REGEXP = Constants.LINE_SEPARATOR.equals("\n") ? "\n" : Constants.LINE_SEPARATOR + "|\n";
+    private static final String DEFAULT_TITLE = "Log4j Log Messages";
+    private static final String DEFAULT_CONTENT_TYPE = "text/html";
 
+    private final long jvmStartTime = ManagementFactory.getRuntimeMXBean().getStartTime();
+    
     // Print no location info by default
     private final boolean locationInfo;
-
     private final String title;
-
     private final String contentType;
+    private final String font;
+    private final String fontSize;
+    private final String headerSize;
 
     /**Possible font sizes */
     public static enum FontSize {
@@ -101,10 +100,6 @@ public final class HtmlLayout extends AbstractStringLayout {
         }
     }
 
-    private final String font;
-    private final String fontSize;
-    private final String headerSize;
-
     private HtmlLayout(final boolean locationInfo, final String title, final String contentType, final Charset charset,
             final String font, final String fontSize, final String headerSize) {
         super(charset);
@@ -131,7 +126,7 @@ public final class HtmlLayout extends AbstractStringLayout {
      */
     @Override
     public String toSerializable(final LogEvent event) {
-        final StringBuilder sbuf = new StringBuilder(BUF_SIZE);
+        final StringBuilder sbuf = getStringBuilder();
 
         sbuf.append(Constants.LINE_SEPARATOR).append("<tr>").append(Constants.LINE_SEPARATOR);
 
@@ -160,7 +155,7 @@ public final class HtmlLayout extends AbstractStringLayout {
 
         String escapedLogger = Transform.escapeHtmlTags(event.getLoggerName());
         if (escapedLogger.isEmpty()) {
-            escapedLogger = "root";
+            escapedLogger = LoggerConfig.ROOT;
         }
         sbuf.append("<td title=\"").append(escapedLogger).append(" logger\">");
         sbuf.append(escapedLogger);
