@@ -17,7 +17,6 @@
 
 package org.apache.logging.log4j.core.util;
 
-import java.io.Serializable;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
@@ -37,10 +36,9 @@ import org.apache.logging.log4j.status.StatusLogger;
  *
  * @since 2.1
  */
-public class DefaultShutdownCallbackRegistry implements ShutdownCallbackRegistry, LifeCycle, Runnable, Serializable {
+public class DefaultShutdownCallbackRegistry implements ShutdownCallbackRegistry, LifeCycle, Runnable {
     /** Status logger. */
     protected static final Logger LOGGER = StatusLogger.getLogger();
-    private static final long serialVersionUID = 1L;
 
     private final AtomicReference<State> state = new AtomicReference<>(State.INITIALIZED);
     private final ThreadFactory threadFactory;
@@ -80,33 +78,42 @@ public class DefaultShutdownCallbackRegistry implements ShutdownCallbackRegistry
         }
     }
 
+    private static class RegisteredCancellable implements Cancellable {
+        // use a reference to prevent memory leaks
+        private final Reference<Runnable> hook;
+        private Collection<Cancellable> registered;
+
+        RegisteredCancellable(final Runnable callback, final Collection<Cancellable> registered) {
+            this.registered = registered;
+            hook = new SoftReference<>(callback);
+        }
+
+        @Override
+        public void cancel() {
+            hook.clear();
+            registered.remove(this);
+            registered = null;
+        }
+
+        @Override
+        public void run() {
+            final Runnable runnableHook = this.hook.get();
+            if (runnableHook != null) {
+                runnableHook.run();
+                this.hook.clear();
+            }
+        }
+
+        @Override
+        public String toString() {
+            return String.valueOf(hook.get());
+        }
+    }
+
     @Override
     public Cancellable addShutdownCallback(final Runnable callback) {
         if (isStarted()) {
-            final Cancellable receipt = new Cancellable() {
-                // use a reference to prevent memory leaks
-                private final Reference<Runnable> hook = new SoftReference<>(callback);
-
-                @Override
-                public void cancel() {
-                    hook.clear();
-                    hooks.remove(this);
-                }
-
-                @Override
-                public void run() {
-                    final Runnable runnableHook = this.hook.get();
-                    if (runnableHook != null) {
-                        runnableHook.run();
-                        this.hook.clear();
-                    }
-                }
-
-                @Override
-                public String toString() {
-                    return String.valueOf(hook.get());
-                }
-            };
+            final Cancellable receipt = new RegisteredCancellable(callback, hooks);
             hooks.add(receipt);
             return receipt;
         }
@@ -127,6 +134,9 @@ public class DefaultShutdownCallbackRegistry implements ShutdownCallbackRegistry
             try {
                 addShutdownHook(threadFactory.newThread(this));
                 state.set(State.STARTED);
+            } catch (final IllegalStateException ex) {
+                state.set(State.STOPPED);
+                throw ex;
             } catch (final Exception e) {
                 LOGGER.catching(e);
                 state.set(State.STOPPED);

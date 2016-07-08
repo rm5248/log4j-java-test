@@ -55,7 +55,6 @@ public final class HtmlLayout extends AbstractStringLayout {
      */
     public static final String DEFAULT_FONT_FAMILY = "arial,sans-serif";
 
-    private static final long serialVersionUID = 1L;
     private static final String TRACE_PREFIX = "<br />&nbsp;&nbsp;&nbsp;&nbsp;";
     private static final String REGEXP = Constants.LINE_SEPARATOR.equals("\n") ? "\n" : Constants.LINE_SEPARATOR + "|\n";
     private static final String DEFAULT_TITLE = "Log4j Log Messages";
@@ -289,7 +288,7 @@ public final class HtmlLayout extends AbstractStringLayout {
 
     /**
      * Returns the appropriate HTML footers.
-     * @return the footer as a byet array.
+     * @return the footer as a byte array.
      */
     @Override
     public byte[] getFooter() {

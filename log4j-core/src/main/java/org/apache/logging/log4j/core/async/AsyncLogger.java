@@ -32,10 +32,9 @@ import org.apache.logging.log4j.core.util.Clock;
 import org.apache.logging.log4j.core.util.ClockFactory;
 import org.apache.logging.log4j.core.util.Constants;
 import org.apache.logging.log4j.core.util.NanoClock;
-import org.apache.logging.log4j.core.util.NanoClockFactory;
 import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.message.MessageFactory;
-import org.apache.logging.log4j.message.TimestampMessage;
+import org.apache.logging.log4j.message.ReusableMessage;
 import org.apache.logging.log4j.status.StatusLogger;
 
 import com.lmax.disruptor.EventTranslatorVararg;
@@ -66,7 +65,6 @@ public class AsyncLogger extends Logger implements EventTranslatorVararg<RingBuf
     // this is within the MaxInlineSize threshold and makes these methods candidates for
     // immediate inlining instead of waiting until they are designated "hot enough".
 
-    private static final long serialVersionUID = 1L;
     private static final StatusLogger LOGGER = StatusLogger.getLogger();
     private static final Clock CLOCK = ClockFactory.getClock(); // not reconfigurable
 
@@ -75,6 +73,7 @@ public class AsyncLogger extends Logger implements EventTranslatorVararg<RingBuf
     private final ThreadLocal<RingBufferLogEventTranslator> threadLocalTranslator = new ThreadLocal<>();
     private final AsyncLoggerDisruptor loggerDisruptor;
 
+    private volatile boolean includeLocation; // reconfigurable
     private volatile NanoClock nanoClock; // reconfigurable
 
     /**
@@ -89,21 +88,23 @@ public class AsyncLogger extends Logger implements EventTranslatorVararg<RingBuf
             final AsyncLoggerDisruptor loggerDisruptor) {
         super(context, name, messageFactory);
         this.loggerDisruptor = loggerDisruptor;
-        nanoClock = NanoClockFactory.createNanoClock(); // based on initial configuration
+        includeLocation = privateConfig.loggerConfig.isIncludeLocation();
+        nanoClock = context.getConfiguration().getNanoClock();
     }
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.apache.logging.log4j.core.Logger#updateConfiguration(org.apache.logging.log4j.core.config.Configuration)
      */
     @Override
     protected void updateConfiguration(Configuration newConfig) {
+        nanoClock = newConfig.getNanoClock();
+        includeLocation = newConfig.getLoggerConfig(name).isIncludeLocation();
         super.updateConfiguration(newConfig);
-        nanoClock = NanoClockFactory.createNanoClock();
         LOGGER.trace("[{}] AsyncLogger {} uses {}.", getContext().getName(), getName(), nanoClock);
     }
-    
+
     // package protected for unit tests
     NanoClock getNanoClock() {
         return nanoClock;
@@ -122,70 +123,6 @@ public class AsyncLogger extends Logger implements EventTranslatorVararg<RingBuf
     public void logMessage(final String fqcn, final Level level, final Marker marker, final Message message,
             final Throwable thrown) {
 
-        // Implementation note: this method is tuned for performance. MODIFY WITH CARE!
-
-        if (loggerDisruptor.shouldLogInCurrentThread()) {
-            logMessageInCurrentThread(fqcn, level, marker, message, thrown);
-        } else {
-            logMessageInBackgroundThread(fqcn, level, marker, message, thrown);
-        }
-    }
-
-    /**
-     * LOG4J2-471: prevent deadlock when RingBuffer is full and object being logged calls Logger.log() from its
-     * toString() method
-     *
-     * @param fqcn fully qualified caller name
-     * @param level log level
-     * @param marker optional marker
-     * @param message log message
-     * @param thrown optional exception
-     * @return {@code true} if the event has been logged in the current thread, {@code false} if it should be passed to
-     *         the background thread
-     */
-    private void logMessageInCurrentThread(final String fqcn, final Level level, final Marker marker,
-            final Message message, final Throwable thrown) {
-        // bypass RingBuffer and invoke Appender directly
-        final ReliabilityStrategy strategy = privateConfig.loggerConfig.getReliabilityStrategy();
-        strategy.log(this, getName(), fqcn, marker, level, message, thrown);
-    }
-
-    /**
-     * Enqueues the specified message to be logged in the background thread.
-     * 
-     * @param info holds some cached information
-     * @param fqcn fully qualified caller name
-     * @param level log level
-     * @param marker optional marker
-     * @param message log message
-     * @param thrown optional exception
-     */
-    private void logMessageInBackgroundThread(final String fqcn, final Level level, final Marker marker,
-            final Message message, final Throwable thrown) {
-
-        // Implementation note: this method is tuned for performance. MODIFY WITH CARE!
-
-        if (!Constants.FORMAT_MESSAGES_IN_BACKGROUND) { // LOG4J2-898: user may choose
-            message.getFormattedMessage(); // LOG4J2-763: ask message to freeze parameters
-        }
-        logInBackground(fqcn, level, marker, message, thrown);
-    }
-
-    /**
-     * Enqueues the specified log event data for logging in a background thread.
-     * 
-     * @param asyncLogger the {@code AsyncLogger} to call from the background thread
-     * @param location location information or {@code null}
-     * @param fqcn fully qualified name of the caller
-     * @param level level at which the caller wants to log the message
-     * @param marker message marker
-     * @param message the log message
-     * @param thrown a {@code Throwable} or {@code null}
-     */
-    private void logInBackground(final String fqcn, final Level level, final Marker marker, final Message message,
-            final Throwable thrown) {
-        // Implementation note: this method is tuned for performance. MODIFY WITH CARE!
-
         if (loggerDisruptor.isUseThreadLocals()) {
             logWithThreadLocalTranslator(fqcn, level, marker, message, thrown);
         } else {
@@ -194,12 +131,16 @@ public class AsyncLogger extends Logger implements EventTranslatorVararg<RingBuf
         }
     }
 
+    private boolean isReused(final Message message) {
+        return message instanceof ReusableMessage;
+    }
+
     /**
      * Enqueues the specified log event data for logging in a background thread.
      * <p>
      * This re-uses a {@code RingBufferLogEventTranslator} instance cached in a {@code ThreadLocal} to avoid creating
      * unnecessary objects with each event.
-     * 
+     *
      * @param fqcn fully qualified name of the caller
      * @param level level at which the caller wants to log the message
      * @param marker message marker
@@ -212,34 +153,40 @@ public class AsyncLogger extends Logger implements EventTranslatorVararg<RingBuf
 
         final RingBufferLogEventTranslator translator = getCachedTranslator();
         initTranslator(translator, fqcn, level, marker, message, thrown);
-        loggerDisruptor.enqueueLogMessageInfo(translator);
+        initTranslatorThreadValues(translator);
+        publish(translator);
+    }
+
+    private void publish(final RingBufferLogEventTranslator translator) {
+        if (!loggerDisruptor.tryPublish(translator)) {
+            handleRingBufferFull(translator);
+        }
+    }
+
+    private void handleRingBufferFull(final RingBufferLogEventTranslator translator) {
+        final EventRoute eventRoute = loggerDisruptor.getEventRoute(translator.level);
+        switch (eventRoute) {
+            case ENQUEUE:
+                loggerDisruptor.enqueueLogMessageInfo(translator);
+                break;
+            case SYNCHRONOUS:
+                logMessageInCurrentThread(translator.fqcn, translator.level, translator.marker, translator.message,
+                        translator.thrown);
+                break;
+            case DISCARD:
+                break;
+            default:
+                throw new IllegalStateException("Unknown EventRoute " + eventRoute);
+        }
     }
 
     private void initTranslator(final RingBufferLogEventTranslator translator, final String fqcn,
             final Level level, final Marker marker, final Message message, final Throwable thrown) {
 
-        // Implementation note: this method is tuned for performance. MODIFY WITH CARE!
-
-        initTranslatorPart1(translator, fqcn, level, marker, message, thrown);
-        initTranslatorPart2(translator, fqcn, message);
-    }
-
-    private void initTranslatorPart1(final RingBufferLogEventTranslator translator, final String fqcn,
-            final Level level, final Marker marker, final Message message, final Throwable thrown) {
-        
-        // Implementation note: this method is tuned for performance. MODIFY WITH CARE!
-
-        translator.setValuesPart1(this, getName(), marker, fqcn, level, message, //
+        translator.setBasicValues(this, name, marker, fqcn, level, message, //
                 // don't construct ThrowableProxy until required
-                thrown);
-    }
+                thrown,
 
-    private void initTranslatorPart2(final RingBufferLogEventTranslator translator, final String fqcn,
-            final Message message) {
-        
-        // Implementation note: this method is tuned for performance. MODIFY WITH CARE!
-
-        translator.setValuesPart2(
                 // config properties are taken care of in the EventHandler thread
                 // in the AsyncLogger#actualAsyncLog method
 
@@ -248,27 +195,31 @@ public class AsyncLogger extends Logger implements EventTranslatorVararg<RingBuf
 
                 // needs shallow copy to be fast (LOG4J2-154)
                 ThreadContext.getImmutableStack(), //
-
-                // Thread.currentThread().getName(), //
-                THREAD_NAME_CACHING_STRATEGY.getThreadName(), //
-
                 // location (expensive to calculate)
-                calcLocationIfRequested(fqcn),
-
-                eventTimeMillis(message), //
+                calcLocationIfRequested(fqcn), //
+                CLOCK.currentTimeMillis(), //
                 nanoClock.nanoTime() //
-                );
+        );
     }
 
-    private long eventTimeMillis(final Message message) {
-        // Implementation note: this method is tuned for performance. MODIFY WITH CARE!
+    private void initTranslatorThreadValues(final RingBufferLogEventTranslator translator) {
+        // constant check should be optimized out when using default (CACHED)
+        if (THREAD_NAME_CACHING_STRATEGY == ThreadNameCachingStrategy.UNCACHED) {
+            translator.updateThreadValues();
+        }
+    }
 
-        // System.currentTimeMillis());
-        // CoarseCachedClock: 20% faster than system clock, 16ms gaps
-        // CachedClock: 10% faster than system clock, smaller gaps
-        // LOG4J2-744 avoid calling clock altogether if message has the timestamp
-        return message instanceof TimestampMessage ? ((TimestampMessage) message).getTimestamp() : CLOCK
-                .currentTimeMillis();
+    /**
+     * Returns the caller location if requested, {@code null} otherwise.
+     *
+     * @param fqcn fully qualified caller name.
+     * @return the caller location if requested, {@code null} otherwise.
+     */
+    private StackTraceElement calcLocationIfRequested(String fqcn) {
+        // location: very expensive operation. LOG4J2-153:
+        // Only include if "includeLocation=true" is specified,
+        // exclude if not specified or if "false" was specified.
+        return includeLocation ? Log4jLogEvent.calcLocation(fqcn) : null;
     }
 
     /**
@@ -276,9 +227,7 @@ public class AsyncLogger extends Logger implements EventTranslatorVararg<RingBuf
      * <p>
      * This creates a new varargs Object array for each invocation, but does not store any non-JDK classes in a
      * {@code ThreadLocal} to avoid memory leaks in web applications (see LOG4J2-1172).
-     * 
-     * @param asyncLogger the {@code AsyncLogger} to call from the background thread
-     * @param location location information or {@code null}
+     *
      * @param fqcn fully qualified name of the caller
      * @param level level at which the caller wants to log the message
      * @param marker message marker
@@ -288,11 +237,15 @@ public class AsyncLogger extends Logger implements EventTranslatorVararg<RingBuf
     private void logWithVarargTranslator(final String fqcn, final Level level, final Marker marker,
             final Message message, final Throwable thrown) {
         // Implementation note: candidate for optimization: exceeds 35 bytecodes.
-        
+
         final Disruptor<RingBufferLogEvent> disruptor = loggerDisruptor.getDisruptor();
         if (disruptor == null) {
             LOGGER.error("Ignoring log event after Log4j has been shut down.");
             return;
+        }
+        // if the Message instance is reused, there is no point in freezing its message here
+        if (!Constants.FORMAT_MESSAGES_IN_BACKGROUND && !isReused(message)) { // LOG4J2-898: user may choose
+            message.getFormattedMessage(); // LOG4J2-763: ask message to freeze parameters
         }
         // calls the translateTo method on this AsyncLogger
         disruptor.getRingBuffer().publishEvent(this, this, calcLocationIfRequested(fqcn), fqcn, level, marker, message,
@@ -301,7 +254,7 @@ public class AsyncLogger extends Logger implements EventTranslatorVararg<RingBuf
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see com.lmax.disruptor.EventTranslatorVararg#translateTo(java.lang.Object, long, java.lang.Object[])
      */
     @Override
@@ -321,24 +274,28 @@ public class AsyncLogger extends Logger implements EventTranslatorVararg<RingBuf
         // needs shallow copy to be fast (LOG4J2-154)
         final ContextStack contextStack = ThreadContext.getImmutableStack();
 
+        final Thread currentThread = Thread.currentThread();
         final String threadName = THREAD_NAME_CACHING_STRATEGY.getThreadName();
-
         event.setValues(asyncLogger, asyncLogger.getName(), marker, fqcn, level, message, thrown, contextMap,
-                contextStack, threadName, location, eventTimeMillis(message), nanoClock.nanoTime());
+                contextStack, currentThread.getId(), threadName, currentThread.getPriority(), location,
+                CLOCK.currentTimeMillis(), nanoClock.nanoTime());
     }
 
     /**
-     * Returns the caller location if requested, {@code null} otherwise.
-     * 
-     * @param fqcn fully qualified caller name.
-     * @return the caller location if requested, {@code null} otherwise.
+     * LOG4J2-471: prevent deadlock when RingBuffer is full and object being logged calls Logger.log() from its
+     * toString() method
+     *
+     * @param fqcn fully qualified caller name
+     * @param level log level
+     * @param marker optional marker
+     * @param message log message
+     * @param thrown optional exception
      */
-    private StackTraceElement calcLocationIfRequested(String fqcn) {
-        // location: very expensive operation. LOG4J2-153:
-        // Only include if "includeLocation=true" is specified,
-        // exclude if not specified or if "false" was specified.
-        final boolean includeLocation = privateConfig.loggerConfig.isIncludeLocation();
-        return includeLocation ? Log4jLogEvent.calcLocation(fqcn) : null;
+    void logMessageInCurrentThread(final String fqcn, final Level level, final Marker marker,
+            final Message message, final Throwable thrown) {
+        // bypass RingBuffer and invoke Appender directly
+        final ReliabilityStrategy strategy = privateConfig.loggerConfig.getReliabilityStrategy();
+        strategy.log(this, getName(), fqcn, marker, level, message, thrown);
     }
 
     /**

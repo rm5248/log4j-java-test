@@ -32,8 +32,10 @@ import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.appender.ConsoleAppender;
 import org.apache.logging.log4j.core.config.builder.api.AppenderComponentBuilder;
+import org.apache.logging.log4j.core.config.builder.api.ComponentBuilder;
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
+import org.apache.logging.log4j.core.config.builder.api.LayoutComponentBuilder;
 import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
 import org.apache.logging.log4j.core.filter.CompositeFilter;
 import org.apache.logging.log4j.core.layout.PatternLayout;
@@ -89,7 +91,6 @@ public class TestConfigurator {
             ctx = null;
         }
     }
-
 
     @Test
     public void testFromFile() throws Exception {
@@ -239,7 +240,7 @@ public class TestConfigurator {
         assertNotNull("Appenders map should not be null.", map);
         assertThat(map, hasSize(greaterThan(0)));
         assertThat("Wrong configuration", map, hasKey("List"));
-        
+
         // Sleep and check
         Thread.sleep(50);
         if (!file.setLastModified(System.currentTimeMillis())) {
@@ -250,11 +251,11 @@ public class TestConfigurator {
         for (int i = 0; i < 17; ++i) {
             logger.debug("Test message " + i);
         }
-        
-        // Sleep and check        
-        Thread.sleep(50);            
+
+        // Sleep and check
+        Thread.sleep(50);
         if (is(theInstance(config)).matches(ctx.getConfiguration())) {
-            Thread.sleep(500);            
+            Thread.sleep(500);
         }
         final Configuration newConfig = ctx.getConfiguration();
         assertThat("Configuration not reset", newConfig, is(not(theInstance(config))));
@@ -384,6 +385,49 @@ public class TestConfigurator {
         assertNotNull("No configuration", config);
         assertEquals("Unexpected Configuration", "BuilderTest", config.getName());
         assertThat(config.getAppenders(), hasSize(equalTo(1)));
+    }
+
+    @Test
+    public void testRolling() throws Exception {
+        ConfigurationBuilder< BuiltConfiguration > builder =
+                ConfigurationBuilderFactory.newConfigurationBuilder();
+
+        builder.setStatusLevel( Level.ERROR);
+        builder.setConfigurationName("RollingBuilder");
+        // create the console appender
+        AppenderComponentBuilder appenderBuilder = builder.newAppender("Stdout", "CONSOLE").addAttribute("target",
+                ConsoleAppender.Target.SYSTEM_OUT);
+        appenderBuilder.add(builder.newLayout("PatternLayout").
+                addAttribute("pattern", "%d [%t] %-5level: %msg%n%throwable"));
+        builder.add( appenderBuilder );
+
+        LayoutComponentBuilder layoutBuilder = builder.newLayout("PatternLayout")
+                .addAttribute("pattern", "%d [%t] %-5level: %msg%n");
+        ComponentBuilder triggeringPolicy = builder.newComponent("Policies")
+                .addComponent(builder.newComponent("CronTriggeringPolicy").addAttribute("schedule", "0 0 0 * * ?"))
+                .addComponent(builder.newComponent("SizeBasedTriggeringPolicy").addAttribute("size", "100M"));
+        appenderBuilder = builder.newAppender("rolling", "RollingFile")
+                .addAttribute("fileName", "target/rolling.log")
+                .addAttribute("filePattern", "target/archive/rolling-%d{MM-dd-yy}.log.gz")
+                .add(layoutBuilder)
+                .addComponent(triggeringPolicy);
+        builder.add(appenderBuilder);
+
+        // create the new logger
+        builder.add( builder.newLogger( "TestLogger", Level.DEBUG )
+                .add( builder.newAppenderRef( "rolling" ) )
+                .addAttribute( "additivity", false ) );
+
+        builder.add( builder.newRootLogger( Level.DEBUG )
+                .add( builder.newAppenderRef( "rolling" ) ) );
+        Configuration config = builder.build();
+        config.initialize();
+        assertNotNull("No rolling file appender", config.getAppender("rolling"));
+        assertEquals("Unexpected Configuration", "RollingBuilder", config.getName());
+        // Initialize the new configuration
+        LoggerContext ctx = Configurator.initialize( config );
+        Configurator.shutdown(ctx);
+
     }
 
     @Test

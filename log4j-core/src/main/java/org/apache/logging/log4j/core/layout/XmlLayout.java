@@ -192,12 +192,10 @@ import org.apache.logging.log4j.core.jackson.XmlConstants;
 @Plugin(name = "XmlLayout", category = Node.CATEGORY, elementType = Layout.ELEMENT_TYPE, printObject = true)
 public final class XmlLayout extends AbstractJacksonLayout {
 
-    private static final long serialVersionUID = 1L;
-
     private static final String ROOT_TAG = "Events";
 
     protected XmlLayout(final boolean locationInfo, final boolean properties, final boolean complete, final boolean compact, final Charset charset) {
-        super(new JacksonFactory.XML().newWriter(locationInfo, properties, compact), charset, compact, complete, false);
+        super(null, new JacksonFactory.XML().newWriter(locationInfo, properties, compact), charset, compact, complete, false, null, null);
     }
 
     /**
@@ -270,7 +268,7 @@ public final class XmlLayout extends AbstractJacksonLayout {
      * Creates an XML Layout.
      *
      * @param locationInfo If "true", includes the location information in the generated XML.
-     * @param properties If "true", includes the thread context in the generated XML.
+     * @param properties If "true", includes the thread context map in the generated XML.
      * @param complete If "true", includes the XML header and footer, defaults to "false".
      * @param compact If "true", does not use end-of-lines and indentation, defaults to "false".
      * @param charset The character set to use, if {@code null}, uses "UTF-8".
