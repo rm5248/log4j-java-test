@@ -40,11 +40,8 @@ import org.apache.logging.log4j.status.StatusLogger;
 @Plugin(name = "CsvLogEventLayout", category = Node.CATEGORY, elementType = Layout.ELEMENT_TYPE, printObject = true)
 public class CsvLogEventLayout extends AbstractCsvLayout {
 
-    /**
-     * 
-     */
     private static final long serialVersionUID = 1L;
-
+    
     public static CsvLogEventLayout createDefaultLayout() {
         return new CsvLogEventLayout(Charset.forName(DEFAULT_CHARSET), CSVFormat.valueOf(DEFAULT_FORMAT), null, null);
     }
@@ -79,12 +76,11 @@ public class CsvLogEventLayout extends AbstractCsvLayout {
 
     @Override
     public String toSerializable(final LogEvent event) {
-        final StringBuilder buffer = new StringBuilder(1024);
-        try {
-            // Revisit when 1.3 is out so that we do not need to create a new
-            // printer for each event.
-            // No need to close the printer.
-            final CSVPrinter printer = new CSVPrinter(buffer, getFormat());
+        final StringBuilder buffer = getStringBuilder();
+        // Revisit when 1.3 is out so that we do not need to create a new
+        // printer for each event.
+        // No need to close the printer.
+        try (final CSVPrinter printer = new CSVPrinter(buffer, getFormat())) {
             printer.print(event.getNanoTime());
             printer.print(event.getTimeMillis());
             printer.print(event.getLevel());

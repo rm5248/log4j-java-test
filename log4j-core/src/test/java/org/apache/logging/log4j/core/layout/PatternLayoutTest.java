@@ -16,16 +16,14 @@
  */
 package org.apache.logging.log4j.core.layout;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.MarkerManager;
 import org.apache.logging.log4j.ThreadContext;
 import org.apache.logging.log4j.core.BasicConfigurationFactory;
+import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
@@ -37,6 +35,8 @@ import org.apache.logging.log4j.util.Strings;
 import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 /**
  *
@@ -179,6 +179,50 @@ public class PatternLayoutTest {
     }
 
     @Test
+    public void testRegexEmptyMarker() throws Exception {
+        // replace "[]" with the empty string
+        final PatternLayout layout = PatternLayout.newBuilder().withPattern("[%logger]%replace{[%marker]}{\\[\\]}{} %msg")
+                .withConfiguration(ctx.getConfiguration()).build();
+        // Not empty marker
+        final LogEvent event1 = Log4jLogEvent.newBuilder() //
+                .setLoggerName(this.getClass().getName()).setLoggerFqcn("org.apache.logging.log4j.core.Logger") //
+                .setLevel(Level.INFO) //
+                .setMarker(MarkerManager.getMarker("TestMarker")) //
+                .setMessage(new SimpleMessage("Hello, world!")).build();
+        final byte[] result1 = layout.toByteArray(event1);
+        assertEquals("[org.apache.logging.log4j.core.layout.PatternLayoutTest][TestMarker] Hello, world!", new String(result1));
+        // empty marker
+        final LogEvent event2 = Log4jLogEvent.newBuilder() //
+                .setLoggerName(this.getClass().getName()).setLoggerFqcn("org.apache.logging.log4j.core.Logger") //
+                .setLevel(Level.INFO) //
+                .setMessage(new SimpleMessage("Hello, world!")).build();
+        final byte[] result2 = layout.toByteArray(event2);
+        assertEquals("[org.apache.logging.log4j.core.layout.PatternLayoutTest] Hello, world!", new String(result2));
+    }
+
+    @Test
+    public void testEqualsEmptyMarker() throws Exception {
+        // replace "[]" with the empty string
+        final PatternLayout layout = PatternLayout.newBuilder().withPattern("[%logger]%equals{[%marker]}{[]}{} %msg")
+                .withConfiguration(ctx.getConfiguration()).build();
+        // Not empty marker
+        final LogEvent event1 = Log4jLogEvent.newBuilder() //
+                .setLoggerName(this.getClass().getName()).setLoggerFqcn("org.apache.logging.log4j.core.Logger") //
+                .setLevel(Level.INFO) //
+                .setMarker(MarkerManager.getMarker("TestMarker")) //
+                .setMessage(new SimpleMessage("Hello, world!")).build();
+        final byte[] result1 = layout.toByteArray(event1);
+        assertEquals("[org.apache.logging.log4j.core.layout.PatternLayoutTest][TestMarker] Hello, world!", new String(result1));
+        // empty marker
+        final LogEvent event2 = Log4jLogEvent.newBuilder() //
+                .setLoggerName(this.getClass().getName()).setLoggerFqcn("org.apache.logging.log4j.core.Logger") //
+                .setLevel(Level.INFO) //
+                .setMessage(new SimpleMessage("Hello, world!")).build();
+        final byte[] result2 = layout.toByteArray(event2);
+        assertEquals("[org.apache.logging.log4j.core.layout.PatternLayoutTest] Hello, world!", new String(result2));
+    }
+
+    @Test
     public void testSpecialChars() throws Exception {
         final PatternLayout layout = PatternLayout.newBuilder().withPattern("\\\\%level\\t%msg\\n\\t%logger\\r\\n\\f")
                 .withConfiguration(ctx.getConfiguration()).build();
@@ -211,6 +255,7 @@ public class PatternLayoutTest {
         // System.out.println("event2=" + event2.getTimeMillis() / 1000);
     }
 
+    @SuppressWarnings("unused")
     private void testUnixTime(final String pattern) throws Exception {
         final PatternLayout layout = PatternLayout.newBuilder().withPattern(pattern + " %m")
                 .withConfiguration(ctx.getConfiguration()).build();
@@ -263,4 +308,5 @@ public class PatternLayoutTest {
                 .withConfiguration(ctx.getConfiguration()).withCharset(StandardCharsets.UTF_8).build();
         assertEquals(StandardCharsets.UTF_8, layout.getCharset());
     }
+
 }

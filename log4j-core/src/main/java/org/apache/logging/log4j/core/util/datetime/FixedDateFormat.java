@@ -77,7 +77,7 @@ public class FixedDateFormat {
         /**
          * ISO8601 time format: {@code "yyyy-MM-dd'T'HH:mm:ss,SSS"}.
          */
-        ISO8601("yyyy-MM-dd'T'HH:mm:ss,SSS", "yyyy-MM-dd'T'", 2, ':', 1, ',', 1), ;
+        ISO8601("yyyy-MM-dd'T'HH:mm:ss,SSS", "yyyy-MM-dd'T'", 2, ':', 1, ',', 1);
 
         private final String pattern;
         private final String datePattern;
@@ -98,16 +98,29 @@ public class FixedDateFormat {
             this.escapeCount = escapeCount;
         }
 
+        /**
+         * Returns the full pattern.
+         * 
+         * @return the full pattern
+         */
         public String getPattern() {
             return pattern;
         }
 
+        /**
+         * Returns the date part of the pattern.
+         * 
+         * @return the date part of the pattern
+         */
         public String getDatePattern() {
             return datePattern;
         }
 
         /**
          * Returns the FixedFormat with the name or pattern matching the specified string or {@code null} if not found.
+         * 
+         * @param nameOrPattern the name or pattern to find a FixedFormat for
+         * @return the FixedFormat with the name or pattern matching the specified string
          */
         public static FixedFormat lookup(final String nameOrPattern) {
             for (final FixedFormat type : FixedFormat.values()) {
@@ -118,32 +131,33 @@ public class FixedDateFormat {
             return null;
         }
 
+        /**
+         * Returns the length of the resulting formatted date and time strings.
+         * 
+         * @return the length of the resulting formatted date and time strings
+         */
         public int getLength() {
             return pattern.length() - escapeCount;
         }
 
+        /**
+         * Returns the length of the date part of the resulting formatted string.
+         * 
+         * @return the length of the date part of the resulting formatted string
+         */
         public int getDatePatternLength() {
             return getDatePattern() == null ? 0 : getDatePattern().length() - escapeCount;
         }
 
+        /**
+         * Returns the {@code FastDateFormat} object for formatting the date part of the pattern or {@code null} if the
+         * pattern does not have a date part.
+         * 
+         * @return the {@code FastDateFormat} object for formatting the date part of the pattern or {@code null}
+         */
         public FastDateFormat getFastDateFormat() {
             return getDatePattern() == null ? null : FastDateFormat.getInstance(getDatePattern());
         }
-    }
-
-    public static FixedDateFormat createIfSupported(final String... options) {
-        if (options == null || options.length == 0 || options[0] == null) {
-            return new FixedDateFormat(FixedFormat.DEFAULT);
-        }
-        if (options.length > 1) {
-            return null; // time zone not supported
-        }
-        final FixedFormat type = FixedFormat.lookup(options[0]);
-        return type == null ? null : new FixedDateFormat(type);
-    }
-
-    public static FixedDateFormat create(FixedFormat format) {
-        return new FixedDateFormat(format);
     }
 
     private final FixedFormat fixedFormat;
@@ -183,6 +197,32 @@ public class FixedDateFormat {
         this.fastDateFormat = fixedFormat.getFastDateFormat();
     }
 
+    public static FixedDateFormat createIfSupported(final String... options) {
+        if (options == null || options.length == 0 || options[0] == null) {
+            return new FixedDateFormat(FixedFormat.DEFAULT);
+        }
+        if (options.length > 1) {
+            return null; // time zone not supported
+        }
+        final FixedFormat type = FixedFormat.lookup(options[0]);
+        return type == null ? null : new FixedDateFormat(type);
+    }
+
+    /**
+     * Returns a new {@code FixedDateFormat} object for the specified {@code FixedFormat} and a {@code null} TimeZone.
+     * 
+     * @param format the format to use
+     * @return a new {@code FixedDateFormat} object
+     */
+    public static FixedDateFormat create(FixedFormat format) {
+        return new FixedDateFormat(format);
+    }
+
+    /**
+     * Returns the full pattern of the selected fixed format.
+     * 
+     * @return the full date-time pattern
+     */
     public String getFormat() {
         return fixedFormat.getPattern();
     }
