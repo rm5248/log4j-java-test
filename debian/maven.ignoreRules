@@ -8,6 +8,7 @@ org.apache.logging.log4j.osgi log4j-osgi pom * * *
 org.apache.logging.log4j.samples log4j-samples pom * * *
 ch.qos.logback logback-classic * * * *
 ch.qos.logback logback-core * * * *
+com.google.code.java-allocation-instrumenter java-allocation-instrumenter * * * *
 com.h2database h2 * * * *
 commons-httpclient commons-httpclient * * * *
 javax.jmdns jmdns * * * *
@@ -36,7 +37,9 @@ org.codehaus.woodstox woodstox-core-asl * * * *
 org.easymock easymock * * * *
 org.eclipse.osgi org.eclipse.osgi * * * *
 org.eclipse.persistence org.eclipse.persistence.jpa * * * *
+org.hdrhistogram HdrHistogram * * * *
 org.hsqldb hsqldb * * * *
 org.mockejb mockejb * * * *
 org.slf4j slf4j-ext * * * *
 org.springframework spring-test * * * *
+org.tukaani xz * * * *
