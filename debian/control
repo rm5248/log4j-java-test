@@ -5,7 +5,9 @@ Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.or
 Uploaders: Emmanuel Bourg <ebourg@apache.org>
 Build-Depends: debhelper (>= 9), default-jdk, maven-debian-helper (>= 1.5)
 Build-Depends-Indep: default-jdk-doc,
+                     groovy,
                      libapache-pom-java (>= 10),
+                     libbsh-java,
                      libcommons-compress-java,
                      libcommons-csv-java (>= 1.2),
                      libcommons-lang3-java,

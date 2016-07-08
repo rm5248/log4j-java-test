@@ -18,3 +18,4 @@ s/javax.servlet/org.apache.tomcat/ s/javax.servlet-api/tomcat-servlet-api/ jar s
 s/org.apache.felix/org.osgi/ org.osgi.core * * * *
 org.apache.commons commons-lang3 jar s/3\..*/3.x/ * *
 s/org\.jboss\.spec\.javax\.jms/org.apache.geronimo.specs/ s/jboss-jms-api_1\.1_spec/geronimo-jms_1.1_spec/ * s/.*/debian/ * *
+s/org.apache-extras.beanshell/org.beanshell/ bsh * s/.*/debian/ * *
