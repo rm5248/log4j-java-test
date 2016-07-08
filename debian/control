@@ -33,7 +33,7 @@ Build-Depends-Indep: default-jdk-doc,
                      libosgi-core-java,
                      libservlet3.0-java,
                      libslf4j-java
-Standards-Version: 3.9.6
+Standards-Version: 3.9.8
 Vcs-Git: git://anonscm.debian.org/pkg-java/apache-log4j2.git
 Vcs-Browser: https://anonscm.debian.org/cgit/pkg-java/apache-log4j2.git
 Homepage: http://logging.apache.org/log4j/2.x/

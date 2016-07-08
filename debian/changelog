@@ -5,6 +5,7 @@ apache-log4j2 (2.5-1) UNRELEASED; urgency=medium
     - Fixed the compatibility with jackson and mongodb
     - New dependencies on groovy and libbsh-java
   * Exclude the minified JavaScript files from the upstream tarball
+  * Standards-Version updated to 3.9.8
 
  -- Emmanuel Bourg <ebourg@apache.org>  Fri, 08 Jul 2016 14:59:30 +0200
 
