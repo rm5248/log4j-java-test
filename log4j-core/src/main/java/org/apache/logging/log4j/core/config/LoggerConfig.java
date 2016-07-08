@@ -138,7 +138,7 @@ public class LoggerConfig extends AbstractFilterable {
         } else {
             this.properties = null;
         }
-        this.reliabilityStrategy = config.getConfigurationMonitor().getReliabilityStrategy(this);
+        this.reliabilityStrategy = config.getReliabilityStrategy(this);
     }
 
     @Override
@@ -433,8 +433,7 @@ public class LoggerConfig extends AbstractFilterable {
     // for synchronous loggers, includeLocation default is TRUE.
     protected static boolean includeLocation(final String includeLocationConfigValue) {
         if (includeLocationConfigValue == null) {
-            final boolean sync = !AsyncLoggerContextSelector.class.getName().equals(
-                    PropertiesUtil.getProperties().getStringProperty(Constants.LOG4J_CONTEXT_SELECTOR));
+            final boolean sync = !AsyncLoggerContextSelector.isSelected();
             return sync;
         }
         return Boolean.parseBoolean(includeLocationConfigValue);
@@ -449,12 +448,16 @@ public class LoggerConfig extends AbstractFilterable {
         private static final long serialVersionUID = 1L;
 
         @PluginFactory
-        public static LoggerConfig createLogger(@PluginAttribute("additivity") final String additivity,
+        public static LoggerConfig createLogger(
+                // @formatter:off
+                @PluginAttribute("additivity") final String additivity,
                 @PluginAttribute("level") final Level level,
                 @PluginAttribute("includeLocation") final String includeLocation,
                 @PluginElement("AppenderRef") final AppenderRef[] refs,
                 @PluginElement("Properties") final Property[] properties,
-                @PluginConfiguration final Configuration config, @PluginElement("Filter") final Filter filter) {
+                @PluginConfiguration final Configuration config, 
+                @PluginElement("Filter") final Filter filter) {
+                // @formatter:on
             final List<AppenderRef> appenderRefs = Arrays.asList(refs);
             final Level actualLevel = level == null ? Level.ERROR : level;
             final boolean additive = Booleans.parseBoolean(additivity, true);

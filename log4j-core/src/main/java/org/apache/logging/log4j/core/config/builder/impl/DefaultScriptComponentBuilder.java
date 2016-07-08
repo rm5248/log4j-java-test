@@ -14,30 +14,25 @@
  * See the license for the specific language governing permissions and
  * limitations under the license.
  */
-package org.apache.logging.log4j.core.config;
+package org.apache.logging.log4j.core.config.builder.impl;
+
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.builder.api.ScriptComponentBuilder;
 
 /**
- * The default configuration monitor does not do anything.
+ *
  */
-public class DefaultConfigurationMonitor implements ConfigurationMonitor {
+class DefaultScriptComponentBuilder extends DefaultComponentAndConfigurationBuilder<ScriptComponentBuilder>
+        implements ScriptComponentBuilder {
 
-    /**
-     * Does nothing.
-     */
-    @Override
-    public void checkConfiguration() {
-        // do nothing
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.apache.logging.log4j.core.config.ReliabilityStrategyFactory#getReliabilityStrategy(org.apache.logging.log4j
-     * .core.config.LoggerConfig)
-     */
-    @Override
-    public ReliabilityStrategy getReliabilityStrategy(LoggerConfig loggerConfig) {
-        return ReliabilityStrategyFactory.getReliabilityStrategy(loggerConfig);
+    public DefaultScriptComponentBuilder(final DefaultConfigurationBuilder<? extends Configuration> builder,
+                                         final String name, final String language, final String text) {
+        super(builder, name, "Script");
+        if (language != null) {
+            addAttribute("language", language);
+        }
+        if (text != null) {
+            addAttribute("text", text);
+        }
     }
 }

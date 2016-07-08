@@ -37,6 +37,7 @@ import org.apache.logging.log4j.core.pattern.LogEventPatternConverter;
 import org.apache.logging.log4j.core.pattern.PatternFormatter;
 import org.apache.logging.log4j.core.pattern.PatternParser;
 import org.apache.logging.log4j.core.pattern.RegexReplacement;
+import org.apache.logging.log4j.core.util.StringEncoder;
 
 /**
  * A flexible layout configurable with pattern string.
@@ -125,7 +126,7 @@ public final class PatternLayout extends AbstractStringLayout {
                           final PatternSelector patternSelector, final Charset charset,
                           final boolean alwaysWriteExceptions, final boolean noConsoleNoAnsi,
                           final String header, final String footer) {
-        super(charset, toBytes(header, charset), toBytes(footer, charset));
+        super(charset, StringEncoder.toBytes(header, charset), StringEncoder.toBytes(footer, charset));
         this.replace = replace;
         this.conversionPattern = pattern;
         this.patternSelector = patternSelector;
@@ -218,7 +219,7 @@ public final class PatternLayout extends AbstractStringLayout {
         if (parser == null) {
             parser = new PatternParser(config, KEY, LogEventPatternConverter.class);
             config.addComponent(KEY, parser);
-            parser = (PatternParser) config.getComponent(KEY);
+            parser = config.getComponent(KEY);
         }
         return parser;
     }
@@ -233,6 +234,8 @@ public final class PatternLayout extends AbstractStringLayout {
      *
      * @param pattern
      *        The pattern. If not specified, defaults to DEFAULT_CONVERSION_PATTERN.
+     * @param patternSelector 
+     *        Allows different patterns to be used based on some selection criteria.
      * @param config
      *        The Configuration. Some Converters require access to the Interpolator.
      * @param replace
@@ -325,6 +328,20 @@ public final class PatternLayout extends AbstractStringLayout {
     }
 
     /**
+     * Creates a PatternLayout using the default options and the given
+     * configuration. These options include using UTF-8, the default conversion
+     * pattern, exceptions being written, and with ANSI escape codes.
+     * 
+     * @param configuration The Configuration.
+     *
+     * @return the PatternLayout.
+     * @see #DEFAULT_CONVERSION_PATTERN Default conversion pattern
+     */
+    public static PatternLayout createDefaultLayout(Configuration configuration) {
+        return newBuilder().withConfiguration(configuration).build();
+    }
+
+    /**
      * Creates a builder for a custom PatternLayout.
      * @return a PatternLayout builder.
      */
@@ -337,9 +354,6 @@ public final class PatternLayout extends AbstractStringLayout {
      * Custom PatternLayout builder. Use the {@link PatternLayout#newBuilder() builder factory method} to create this.
      */
     public static class Builder implements org.apache.logging.log4j.core.util.Builder<PatternLayout> {
-
-        // FIXME: it seems rather redundant to repeat default values (same goes for field names)
-        // perhaps introduce a @PluginBuilderAttribute that has no values of its own and uses reflection?
 
         @PluginBuilderAttribute
         private String pattern = PatternLayout.DEFAULT_CONVERSION_PATTERN;

@@ -18,7 +18,9 @@ package org.apache.logging.log4j.web;
 
 import java.net.URI;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -27,6 +29,7 @@ import javax.servlet.ServletContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.AbstractLifeCycle;
 import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.async.AsyncLoggerContext;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.logging.log4j.core.impl.ContextAnchor;
 import org.apache.logging.log4j.core.impl.Log4jContextFactory;
@@ -106,6 +109,9 @@ final class Log4jWebInitializerImpl extends AbstractLifeCycle implements Log4jWe
             } else {
                 this.initializeNonJndi(location);
             }
+            if (this.loggerContext instanceof AsyncLoggerContext) {
+                ((AsyncLoggerContext) this.loggerContext).setUseThreadLocals(false);
+            }
 
             this.servletContext.setAttribute(CONTEXT_ATTRIBUTE, this.loggerContext);
             super.setStarted();
@@ -148,10 +154,14 @@ final class Log4jWebInitializerImpl extends AbstractLifeCycle implements Log4jWe
             this.name = this.servletContext.getServletContextName();
             LOGGER.debug("Using the servlet context name \"{}\".", this.name);
         }
+        if (this.name == null) {
+            this.name = this.servletContext.getContextPath();
+            LOGGER.debug("Using the servlet context context-path \"{}\".", this.name);
+        }
 
         if (this.name == null && location == null) {
             LOGGER.error("No Log4j context configuration provided. This is very unusual.");
-            return;
+            this.name = new SimpleDateFormat("yyyyMMdd_HHmmss.SSS").format(new Date());
         }
 
         final URI uri = getConfigURI(location);
@@ -163,7 +173,7 @@ final class Log4jWebInitializerImpl extends AbstractLifeCycle implements Log4jWe
             String configLocation = location;
             if (configLocation == null) {
                 final String[] paths = SetUtils.prefixSet(servletContext.getResourcePaths(WEB_INF), WEB_INF + "log4j2");
-                LOGGER.debug("getConfigURI found resource paths {} in servletConext at [{}]", Arrays.toString(paths), WEB_INF);
+                LOGGER.debug("getConfigURI found resource paths {} in servletContext at [{}]", Arrays.toString(paths), WEB_INF);
                 if (paths.length == 1) {
                     configLocation = paths[0];
                 } else if (paths.length > 1) {
@@ -185,7 +195,7 @@ final class Log4jWebInitializerImpl extends AbstractLifeCycle implements Log4jWe
                 final URL url = servletContext.getResource(configLocation);
                 if (url != null) {
                     final URI uri = url.toURI();
-                    LOGGER.debug("getConfigURI found resource [{}] in servletConext at [{}]", uri, configLocation);
+                    LOGGER.debug("getConfigURI found resource [{}] in servletContext at [{}]", uri, configLocation);
                     return uri;
                 }
             }
@@ -195,7 +205,7 @@ final class Log4jWebInitializerImpl extends AbstractLifeCycle implements Log4jWe
         if (location != null) {
             try {
                 final URI correctedFilePathUri = NetUtils.toURI(location);
-                LOGGER.debug("getConfigURI found [{}] in servletConext at [{}]", correctedFilePathUri, location);
+                LOGGER.debug("getConfigURI found [{}] in servletContext at [{}]", correctedFilePathUri, location);
                 return correctedFilePathUri;
             } catch (final Exception e) {
                 LOGGER.error("Unable to convert configuration location [{}] to a URI", location, e);

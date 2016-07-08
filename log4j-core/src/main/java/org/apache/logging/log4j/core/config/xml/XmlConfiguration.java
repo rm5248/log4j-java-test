@@ -38,13 +38,14 @@ import javax.xml.validation.Validator;
 import org.apache.logging.log4j.core.config.AbstractConfiguration;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.ConfigurationSource;
-import org.apache.logging.log4j.core.config.FileConfigurationMonitor;
+import org.apache.logging.log4j.core.config.ConfiguratonFileWatcher;
 import org.apache.logging.log4j.core.config.Node;
 import org.apache.logging.log4j.core.config.Reconfigurable;
 import org.apache.logging.log4j.core.config.plugins.util.PluginType;
 import org.apache.logging.log4j.core.config.plugins.util.ResolverUtil;
 import org.apache.logging.log4j.core.config.status.StatusConfiguration;
 import org.apache.logging.log4j.core.util.Closer;
+import org.apache.logging.log4j.core.util.FileWatcher;
 import org.apache.logging.log4j.core.util.Loader;
 import org.apache.logging.log4j.core.util.Patterns;
 import org.apache.logging.log4j.core.util.Throwables;
@@ -132,8 +133,12 @@ public class XmlConfiguration extends AbstractConfiguration implements Reconfigu
                     schemaResource = value;
                 } else if ("monitorInterval".equalsIgnoreCase(key)) {
                     final int intervalSeconds = Integer.parseInt(value);
-                    if (intervalSeconds > 0 && configFile != null) {
-                        monitor = new FileConfigurationMonitor(this, configFile, listeners, intervalSeconds);
+                    if (intervalSeconds > 0) {
+                        getWatchManager().setIntervalSeconds(intervalSeconds);
+                        if (configFile != null) {
+                            FileWatcher watcher = new ConfiguratonFileWatcher(this, listeners);
+                            getWatchManager().watchFile(configFile, watcher);
+                        }
                     }
                 } else if ("advertiser".equalsIgnoreCase(key)) {
                     createAdvertiser(value, configSource, buffer, "text/xml");
