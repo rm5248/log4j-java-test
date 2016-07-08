@@ -1,4 +1,4 @@
-apache-log4j2 (2.6.1-1) UNRELEASED; urgency=medium
+apache-log4j2 (2.6.1-1) unstable; urgency=medium
 
   * Team upload.
   * New upstream release
@@ -10,7 +10,7 @@ apache-log4j2 (2.6.1-1) UNRELEASED; urgency=medium
   * Standards-Version updated to 3.9.8
   * Use a secure Vcs-Git URL
 
- -- Emmanuel Bourg <ebourg@apache.org>  Fri, 08 Jul 2016 14:59:30 +0200
+ -- Emmanuel Bourg <ebourg@apache.org>  Fri, 08 Jul 2016 16:08:33 +0200
 
 apache-log4j2 (2.4-2) unstable; urgency=medium
 
