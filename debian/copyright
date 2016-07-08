@@ -1,6 +1,7 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Apache Log4j 2
 Source: http://logging.apache.org/log4j/2.x/
+Files-Excluded: *.min.js
 
 Files: *
 Copyright: 1999-2014, The Apache Software Foundation
@@ -31,12 +32,10 @@ License: MIT
  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 Files: src/site/resources/js/bootstrap.js
-       src/site/resources/js/bootstrap.min.js
 Copyright: 2012, Twitter, Inc
 License: Apache-2.0
 
 Files: src/site/resources/js/prettify.js
-       src/site/resources/js/prettify.min.js
 Copyright: 2006, Google Inc.
 License: Apache-2.0
 
