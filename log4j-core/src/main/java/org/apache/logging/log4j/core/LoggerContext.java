@@ -22,7 +22,6 @@ import java.io.File;
 import java.net.URI;
 import java.util.Collection;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.Lock;
@@ -39,13 +38,13 @@ import org.apache.logging.log4j.core.config.Reconfigurable;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.core.jmx.Server;
 import org.apache.logging.log4j.core.util.Cancellable;
-import org.apache.logging.log4j.core.util.NanoClockFactory;
 import org.apache.logging.log4j.core.util.NetUtils;
 import org.apache.logging.log4j.core.util.ShutdownCallbackRegistry;
 import org.apache.logging.log4j.message.MessageFactory;
 import org.apache.logging.log4j.spi.AbstractLogger;
 import org.apache.logging.log4j.spi.LoggerContextFactory;
-import org.apache.logging.log4j.spi.LoggerContextKey;
+import org.apache.logging.log4j.spi.LoggerRegistry;
+import org.apache.logging.log4j.spi.Terminable;
 
 import static org.apache.logging.log4j.core.util.ShutdownCallbackRegistry.*;
 
@@ -54,7 +53,7 @@ import static org.apache.logging.log4j.core.util.ShutdownCallbackRegistry.*;
  * applications and a reference to the Configuration. The Configuration will contain the configured loggers, appenders,
  * filters, etc and will be atomically updated whenever a reconfigure occurs.
  */
-public class LoggerContext extends AbstractLifeCycle implements org.apache.logging.log4j.spi.LoggerContext,
+public class LoggerContext extends AbstractLifeCycle implements org.apache.logging.log4j.spi.LoggerContext, Terminable,
         ConfigurationListener {
 
     /**
@@ -62,10 +61,9 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
      */
     public static final String PROPERTY_CONFIG = "config";
 
-    private static final long serialVersionUID = 1L;
     private static final Configuration NULL_CONFIGURATION = new NullConfiguration();
 
-    private final ConcurrentMap<String, Logger> loggers = new ConcurrentHashMap<>();
+    private final LoggerRegistry<Logger> loggerRegistry = new LoggerRegistry<>();
     private final CopyOnWriteArrayList<PropertyChangeListener> propertyChangeListeners = new CopyOnWriteArrayList<>();
 
     /**
@@ -82,7 +80,7 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
 
     /**
      * Constructor taking only a name.
-     * 
+     *
      * @param name The context name.
      */
     public LoggerContext(final String name) {
@@ -91,7 +89,7 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
 
     /**
      * Constructor taking a name and a reference to an external context.
-     * 
+     *
      * @param name The context name.
      * @param externalContext The external context.
      */
@@ -101,7 +99,7 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
 
     /**
      * Constructor taking a name, external context and a configuration URI.
-     * 
+     *
      * @param name The context name.
      * @param externalContext The external context.
      * @param configLocn The location of the configuration as a URI.
@@ -150,7 +148,7 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
      * WARNING - The LoggerContext returned by this method may not be the LoggerContext used to create a Logger for the
      * calling class.
      * </p>
-     * 
+     *
      * @return The current LoggerContext.
      * @see LogManager#getContext()
      */
@@ -226,7 +224,7 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
 
     /**
      * Starts with a specific configuration.
-     * 
+     *
      * @param config The new Configuration.
      */
     public void start(final Configuration config) {
@@ -268,14 +266,19 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
                         }
                     });
                 } catch (final IllegalStateException e) {
-                    LOGGER.error(SHUTDOWN_HOOK_MARKER,
-                            "Unable to register shutdown hook because JVM is shutting down.", e);
+                    throw new IllegalStateException(
+                            "Unable to register Log4j shutdown hook because JVM is shutting down.", e);
                 } catch (final SecurityException e) {
                     LOGGER.error(SHUTDOWN_HOOK_MARKER, "Unable to register shutdown hook due to security restrictions",
                             e);
                 }
             }
         }
+    }
+
+    @Override
+    public void terminate() {
+        stop();
     }
 
     @Override
@@ -318,19 +321,19 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
     public String getName() {
         return contextName;
     }
-    
+
     /**
      * Gets the root logger.
-     * 
+     *
      * @return the root logger.
      */
     public Logger getRootLogger() {
         return getLogger(LogManager.ROOT_LOGGER_NAME);
     }
-    
+
     /**
      * Sets the name.
-     * 
+     *
      * @param name the new LoggerContext name
      * @throws NullPointerException if the specified name is {@code null}
      */
@@ -340,7 +343,7 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
 
     /**
      * Sets the external context.
-     * 
+     *
      * @param context The external context.
      */
     public void setExternalContext(final Object context) {
@@ -349,7 +352,7 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
 
     /**
      * Returns the external context.
-     * 
+     *
      * @return The external context.
      */
     @Override
@@ -359,7 +362,7 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
 
     /**
      * Gets a Logger from the Context.
-     * 
+     *
      * @param name The name of the Logger to return.
      * @return The Logger.
      */
@@ -378,12 +381,12 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
      * @return a collection of the current loggers.
      */
     public Collection<Logger> getLoggers() {
-        return loggers.values();
+        return loggerRegistry.getLoggers();
     }
 
     /**
      * Obtains a Logger from the Context.
-     * 
+     *
      * @param name The name of the Logger to return.
      * @param messageFactory The message factory is used only when creating a logger, subsequent use does not change the
      *            logger but will log a warning if mismatched.
@@ -391,53 +394,49 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
      */
     @Override
     public Logger getLogger(final String name, final MessageFactory messageFactory) {
-        // Note: This is the only method where we add entries to the 'loggers' ivar. 
-        // The loggers map key is the logger name plus the messageFactory FQCN.
-        String key = LoggerContextKey.create(name, messageFactory);
-        Logger logger = loggers.get(key);
+        // Note: This is the only method where we add entries to the 'loggerRegistry' ivar.
+        Logger logger = loggerRegistry.getLogger(name, messageFactory);
         if (logger != null) {
             AbstractLogger.checkMessageFactory(logger, messageFactory);
             return logger;
         }
 
         logger = newInstance(this, name, messageFactory);
-        // If messageFactory was null then we need to pull it out of the logger now
-        key = LoggerContextKey.create(name, logger.getMessageFactory());
-        final Logger prev = loggers.putIfAbsent(key, logger);
-        return prev == null ? logger : prev;
+        loggerRegistry.putIfAbsent(name, messageFactory, logger);
+        return loggerRegistry.getLogger(name, messageFactory);
     }
 
     /**
      * Determines if the specified Logger exists.
-     * 
+     *
      * @param name The Logger name to search for.
      * @return True if the Logger exists, false otherwise.
      */
     @Override
     public boolean hasLogger(final String name) {
-        return loggers.containsKey(LoggerContextKey.create(name));
+        return loggerRegistry.hasLogger(name);
     }
 
     /**
      * Determines if the specified Logger exists.
-     * 
+     *
      * @param name The Logger name to search for.
      * @return True if the Logger exists, false otherwise.
      */
     @Override
     public boolean hasLogger(final String name, MessageFactory messageFactory) {
-        return loggers.containsKey(LoggerContextKey.create(name, messageFactory));
+        return loggerRegistry.hasLogger(name, messageFactory);
     }
 
     /**
      * Determines if the specified Logger exists.
-     * 
+     *
      * @param name The Logger name to search for.
      * @return True if the Logger exists, false otherwise.
      */
     @Override
     public boolean hasLogger(final String name, Class<? extends MessageFactory> messageFactoryClass) {
-        return loggers.containsKey(LoggerContextKey.create(name, messageFactoryClass));
+        return loggerRegistry.hasLogger(name, messageFactoryClass);
     }
 
     /**
@@ -452,7 +451,7 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
     /**
      * Adds a Filter to the Configuration. Filters that are added through the API will be lost when a reconfigure
      * occurs.
-     * 
+     *
      * @param filter The Filter to add.
      */
     public void addFilter(final Filter filter) {
@@ -461,7 +460,7 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
 
     /**
      * Removes a Filter from the current Configuration.
-     * 
+     *
      * @param filter The Filter to remove.
      */
     public void removeFilter(final Filter filter) {
@@ -470,7 +469,7 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
 
     /**
      * Sets the Configuration to be used.
-     * 
+     *
      * @param config The new Configuration.
      * @return The previous Configuration.
      */
@@ -506,8 +505,8 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
                 LOGGER.error("Could not reconfigure JMX", t);
             }
             // AsyncLoggers update their nanoClock when the configuration changes
-            Log4jLogEvent.setNanoClock(NanoClockFactory.createNanoClock());
-            
+            Log4jLogEvent.setNanoClock(configuration.getNanoClock());
+
             return prev;
         } finally {
             configLock.unlock();
@@ -533,7 +532,7 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
      * current configuration. Use {@link #getConfiguration()}.{@link Configuration#getConfigurationSource()
      * getConfigurationSource()}.{@link ConfigurationSource#getLocation() getLocation()} to get the actual source of the
      * current configuration.
-     * 
+     *
      * @return the initial configuration location or {@code null}
      */
     public URI getConfigLocation() {
@@ -542,7 +541,7 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
 
     /**
      * Sets the configLocation to the specified value and reconfigures this context.
-     * 
+     *
      * @param configLocation the location of the new configuration
      */
     public void setConfigLocation(final URI configLocation) {
@@ -587,13 +586,15 @@ public class LoggerContext extends AbstractLifeCycle implements org.apache.loggi
 
     /**
      * Causes all Logger to be updated against the specified Configuration.
-     * 
+     *
      * @param config The Configuration.
      */
     public void updateLoggers(final Configuration config) {
-        for (final Logger logger : loggers.values()) {
+        final Configuration old = this.configuration;
+        for (final Logger logger : loggerRegistry.getLoggers()) {
             logger.updateConfiguration(config);
         }
+        firePropertyChangeEvent(new PropertyChangeEvent(this, PROPERTY_CONFIG, old, config));
     }
 
     /**

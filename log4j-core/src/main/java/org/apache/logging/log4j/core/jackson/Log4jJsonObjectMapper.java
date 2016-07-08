@@ -20,7 +20,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * A Jackson {@link ObjectMapper} initialized for Log4j.
+ * A Jackson JSON {@link ObjectMapper} initialized for Log4j.
  * <p>
  * <em>Consider this class private.</em>
  * </p>
@@ -33,7 +33,14 @@ public class Log4jJsonObjectMapper extends ObjectMapper {
      * Create a new instance using the {@link Log4jJsonModule}.
      */
     public Log4jJsonObjectMapper() {
-        this.registerModule(new Log4jJsonModule());
+        this(false);
+    }
+
+    /**
+     * Create a new instance using the {@link Log4jJsonModule}.
+     */
+    public Log4jJsonObjectMapper(final boolean encodeThreadContextAsList) {
+        this.registerModule(new Log4jJsonModule(encodeThreadContextAsList));
         this.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
     }
 

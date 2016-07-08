@@ -52,14 +52,19 @@
               orders of magnitude lower latency than Log4j 1.x and Logback.
               See <a href="manual/async.html#Performance">Asynchronous Logging Performance</a>
               for details.
-              Otherwise, Log4j 2 performs faster than Log4j 1.x in critical areas
-              and similarly to Logback under most circumstances.
+              Otherwise, Log4j 2 significantly outperforms Log4j 1.x, Logback and java.util.logging,
+              especially in multi-threaded applications.
               See <a href="performance.html">Performance</a> for more information.
             </dd>
             <dt>Support for multiple APIs</dt>
             <dd>
-              While the Log4j 2 API will provide the best performance, Log4j 2 provides support for the SLF4J and
-              Commons Logging APIs.
+              While the Log4j 2 API will provide the best performance, Log4j 2 provides support for the
+              Log4j 1.2, SLF4J, Commons Logging and java.util.logging (JUL) APIs.
+            </dd>
+            <dt>Avoid lock-in</dt>
+            <dd>
+              Applications coded to the Log4j 2 API always have the option to use any SLF4J-compliant
+              library as their logger implementation with the log4j-to-slf4j adapter.
             </dd>
             <dt>Automatic Reloading of Configurations</dt>
             <dd>
@@ -100,6 +105,12 @@
             <dd>
               In Log4j 2, <a href="manual/customloglevels.html">custom log levels</a> can easily be defined in code
               or in configuration. No subclassing is required.
+            </dd>
+            <dt>Garbage-free</dt>
+            <dd>
+              During steady state logging, Log4j 2 is <a href="manual/garbagefree.html">garbage-free</a>
+              in stand-alone applications, and low garbage in web applications.
+              This reduces pressure on the garbage collector and can give better response time performance.
             </dd>
           </dl>
 

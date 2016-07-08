@@ -16,6 +16,24 @@
  */
 package org.apache.logging.log4j.core.config;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Filter;
@@ -40,35 +58,17 @@ import org.apache.logging.log4j.core.script.AbstractScript;
 import org.apache.logging.log4j.core.script.ScriptManager;
 import org.apache.logging.log4j.core.script.ScriptRef;
 import org.apache.logging.log4j.core.util.Constants;
+import org.apache.logging.log4j.core.util.DummyNanoClock;
 import org.apache.logging.log4j.core.util.Loader;
 import org.apache.logging.log4j.core.util.NameUtil;
+import org.apache.logging.log4j.core.util.NanoClock;
 import org.apache.logging.log4j.core.util.WatchManager;
 import org.apache.logging.log4j.util.PropertiesUtil;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * The base Configuration. Many configuration implementations will extend this class.
  */
 public abstract class AbstractConfiguration extends AbstractFilterable implements Configuration {
-
-    private static final long serialVersionUID = 1L;
 
     private static final int BUF_SIZE = 16384;
 
@@ -86,7 +86,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
      * Packages found in configuration "packages" attribute.
      */
     protected final List<String> pluginPackages = new ArrayList<>();
-    
+
     /**
      * The plugin manager.
      */
@@ -96,6 +96,11 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
      * Shutdown hook is enabled by default.
      */
     protected boolean isShutdownHookEnabled = true;
+
+    /**
+     * The Script manager.
+     */
+    protected ScriptManager scriptManager;
 
     /**
      * The Advertiser which exposes appender configurations to external systems.
@@ -113,11 +118,10 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
     private LoggerConfig root = new LoggerConfig();
     private final ConcurrentMap<String, Object> componentMap = new ConcurrentHashMap<>();
     private final ConfigurationSource configurationSource;
-    private ScriptManager scriptManager;
-    private ConfigurationScheduler configurationScheduler = new ConfigurationScheduler();
+    private final ConfigurationScheduler configurationScheduler = new ConfigurationScheduler();
     private final WatchManager watchManager = new WatchManager(configurationScheduler);
     private AsyncLoggerConfigDisruptor asyncLoggerConfigDisruptor;
-
+    private NanoClock nanoClock = new DummyNanoClock();
 
     /**
      * Constructor.
@@ -151,6 +155,19 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
         return scriptManager;
     }
 
+    public void setScriptManager(ScriptManager scriptManager) {
+        this.scriptManager = scriptManager;
+    }
+
+    public PluginManager getPluginManager() {
+        return pluginManager;
+    }
+
+    public void setPluginManager(PluginManager pluginManager) {
+        this.pluginManager = pluginManager;
+    }
+
+    @Override
     public WatchManager getWatchManager() {
         return watchManager;
     }
@@ -160,7 +177,11 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
         return configurationScheduler;
     }
 
-	@Override
+    public Node getRootNode() {
+        return rootNode;
+    }
+
+    @Override
 	public AsyncLoggerConfigDelegate getAsyncLoggerConfigDelegate() {
 	    // lazily instantiate only when requested by AsyncLoggers:
 	    // loading AsyncLoggerConfigDisruptor requires LMAX Disruptor jar on classpath
@@ -176,6 +197,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
     @Override
     public void initialize() {
         LOGGER.debug("Initializing configuration {}", this);
+        subst.setConfiguration(this);
         scriptManager = new ScriptManager(watchManager);
         pluginManager.collectPlugins(pluginPackages);
         final PluginManager levelPlugins = new PluginManager(Level.CATEGORY);
@@ -268,11 +290,11 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
             loggerConfig.getReliabilityStrategy().beforeStopConfiguration(this);
         }
         root.getReliabilityStrategy().beforeStopConfiguration(this);
-        
+
         final String cls = getClass().getSimpleName();
         LOGGER.trace("{} notified {} ReliabilityStrategies that config will be stopped.", cls, loggerConfigs.size()
                 + 1);
-        
+
         if (!loggerConfigs.isEmpty()) {
             LOGGER.trace("{} stopping {} LoggerConfigs.", cls, loggerConfigs.size());
             for (final LoggerConfig logger : loggerConfigs.values()) {
@@ -288,7 +310,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
             LOGGER.trace("{} stopping AsyncLoggerConfigDisruptor.", cls);
             asyncLoggerConfigDisruptor.stop();
         }
-                
+
         // Stop the appenders in reverse order in case they still have activity.
         final Appender[] array = appenders.values().toArray(new Appender[appenders.size()]);
         final List<Appender> async = getAsyncAppenders(array);
@@ -305,7 +327,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
             loggerConfig.getReliabilityStrategy().beforeStopAppenders();
         }
         root.getReliabilityStrategy().beforeStopAppenders();
-        
+
         LOGGER.trace("{} stopping remaining Appenders.", cls);
         int appenderCount = 0;
         for (int i = array.length - 1; i >= 0; --i) {
@@ -339,9 +361,9 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
         }
         LOGGER.debug("Stopped {} OK", this);
     }
-    
+
     private List<Appender> getAsyncAppenders(final Appender[] all) {
-        final List<Appender> result = new ArrayList<Appender>();
+        final List<Appender> result = new ArrayList<>();
         for (int i = all.length - 1; i >= 0; --i) {
             if (all[i] instanceof AsyncAppender) {
                 result.add(all[i]);
@@ -355,7 +377,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
         return isShutdownHookEnabled;
     }
 
-    protected void setup() {
+    public void setup() {
     }
 
     protected Level getDefaultStatus() {
@@ -413,12 +435,20 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
     }
 
     protected void preConfigure(Node node) {
-        for (final Node child : node.getChildren()) {
-            Class<?> clazz = child.getType().getPluginClass();
-            if (clazz.isAnnotationPresent(Scheduled.class)) {
-                configurationScheduler.incrementScheduledItems();
+        try {
+            for (final Node child : node.getChildren()) {
+                if (child.getType() == null) {
+                    LOGGER.error("Unable to locate plugin type for " + child.getName());
+                    continue;
+                }
+                Class<?> clazz = child.getType().getPluginClass();
+                if (clazz.isAnnotationPresent(Scheduled.class)) {
+                    configurationScheduler.incrementScheduledItems();
+                }
+                preConfigure(child);
             }
-            preConfigure(child);
+        } catch (Exception ex) {
+            LOGGER.error("Error capturing node data for node " + node.getName(), ex);
         }
     }
 
@@ -534,7 +564,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
 
     /**
      * Set the name of the configuration.
-     * 
+     *
      * @param name The name.
      */
     public void setName(final String name) {
@@ -543,7 +573,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
 
     /**
      * Returns the name of the configuration.
-     * 
+     *
      * @return the name of the configuration.
      */
     @Override
@@ -553,7 +583,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
 
     /**
      * Add a listener for changes on the configuration.
-     * 
+     *
      * @param listener The ConfigurationListener to add.
      */
     @Override
@@ -563,7 +593,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
 
     /**
      * Remove a ConfigurationListener.
-     * 
+     *
      * @param listener The ConfigurationListener to remove.
      */
     @Override
@@ -573,7 +603,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
 
     /**
      * Returns the Appender with the specified name.
-     * 
+     *
      * @param appenderName The name of the Appender.
      * @return the Appender with the specified name or null if the Appender cannot be located.
      */
@@ -585,7 +615,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
 
     /**
      * Returns a Map containing all the Appenders and their name.
-     * 
+     *
      * @return A Map containing each Appender's name and the Appender object.
      */
     @Override
@@ -595,7 +625,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
 
     /**
      * Adds an Appender to the configuration.
-     * 
+     *
      * @param appender The Appender to add.
      */
     @Override
@@ -634,7 +664,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
      * being updated at the same time.
      *
      * Note: This method is not used when configuring via configuration. It is primarily used by unit tests.
-     * 
+     *
      * @param logger The Logger the Appender will be associated with.
      * @param appender The Appender.
      */
@@ -661,7 +691,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
      * updated at the same time.
      *
      * Note: This method is not used when configuring via configuration. It is primarily used by unit tests.
-     * 
+     *
      * @param logger The Logger the Footer will be associated with.
      * @param filter The Filter.
      */
@@ -686,7 +716,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
      * updated at the same time.
      *
      * Note: This method is not used when configuring via configuration. It is primarily used by unit tests.
-     * 
+     *
      * @param logger The Logger the Appender will be associated with.
      * @param additive True if the LoggerConfig should be additive, false otherwise.
      */
@@ -709,7 +739,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
      * Remove an Appender. First removes any associations between LoggerConfigs and the Appender, removes the Appender
      * from this appender list and then stops the appender. This method is synchronized in case an Appender with the
      * same name is being added during the removal.
-     * 
+     *
      * @param appenderName the name of the appender to remove.
      */
     public synchronized void removeAppender(final String appenderName) {
@@ -725,7 +755,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.apache.logging.log4j.core.config.Configuration#getCustomLevels()
      */
     @Override
@@ -736,7 +766,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
     /**
      * Locates the appropriate LoggerConfig for a Logger name. This will remove tokens from the package name as
      * necessary or return the root LoggerConfig if no other matches were found.
-     * 
+     *
      * @param loggerName The Logger name.
      * @return The located LoggerConfig.
      */
@@ -758,7 +788,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
 
     /**
      * Returns the root Logger.
-     * 
+     *
      * @return the root Logger.
      */
     @Override
@@ -768,7 +798,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
 
     /**
      * Returns a Map of all the LoggerConfigs.
-     * 
+     *
      * @return a Map with each entry containing the name of the Logger and the LoggerConfig.
      */
     @Override
@@ -778,7 +808,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
 
     /**
      * Returns the LoggerConfig with the specified name.
-     * 
+     *
      * @param loggerName The Logger name.
      * @return The LoggerConfig or null if no match was found.
      */
@@ -948,4 +978,13 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
         return buffer.toByteArray();
     }
 
+    @Override
+    public NanoClock getNanoClock() {
+        return nanoClock;
+    }
+
+    @Override
+    public void setNanoClock(final NanoClock nanoClock) {
+        this.nanoClock = Objects.requireNonNull(nanoClock, "nanoClock");
+    }
 }

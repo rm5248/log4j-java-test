@@ -24,9 +24,11 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.Node;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
+import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import org.apache.logging.log4j.status.StatusLogger;
 
@@ -40,19 +42,18 @@ import org.apache.logging.log4j.status.StatusLogger;
 @Plugin(name = "CsvLogEventLayout", category = Node.CATEGORY, elementType = Layout.ELEMENT_TYPE, printObject = true)
 public class CsvLogEventLayout extends AbstractCsvLayout {
 
-    private static final long serialVersionUID = 1L;
-    
     public static CsvLogEventLayout createDefaultLayout() {
-        return new CsvLogEventLayout(Charset.forName(DEFAULT_CHARSET), CSVFormat.valueOf(DEFAULT_FORMAT), null, null);
+        return new CsvLogEventLayout(null, Charset.forName(DEFAULT_CHARSET), CSVFormat.valueOf(DEFAULT_FORMAT), null, null);
     }
 
     public static CsvLogEventLayout createLayout(final CSVFormat format) {
-        return new CsvLogEventLayout(Charset.forName(DEFAULT_CHARSET), format, null, null);
+        return new CsvLogEventLayout(null, Charset.forName(DEFAULT_CHARSET), format, null, null);
     }
 
     @PluginFactory
     public static CsvLogEventLayout createLayout(
             // @formatter:off
+            @PluginConfiguration final Configuration config,
             @PluginAttribute(value = "format", defaultString = DEFAULT_FORMAT) final String format,
             @PluginAttribute("delimiter") final Character delimiter,
             @PluginAttribute("escape") final Character escape,
@@ -61,17 +62,17 @@ public class CsvLogEventLayout extends AbstractCsvLayout {
             @PluginAttribute("nullString") final String nullString,
             @PluginAttribute("recordSeparator") final String recordSeparator,
             @PluginAttribute(value = "charset", defaultString = DEFAULT_CHARSET) final Charset charset,
-            @PluginAttribute("header") final String header,
+            @PluginAttribute("header") final String header, 
             @PluginAttribute("footer") final String footer)
             // @formatter:on
     {
 
         final CSVFormat csvFormat = createFormat(format, delimiter, escape, quote, quoteMode, nullString, recordSeparator);
-        return new CsvLogEventLayout(charset, csvFormat, header, footer);
+        return new CsvLogEventLayout(config, charset, csvFormat, header, footer);
     }
    
-    protected CsvLogEventLayout(final Charset charset, final CSVFormat csvFormat, final String header, final String footer) {
-        super(charset, csvFormat, header, footer);
+    protected CsvLogEventLayout(final Configuration config, final Charset charset, final CSVFormat csvFormat, final String header, final String footer) {
+        super(config, charset, csvFormat, header, footer);
     }
 
     @Override
@@ -79,12 +80,13 @@ public class CsvLogEventLayout extends AbstractCsvLayout {
         final StringBuilder buffer = getStringBuilder();
         // Revisit when 1.3 is out so that we do not need to create a new
         // printer for each event.
-        // No need to close the printer.
         try (final CSVPrinter printer = new CSVPrinter(buffer, getFormat())) {
             printer.print(event.getNanoTime());
             printer.print(event.getTimeMillis());
             printer.print(event.getLevel());
+            printer.print(event.getThreadId());
             printer.print(event.getThreadName());
+            printer.print(event.getThreadPriority());
             printer.print(event.getMessage().getFormattedMessage());
             printer.print(event.getLoggerFqcn());
             printer.print(event.getLoggerName());

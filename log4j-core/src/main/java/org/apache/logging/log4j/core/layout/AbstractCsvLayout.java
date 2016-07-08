@@ -20,7 +20,7 @@ import java.nio.charset.Charset;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.QuoteMode;
-import org.apache.logging.log4j.core.util.StringEncoder;
+import org.apache.logging.log4j.core.config.Configuration;
 
 /**
  * A superclass for Comma-Separated Value (CSV) layouts.
@@ -34,15 +34,6 @@ public abstract class AbstractCsvLayout extends AbstractStringLayout {
     protected static final String DEFAULT_CHARSET = "UTF-8";
     protected static final String DEFAULT_FORMAT = "Default";
     private static final String CONTENT_TYPE = "text/csv";
-    private static final long serialVersionUID = 1L;
-
-    private final CSVFormat format;
-
-    protected AbstractCsvLayout(final Charset charset, final CSVFormat csvFormat, final String header,
-            final String footer) {
-        super(charset, StringEncoder.toBytes(header, charset), StringEncoder.toBytes(footer, charset));
-        this.format = csvFormat;
-    }
 
     protected static CSVFormat createFormat(final String format, final Character delimiter, final Character escape,
             final Character quote, final QuoteMode quoteMode, final String nullString, final String recordSeparator) {
@@ -66,6 +57,15 @@ public abstract class AbstractCsvLayout extends AbstractStringLayout {
             csvFormat = csvFormat.withRecordSeparator(recordSeparator);
         }
         return csvFormat;
+    }
+
+    private final CSVFormat format;
+
+    protected AbstractCsvLayout(final Configuration config, final Charset charset, final CSVFormat csvFormat,
+            final String header, final String footer) {
+        super(config, charset, PatternLayout.createSerializer(config, null, header, null, null, false, false),
+                PatternLayout.createSerializer(config, null, footer, null, null, false, false));
+        this.format = csvFormat;
     }
 
     @Override
