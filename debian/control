@@ -32,7 +32,8 @@ Build-Depends-Indep: default-jdk-doc,
                      libmongodb-java,
                      libosgi-core-java,
                      libservlet3.0-java,
-                     libslf4j-java
+                     libslf4j-java,
+                     libwoodstox-java
 Standards-Version: 3.9.8
 Vcs-Git: git://anonscm.debian.org/pkg-java/apache-log4j2.git
 Vcs-Browser: https://anonscm.debian.org/cgit/pkg-java/apache-log4j2.git
