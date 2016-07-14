@@ -1,4 +1,4 @@
-package org.apache.logging.log4j.util;/*
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements. See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -15,6 +15,8 @@ package org.apache.logging.log4j.util;/*
  * limitations under the license.
  */
 
+package org.apache.logging.log4j.util;
+
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -25,8 +27,14 @@ import static org.junit.Assert.*;
 public class UnboxTest {
 
     @Test
-    public void testBoxHas16Slots() throws Exception {
-        final StringBuilder[] probe = new StringBuilder[16 * 3];
+    public void testBoxClaimsItHas32Slots() throws Exception {
+        assertEquals(32, Unbox.getRingbufferSize());
+    }
+
+    @Test
+    public void testBoxHas32Slots() throws Exception {
+        final int MAX = 32;
+        final StringBuilder[] probe = new StringBuilder[MAX * 3];
         for (int i = 0; i <= probe.length - 8; ) {
             probe[i++] = Unbox.box(true);
             probe[i++] = Unbox.box('c');
@@ -37,9 +45,9 @@ public class UnboxTest {
             probe[i++] = Unbox.box(Long.MAX_VALUE);
             probe[i++] = Unbox.box(Short.MAX_VALUE);
         }
-        for (int i = 0; i < probe.length - 16; i++) {
-            assertSame("probe[" + i +"], probe[" + (i + 16) +"]", probe[i], probe[i + 16]);
-            for (int j = 1; j < 15; j++) {
+        for (int i = 0; i < probe.length - MAX; i++) {
+            assertSame("probe[" + i +"], probe[" + (i + MAX) +"]", probe[i], probe[i + MAX]);
+            for (int j = 1; j < MAX - 1; j++) {
                 assertNotSame("probe[" + i +"], probe[" + (i + j) +"]", probe[i], probe[i + j]);
             }
         }
