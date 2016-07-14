@@ -26,19 +26,13 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.junit.LoggerContextRule;
 import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import static org.apache.logging.log4j.hamcrest.Descriptors.that;
-import static org.apache.logging.log4j.hamcrest.FileMatchers.hasName;
-import static org.hamcrest.Matchers.endsWith;
-import static org.hamcrest.Matchers.hasItemInArray;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  *
@@ -46,9 +40,7 @@ import static org.junit.Assert.fail;
 @RunWith(Parameterized.class)
 public class RollingAppenderOnStartupTest {
 
-    private static final String DIR = "target/rolling1";
-
-    private final String fileExtension;
+    private static final String DIR = "target/onStartup";
 
     private Logger logger;
 
@@ -56,33 +48,46 @@ public class RollingAppenderOnStartupTest {
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][] { //
                 // @formatter:off
-                {"log4j-test4.xml", ".gz"},
-                {"log4j-test4.xml", ".gz"},});
+                {"log4j-test4.xml"},
+                {"log4j-test4.xml"},});
                 // @formatter:on
     }
 
     @Rule
-    public LoggerContextRule init;
+    public LoggerContextRule loggerContextRule;
 
-    public RollingAppenderOnStartupTest(final String configFile, final String fileExtension) {
-        this.fileExtension = fileExtension;
-        this.init = new LoggerContextRule(configFile);
+    public RollingAppenderOnStartupTest(final String configFile) {
+        this.loggerContextRule = new LoggerContextRule(configFile);
     }
 
     @Before
     public void setUp() throws Exception {
-        this.logger = this.init.getLogger(RollingAppenderOnStartupTest.class.getName());
+        this.logger = this.loggerContextRule.getLogger(RollingAppenderOnStartupTest.class.getName());
+    }
+
+    @BeforeClass
+    public static void beforeClass() throws Exception {
+        if (Files.exists(Paths.get("target/onStartup"))) {
+            try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(Paths.get(DIR))) {
+                for (final Path path : directoryStream) {
+                    Files.delete(path);
+                }
+                Files.delete(Paths.get(DIR));
+            }
+        }
     }
 
     @AfterClass
     public static void afterClass() throws Exception {
         long size = 0;
-        try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(Paths.get("target/onStartup"))) {
-            for (Path path : directoryStream) {
+        try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(Paths.get(DIR))) {
+            for (final Path path : directoryStream) {
                 if (size == 0) {
                     size = Files.size(path);
                 } else {
-                    assertTrue(size == Files.size(path));
+                    final long fileSize = Files.size(path);
+                    assertTrue("Expected size: " + size + " Size of " + path.getFileName() + ": " + fileSize,
+                        size == fileSize);
                 }
                 Files.delete(path);
             }

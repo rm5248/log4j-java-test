@@ -16,9 +16,6 @@
  */
 package org.apache.logging.log4j.test.appender;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LoggingException;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
@@ -43,6 +40,7 @@ public class BlockingAppender extends AbstractAppender {
             try {
                 Thread.sleep(10L);
             } catch (final InterruptedException e) {
+                running = false; // LOG4J2-1422 cooperate with signal to get us unstuck
                 Thread.currentThread().interrupt(); // set interrupt status
             }
         }
