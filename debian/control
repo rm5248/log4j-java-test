@@ -31,7 +31,7 @@ Build-Depends-Indep: default-jdk-doc,
                      libmaven-source-plugin-java,
                      libmongodb-java,
                      libosgi-core-java,
-                     libservlet3.0-java,
+                     libservlet3.1-java,
                      libslf4j-java,
                      libwoodstox-java
 Standards-Version: 3.9.8
