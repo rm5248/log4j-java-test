@@ -3,6 +3,7 @@ apache-log4j2 (2.7-1) UNRELEASED; urgency=medium
   * Team upload.
   * New upstream release
     - Refreshed the patches
+    - Ignore the new log4j-api-scala modules
   * Transition to the Servlet API 3.1
 
  -- Emmanuel Bourg <ebourg@apache.org>  Tue, 19 Jul 2016 00:32:55 +0200
