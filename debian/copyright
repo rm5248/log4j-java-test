@@ -2,6 +2,7 @@ Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Apache Log4j 2
 Source: http://logging.apache.org/log4j/2.x/
 Files-Excluded: src/site
+                src/ide
 
 Files: *
 Copyright: 1999-2016, The Apache Software Foundation
