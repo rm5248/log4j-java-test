@@ -33,7 +33,7 @@ public class ReusableParameterizedMessage implements ReusableMessage {
     private static final int MIN_BUILDER_SIZE = 512;
     private static final int MAX_PARMS = 10;
     private static final long serialVersionUID = 7800075879295123856L;
-    private static ThreadLocal<StringBuilder> buffer = new ThreadLocal<>();
+    private transient ThreadLocal<StringBuilder> buffer; // non-static: LOG4J2-1583
 
     private String messagePattern;
     private int argCount;
@@ -42,6 +42,7 @@ public class ReusableParameterizedMessage implements ReusableMessage {
     private transient Object[] varargs;
     private transient Object[] params = new Object[MAX_PARMS];
     private transient Throwable throwable;
+    transient boolean reserved = false; // LOG4J2-1583 prevent scrambled logs with nested logging calls
 
     /**
      * Creates a reusable message.
@@ -289,6 +290,9 @@ public class ReusableParameterizedMessage implements ReusableMessage {
     }
 
     private StringBuilder getBuffer() {
+        if (buffer == null) {
+            buffer = new ThreadLocal<>();
+        }
         StringBuilder result = buffer.get();
         if (result == null) {
             final int currentPatternLength = messagePattern == null ? 0 : messagePattern.length();
@@ -308,6 +312,15 @@ public class ReusableParameterizedMessage implements ReusableMessage {
         }
     }
 
+    /**
+     * Sets the reserved flag to true and returns this object.
+     * @return this object
+     * @since 2.7
+     */
+    ReusableParameterizedMessage reserve() {
+        reserved = true;
+        return this;
+    }
 
     @Override
     public String toString() {

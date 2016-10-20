@@ -25,7 +25,6 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.Deflater;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.appender.rolling.action.Action;
 import org.apache.logging.log4j.core.appender.rolling.action.CommonsCompressAction;
 import org.apache.logging.log4j.core.appender.rolling.action.CompositeAction;
@@ -40,7 +39,6 @@ import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import org.apache.logging.log4j.core.lookup.StrSubstitutor;
 import org.apache.logging.log4j.core.util.Integers;
-import org.apache.logging.log4j.status.StatusLogger;
 
 /**
  * When rolling over, <code>DefaultRolloverStrategy</code> renames files according to an algorithm as described below.
@@ -76,7 +74,7 @@ import org.apache.logging.log4j.status.StatusLogger;
  * </p>
  */
 @Plugin(name = "DefaultRolloverStrategy", category = "Core", printObject = true)
-public class DefaultRolloverStrategy implements RolloverStrategy {
+public class DefaultRolloverStrategy extends AbstractRolloverStrategy {
 
     /**
      * Enumerates over supported file extensions.
@@ -169,18 +167,13 @@ public class DefaultRolloverStrategy implements RolloverStrategy {
         File target(final String fileName) {
             return new File(fileName);
         }
-    };
-
-    /**
-     * Allow subclasses access to the status logger without creating another instance.
-     */
-    protected static final Logger LOGGER = StatusLogger.getLogger();
+    }
 
     private static final int MIN_WINDOW_SIZE = 1;
     private static final int DEFAULT_WINDOW_SIZE = 7;
 
     /**
-     * Create the DefaultRolloverStrategy.
+     * Creates the DefaultRolloverStrategy.
      *
      * @param max The maximum number of files to keep.
      * @param min The minimum number of files to keep.
@@ -307,7 +300,7 @@ public class DefaultRolloverStrategy implements RolloverStrategy {
     }
 
     /**
-     * Purge and rename old log files in preparation for rollover. The oldest file will have the smallest index, the
+     * Purges and renames old log files in preparation for rollover. The oldest file will have the smallest index, the
      * newest the highest.
      *
      * @param lowIndex low index
@@ -414,7 +407,7 @@ public class DefaultRolloverStrategy implements RolloverStrategy {
     }
 
     /**
-     * Purge and rename old log files in preparation for rollover. The newest file will have the smallest index, the
+     * Purges and renames old log files in preparation for rollover. The newest file will have the smallest index, the
      * oldest will have the highest.
      *
      * @param lowIndex low index
@@ -509,7 +502,7 @@ public class DefaultRolloverStrategy implements RolloverStrategy {
     }
 
     /**
-     * Perform the rollover.
+     * Performs the rollover.
      *
      * @param manager The RollingFileManager name for current active log file.
      * @return A RolloverDescription.

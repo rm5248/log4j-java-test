@@ -33,7 +33,7 @@ public class AbstractDatabaseAppenderTest {
         this.manager = createMockBuilder(LocalAbstractDatabaseManager.class)
                 .withConstructor(String.class, int.class)
                 .withArgs(name, 0)
-                .addMockedMethod("release")
+                .addMockedMethod("close")
                 .createStrictMock();
 
         this.appender = createMockBuilder(LocalAbstractDatabaseAppender.class)
@@ -79,8 +79,8 @@ public class AbstractDatabaseAppenderTest {
 
         verify(this.manager, this.appender);
         reset(this.manager, this.appender);
-        this.manager.release();
-        expectLastCall();
+        this.manager.shutdownInternal();
+        expectLastCall().andReturn(Boolean.TRUE);
         replay(this.manager, this.appender);
 
         this.appender.stop();
@@ -98,10 +98,10 @@ public class AbstractDatabaseAppenderTest {
 
         verify(this.manager, this.appender);
         reset(this.manager, this.appender);
-        this.manager.release();
+        this.manager.close();
         expectLastCall();
         final LocalAbstractDatabaseManager newManager = createMockBuilder(LocalAbstractDatabaseManager.class)
-                .withConstructor(String.class, int.class).withArgs("name", 0).addMockedMethod("release")
+                .withConstructor(String.class, int.class).withArgs("name", 0).addMockedMethod("close")
                 .createStrictMock();
         newManager.startupInternal();
         expectLastCall();
@@ -111,8 +111,8 @@ public class AbstractDatabaseAppenderTest {
 
         verify(this.manager, this.appender, newManager);
         reset(this.manager, this.appender, newManager);
-        newManager.release();
-        expectLastCall();
+        newManager.shutdownInternal();
+        expectLastCall().andReturn(Boolean.TRUE);
         replay(this.manager, this.appender, newManager);
 
         this.appender.stop();
@@ -132,7 +132,7 @@ public class AbstractDatabaseAppenderTest {
         this.manager.writeInternal(same(event1));
         expectLastCall();
         this.manager.commitAndClose();
-        expectLastCall();
+        expectLastCall().andReturn(Boolean.TRUE);
         replay(this.manager, this.appender);
 
         this.appender.append(event1);
@@ -144,7 +144,7 @@ public class AbstractDatabaseAppenderTest {
         this.manager.writeInternal(same(event2));
         expectLastCall();
         this.manager.commitAndClose();
-        expectLastCall();
+        expectLastCall().andReturn(Boolean.TRUE);
         replay(this.manager, this.appender);
 
         this.appender.append(event2);
