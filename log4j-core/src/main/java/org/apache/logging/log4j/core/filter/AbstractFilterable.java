@@ -17,15 +17,44 @@
 package org.apache.logging.log4j.core.filter;
 
 import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.core.AbstractLifeCycle;
 import org.apache.logging.log4j.core.Filter;
+import org.apache.logging.log4j.core.LifeCycle2;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.config.plugins.PluginElement;
 
 /**
  * Enhances a Class by allowing it to contain Filters.
  */
 public abstract class AbstractFilterable extends AbstractLifeCycle implements Filterable {
+
+    /**
+     * Subclasses can extend this abstract Builder.
+     *
+     * @param <B> This builder class.
+     */
+    public abstract static class Builder<B extends Builder<B>> {
+
+        @PluginElement("Filter")
+        private Filter filter;
+
+        public Filter getFilter() {
+            return filter;
+        }
+
+        @SuppressWarnings("unchecked")
+        public B asBuilder() {
+            return (B) this;
+        }
+
+        public B withFilter(final Filter filter) {
+            this.filter = filter;
+            return asBuilder();
+        }
+
+    }
 
     /**
      * May be null.
@@ -117,12 +146,30 @@ public abstract class AbstractFilterable extends AbstractLifeCycle implements Fi
      * Cleanup the Filter.
      */
     @Override
-    public void stop() {
-        this.setStopping();
-        if (filter != null) {
-            filter.stop();
+    public boolean stop(final long timeout, final TimeUnit timeUnit) {
+        return stop(timeout, timeUnit, true);
+    }
+
+    /**
+     * Cleanup the Filter.
+     */
+    protected boolean stop(final long timeout, final TimeUnit timeUnit, final boolean changeLifeCycleState) {
+        if (changeLifeCycleState) {
+            this.setStopping();
         }
-        this.setStopped();
+        boolean stopped = true;
+        if (filter != null) {
+            if (filter instanceof LifeCycle2) {
+                stopped = ((LifeCycle2) filter).stop(timeout, timeUnit);
+            } else {
+                filter.stop();
+                stopped = true;
+            }
+        }
+        if (changeLifeCycleState) {
+            this.setStopped();
+        }
+        return stopped;
     }
 
     /**

@@ -21,7 +21,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
+import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
@@ -38,12 +40,14 @@ import org.apache.logging.log4j.core.layout.SerializedLayout;
 /**
  * This appender is primarily used for testing. Use in a real environment is discouraged as the
  * List could eventually grow to cause an OutOfMemoryError.
+ * 
+ * This appender is not thread-safe.
  *
  * This appender will use {@link Layout#toByteArray(LogEvent)}.
  *
  * @see org.apache.logging.log4j.junit.LoggerContextRule#getListAppender(String) ILC.getListAppender
  */
-@Plugin(name = "List", category = "Core", elementType = "appender", printObject = true)
+@Plugin(name = "List", category = "Core", elementType = Appender.ELEMENT_TYPE, printObject = true)
 public class ListAppender extends AbstractAppender {
 
     // Use CopyOnWriteArrayList?
@@ -144,8 +148,9 @@ public class ListAppender extends AbstractAppender {
     }
 
     @Override
-    public void stop() {
-        super.stop();
+    public boolean stop(final long timeout, final TimeUnit timeUnit) {
+        setStopping();
+        super.stop(timeout, timeUnit, false);
         final Layout<? extends Serializable> layout = getLayout();
         if (layout != null) {
             final byte[] bytes = layout.getFooter();
@@ -153,6 +158,8 @@ public class ListAppender extends AbstractAppender {
                 write(bytes);
             }
         }
+        setStopped();
+        return true;
     }
 
     public synchronized ListAppender clear() {
@@ -167,6 +174,18 @@ public class ListAppender extends AbstractAppender {
     }
 
     public synchronized List<String> getMessages() {
+        return Collections.unmodifiableList(messages);
+    }
+
+    /**
+     * Polls the messages list for it to grow to a given minimum size at most timeout timeUnits and return a copy of
+     * what we have so far.
+     */
+    public List<String> getMessages(final int minSize, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
+        final long endMillis = System.currentTimeMillis() + timeUnit.toMillis(timeout);
+        while (messages.size() < minSize && System.currentTimeMillis() < endMillis) {
+            Thread.sleep(100);
+        }
         return Collections.unmodifiableList(messages);
     }
 
