@@ -44,3 +44,4 @@ org.mockejb mockejb * * * *
 org.slf4j slf4j-ext * * * *
 org.springframework spring-test * * * *
 org.tukaani xz * * * *
+org.xmlunit * * * *
