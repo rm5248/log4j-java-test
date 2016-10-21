@@ -4,6 +4,7 @@ com.fasterxml.jackson.core jackson-databind jar s/2\..*/2.x/ * *
 com.fasterxml.jackson.dataformat jackson-dataformat-yaml * s/2\..*/2.x/ * *
 com.fasterxml.jackson.dataformat jackson-dataformat-xml * s/2\..*/2.x/ * *
 com.fasterxml.jackson.module jackson-module-jaxb-annotations s/jar/bundle/ s/2\..*/2.x/ * *
+com.beust jcommander * s/.*/1.x/ * *
 org.apache apache pom s/.*/debian/ * *
 org.lightcouch lightcouch jar s/.*/debian/ * *
 org.mongodb mongo-java-driver bundle s/.*/debian/ * *
