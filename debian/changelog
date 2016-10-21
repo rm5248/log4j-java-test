@@ -7,6 +7,7 @@ apache-log4j2 (2.7-1) UNRELEASED; urgency=medium
     - New dependencies on libconversant-disruptor-java, libjcommander-java
       and libjctools-java
   * Transition to the Servlet API 3.1
+  * Switch to debhelper level 10
 
  -- Emmanuel Bourg <ebourg@apache.org>  Tue, 19 Jul 2016 00:32:55 +0200
 
