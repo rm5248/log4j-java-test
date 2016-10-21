@@ -1,4 +1,4 @@
-apache-log4j2 (2.7-1) UNRELEASED; urgency=medium
+apache-log4j2 (2.7-1) unstable; urgency=medium
 
   * Team upload.
   * New upstream release
@@ -9,7 +9,7 @@ apache-log4j2 (2.7-1) UNRELEASED; urgency=medium
   * Transition to the Servlet API 3.1
   * Switch to debhelper level 10
 
- -- Emmanuel Bourg <ebourg@apache.org>  Tue, 19 Jul 2016 00:32:55 +0200
+ -- Emmanuel Bourg <ebourg@apache.org>  Fri, 21 Oct 2016 18:22:32 +0200
 
 apache-log4j2 (2.6.2-1) unstable; urgency=medium
 
