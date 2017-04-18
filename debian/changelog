@@ -1,3 +1,13 @@
+apache-log4j2 (2.7-2) unstable; urgency=medium
+
+  * Team upload.
+  * Fixed CVE-2017-5645: When using the TCP socket server or UDP socket server
+    to receive serialized log events from another application, a specially
+    crafted binary payload can be sent that, when deserialized, can execute
+    arbitrary code (Closes: #860489)
+
+ -- Emmanuel Bourg <ebourg@apache.org>  Tue, 18 Apr 2017 14:30:00 +0200
+
 apache-log4j2 (2.7-1) unstable; urgency=medium
 
   * Team upload.
