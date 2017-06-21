@@ -1,4 +1,5 @@
 
+org.apache.cassandra cassandra-all * * * *
 org.apache.logging.log4j log4j-api test-jar * * *
 org.apache.logging.log4j log4j-core test-jar * * *
 org.apache.logging.log4j log4j-flume-ng jar * * *
@@ -8,6 +9,7 @@ org.apache.logging.log4j.osgi log4j-osgi pom * * *
 org.apache.logging.log4j.samples log4j-samples pom * * *
 ch.qos.logback logback-classic * * * *
 ch.qos.logback logback-core * * * *
+com.datastax.cassandra cassandra-driver-core * * * *
 com.google.code.java-allocation-instrumenter java-allocation-instrumenter * * * *
 com.h2database h2 * * * *
 commons-httpclient commons-httpclient * * * *
