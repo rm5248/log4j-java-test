@@ -4,7 +4,7 @@
 	dh $@
 
 override_dh_installchangelogs:
-	dh_installchangelogs RELEASE-NOTES.txt
+	dh_installchangelogs RELEASE-NOTES.md
 
 get-orig-source:
 	uscan --download-current-version --force-download --rename

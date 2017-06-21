@@ -6,6 +6,7 @@ apache-log4j2 (2.8.2-1) UNRELEASED; urgency=medium
     - Ignore the new test modules log4j-osgi and log4j-core-its
     - Disabled the Cassandra appender (missing dependencies)
     - Updated the Maven rules
+    - Install RELEASE-NOTES.md instead of RELEASE-NOTES.txt
 
  -- Emmanuel Bourg <ebourg@apache.org>  Wed, 21 Jun 2017 12:10:30 +0200
 
