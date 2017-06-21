@@ -23,18 +23,20 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.Deflater;
 
 import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.rolling.DefaultRolloverStrategy;
+import org.apache.logging.log4j.core.appender.rolling.DirectWriteRolloverStrategy;
 import org.apache.logging.log4j.core.appender.rolling.RollingFileManager;
 import org.apache.logging.log4j.core.appender.rolling.RolloverStrategy;
 import org.apache.logging.log4j.core.appender.rolling.TriggeringPolicy;
+import org.apache.logging.log4j.core.appender.rolling.DirectFileRolloverStrategy;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginBuilderAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginBuilderFactory;
-import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.validation.constraints.Required;
 import org.apache.logging.log4j.core.net.Advertiser;
@@ -44,7 +46,7 @@ import org.apache.logging.log4j.core.util.Integers;
 /**
  * An appender that writes to files and can roll over at intervals.
  */
-@Plugin(name = RollingFileAppender.PLUGIN_NAME, category = "Core", elementType = Appender.ELEMENT_TYPE, printObject = true)
+@Plugin(name = RollingFileAppender.PLUGIN_NAME, category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
 public final class RollingFileAppender extends AbstractOutputStreamAppender<RollingFileManager> {
 
     public static final String PLUGIN_NAME = "RollingFile";
@@ -53,13 +55,12 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender<Roll
      * Builds FileAppender instances.
      * 
      * @param <B>
-     *            This builder class
+     *            The type to build
      */
     public static class Builder<B extends Builder<B>> extends AbstractOutputStreamAppender.Builder<B>
             implements org.apache.logging.log4j.core.util.Builder<RollingFileAppender> {
 
         @PluginBuilderAttribute
-        @Required
         private String fileName;
 
         @PluginBuilderAttribute
@@ -88,9 +89,6 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender<Roll
         @PluginBuilderAttribute
         private boolean createOnDemand;
 
-        @PluginConfiguration
-        private Configuration configuration;
-
         @Override
         public RollingFileAppender build() {
             // Even though some variables may be annotated with @Required, we must still perform validation here for
@@ -106,11 +104,6 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender<Roll
                 LOGGER.warn("RollingFileAppender '{}': The bufferSize is set to {} but bufferedIO is not true", getName(), bufferSize);
             }
 
-            if (fileName == null) {
-                LOGGER.error("RollingFileAppender '{}': No file name provided.", getName());
-                return null;
-            }
-
             if (filePattern == null) {
                 LOGGER.error("RollingFileAppender '{}': No file name pattern provided.", getName());
                 return null;
@@ -122,19 +115,22 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender<Roll
             }
 
             if (strategy == null) {
-                strategy = DefaultRolloverStrategy.createStrategy(null, null, null,
-                        String.valueOf(Deflater.DEFAULT_COMPRESSION), null, true, configuration);
-            }
-
-            if (strategy == null) {
-                strategy = DefaultRolloverStrategy.createStrategy(null, null, null,
-                        String.valueOf(Deflater.DEFAULT_COMPRESSION), null, true, configuration);
+                if (fileName != null) {
+                    strategy = DefaultRolloverStrategy.createStrategy(null, null, null,
+                            String.valueOf(Deflater.DEFAULT_COMPRESSION), null, true, getConfiguration());
+                } else {
+                    strategy = DirectWriteRolloverStrategy.createStrategy(null,
+                            String.valueOf(Deflater.DEFAULT_COMPRESSION), null, true, getConfiguration());
+                }
+            } else if (fileName == null && !(strategy instanceof DirectFileRolloverStrategy)) {
+                LOGGER.error("RollingFileAppender '{}': When no file name is provided a DirectFilenameRolloverStrategy must be configured");
+                return null;
             }
 
             final Layout<? extends Serializable> layout = getOrCreateLayout();
             final RollingFileManager manager = RollingFileManager.getFileManager(fileName, filePattern, append,
                     isBufferedIo, policy, strategy, advertiseUri, layout, bufferSize, isImmediateFlush(),
-                    createOnDemand, configuration);
+                    createOnDemand, getConfiguration());
             if (manager == null) {
                 return null;
             }
@@ -142,15 +138,11 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender<Roll
             manager.initialize();
 
             return new RollingFileAppender(getName(), layout, getFilter(), manager, fileName, filePattern,
-                    isIgnoreExceptions(), isImmediateFlush(), advertise ? configuration.getAdvertiser() : null);
+                    isIgnoreExceptions(), isImmediateFlush(), advertise ? getConfiguration().getAdvertiser() : null);
         }
 
         public String getAdvertiseUri() {
             return advertiseUri;
-        }
-
-        public Configuration getConfiguration() {
-            return configuration;
         }
 
         public String getFileName() {
@@ -185,11 +177,6 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender<Roll
 
         public B withAppend(final boolean append) {
             this.append = append;
-            return asBuilder();
-        }
-
-        public B withConfiguration(final Configuration config) {
-            this.configuration = config;
             return asBuilder();
         }
 
@@ -329,7 +316,7 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender<Roll
      * @deprecated Use {@link #newBuilder()}.
      */
     @Deprecated
-    public static RollingFileAppender createAppender(
+    public static <B extends Builder<B>> RollingFileAppender createAppender(
             // @formatter:off
             final String fileName,
             final String filePattern,
@@ -349,13 +336,13 @@ public final class RollingFileAppender extends AbstractOutputStreamAppender<Roll
             // @formatter:on
         final int bufferSize = Integers.parseInt(bufferSizeStr, DEFAULT_BUFFER_SIZE);
         // @formatter:off
-        return newBuilder()
+        return RollingFileAppender.<B>newBuilder()
                 .withAdvertise(Boolean.parseBoolean(advertise))
                 .withAdvertiseUri(advertiseUri)
                 .withAppend(Booleans.parseBoolean(append, true))
                 .withBufferedIo(Booleans.parseBoolean(bufferedIO, true))
                 .withBufferSize(bufferSize)
-                .withConfiguration(config)
+                .setConfiguration(config)
                 .withFileName(fileName)
                 .withFilePattern(filePattern)
                 .withFilter(filter)

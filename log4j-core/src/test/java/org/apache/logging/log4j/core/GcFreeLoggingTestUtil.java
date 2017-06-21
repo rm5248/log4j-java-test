@@ -28,9 +28,11 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
 import org.apache.logging.log4j.ThreadContext;
 import org.apache.logging.log4j.core.util.Constants;
+import org.apache.logging.log4j.message.MapMessage;
 import org.apache.logging.log4j.util.Strings;
 
 import com.google.monitoring.runtime.instrumentation.AllocationRecorder;
@@ -54,7 +56,9 @@ public class GcFreeLoggingTestUtil {
         assertFalse("Constants.IS_WEB_APP", Constants.IS_WEB_APP);
 
         final MyCharSeq myCharSeq = new MyCharSeq();
-        MarkerManager.getMarker("test"); // initial creation, value is cached
+        final Marker testGrandParent = MarkerManager.getMarker("testGrandParent");
+        final Marker testParent = MarkerManager.getMarker("testParent").setParents(testGrandParent);
+        final Marker test = MarkerManager.getMarker("test").setParents(testParent); // initial creation, value is cached
 
         // initialize LoggerContext etc.
         // This is not steady-state logging and will allocate objects.
@@ -63,9 +67,10 @@ public class GcFreeLoggingTestUtil {
 
         final org.apache.logging.log4j.Logger logger = LogManager.getLogger(testClass.getName());
         logger.debug("debug not set");
-        logger.fatal("This message is logged to the console");
+        logger.fatal(test, "This message is logged to the console");
         logger.error("Sample error message");
         logger.error("Test parameterized message {}", "param");
+        logger.error(new MapMessage().with("eventId", "Login")); // initialize GelfLayout's messageStringBuilder
         for (int i = 0; i < 256; i++) {
             logger.debug("ensure all ringbuffer slots have been used once"); // allocate MutableLogEvent.messageText
         }
@@ -100,6 +105,7 @@ public class GcFreeLoggingTestUtil {
             }
         };
         Thread.sleep(500);
+        final MapMessage mapMessage = new MapMessage().with("eventId", "Login");
         AllocationRecorder.addSampler(sampler);
 
         // now do some steady-state logging
@@ -115,6 +121,7 @@ public class GcFreeLoggingTestUtil {
             logger.error("Test parameterized message {}", "param");
             logger.error("Test parameterized message {}{}", "param", "param2");
             logger.error("Test parameterized message {}{}{}", "param", "param2", "abc");
+            logger.error(mapMessage); // LOG4J2-1683
             ThreadContext.remove("aKey");
             ThreadContext.put("aKey", "value1");
         }

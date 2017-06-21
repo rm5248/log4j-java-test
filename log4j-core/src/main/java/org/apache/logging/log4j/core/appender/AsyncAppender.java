@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.logging.log4j.core.AbstractLogEvent;
 import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.async.ArrayBlockingQueueFactory;
@@ -48,17 +49,19 @@ import org.apache.logging.log4j.core.config.plugins.validation.constraints.Requi
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.core.util.Constants;
 import org.apache.logging.log4j.core.util.Log4jThread;
+import org.apache.logging.log4j.message.AsynchronouslyFormattable;
+import org.apache.logging.log4j.message.Message;
 
 /**
  * Appends to one or more Appenders asynchronously. You can configure an AsyncAppender with one or more Appenders and an
  * Appender to append to if the queue is full. The AsyncAppender does not allow a filter to be specified on the Appender
  * references.
  */
-@Plugin(name = "Async", category = "Core", elementType = Appender.ELEMENT_TYPE, printObject = true)
+@Plugin(name = "Async", category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
 public final class AsyncAppender extends AbstractAppender {
 
     private static final int DEFAULT_QUEUE_SIZE = 128;
-    private static final LogEvent SHUTDOWN = new AbstractLogEvent() {
+    private static final LogEvent SHUTDOWN_LOG_EVENT = new AbstractLogEvent() {
     };
 
     private static final AtomicLong THREAD_SEQUENCE = new AtomicLong(1);
@@ -153,7 +156,7 @@ public final class AsyncAppender extends AbstractAppender {
         if (!isStarted()) {
             throw new IllegalStateException("AsyncAppender " + getName() + " is not active");
         }
-        if (!Constants.FORMAT_MESSAGES_IN_BACKGROUND) { // LOG4J2-898: user may choose
+        if (!canFormatMessageInBackground(logEvent.getMessage())) {
             logEvent.getMessage().getFormattedMessage(); // LOG4J2-763: ask message to freeze parameters
         }
         final Log4jLogEvent memento = Log4jLogEvent.createMemento(logEvent, includeLocation);
@@ -167,6 +170,11 @@ public final class AsyncAppender extends AbstractAppender {
                 logToErrorAppenderIfNecessary(false, memento);
             }
         }
+    }
+
+    private boolean canFormatMessageInBackground(final Message message) {
+        return Constants.FORMAT_MESSAGES_IN_BACKGROUND // LOG4J2-898: user wants to format all msgs in background
+                || message.getClass().isAnnotationPresent(AsynchronouslyFormattable.class); // LOG4J2-1718
     }
 
     private boolean transfer(final LogEvent memento) {
@@ -393,7 +401,7 @@ public final class AsyncAppender extends AbstractAppender {
                 LogEvent event;
                 try {
                     event = queue.take();
-                    if (event == SHUTDOWN) {
+                    if (event == SHUTDOWN_LOG_EVENT) {
                         shutdown = true;
                         continue;
                     }
@@ -460,7 +468,7 @@ public final class AsyncAppender extends AbstractAppender {
         public void shutdown() {
             shutdown = true;
             if (queue.isEmpty()) {
-                queue.offer(SHUTDOWN);
+                queue.offer(SHUTDOWN_LOG_EVENT);
             }
             if (getState() == State.TIMED_WAITING || getState() == State.WAITING) {
                 this.interrupt(); // LOG4J2-1422: if underlying appender is stuck in wait/sleep/join/park call

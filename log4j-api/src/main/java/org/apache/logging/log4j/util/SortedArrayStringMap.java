@@ -18,11 +18,14 @@ package org.apache.logging.log4j.util;
 
 import java.io.IOException;
 import java.io.InvalidObjectException;
+import java.rmi.MarshalledObject;
 import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+
+import org.apache.logging.log4j.status.StatusLogger;
 
 /**
  * <em>Consider this class private.</em>
@@ -47,7 +50,7 @@ import java.util.Objects;
  *
  * @since 2.7
  */
-public class SortedArrayStringMap implements StringMap {
+public class SortedArrayStringMap implements IndexedStringMap {
 
     /**
      * The default initial capacity.
@@ -104,6 +107,13 @@ public class SortedArrayStringMap implements StringMap {
         } else if (other != null) {
             resize(ceilingNextPowerOfTwo(other.size()));
             other.forEach(PUT_ALL, this);
+        }
+    }
+
+    public SortedArrayStringMap(final Map<String, ?> map) {
+        resize(ceilingNextPowerOfTwo(map.size()));
+        for (final Map.Entry<String, ?> entry : map.entrySet()) {
+            putValue(entry.getKey(), entry.getValue());
         }
     }
 
@@ -172,7 +182,8 @@ public class SortedArrayStringMap implements StringMap {
         return size == 0;
     }
 
-    int indexOfKey(final String key) {
+    @Override
+    public int indexOfKey(final String key) {
         if (keys == EMPTY) {
             return -1;
         }
@@ -215,8 +226,11 @@ public class SortedArrayStringMap implements StringMap {
 
     @Override
     public void putAll(final ReadOnlyStringMap source) {
-        if (source == this || source.isEmpty()) { // throw NPE if null
-            return; // this.putAll(this) does not modify this collection
+        if (source == this || source == null || source.isEmpty()) {
+            // this.putAll(this) does not modify this collection
+            // this.putAll(null) does not modify this collection
+            // this.putAll(empty ReadOnlyStringMap) does not modify this collection
+            return;
         }
         assertNotFrozen();
         assertNoConcurrentModification();
@@ -338,7 +352,8 @@ public class SortedArrayStringMap implements StringMap {
         }
     }
 
-    String getKeyAt(final int index) {
+    @Override
+    public String getKeyAt(final int index) {
         if (index < 0 || index >= size) {
             return null;
         }
@@ -346,7 +361,8 @@ public class SortedArrayStringMap implements StringMap {
     }
 
     @SuppressWarnings("unchecked")
-    <V> V getValueAt(final int index) {
+    @Override
+    public <V> V getValueAt(final int index) {
         if (index < 0 || index >= size) {
             return null;
         }
@@ -468,11 +484,15 @@ public class SortedArrayStringMap implements StringMap {
         if (size > 0) {
             for (int i = 0; i < size; i++) {
                 s.writeObject(keys[i]);
-                s.writeObject(values[i]);
+                try {
+                    s.writeObject(new MarshalledObject<>(values[i]));
+                } catch (final Exception e) {
+                    handleSerializationException(e, i, keys[i]);
+                    s.writeObject(null);
+                }
             }
         }
     }
-
 
     /**
      * Calculate the next power of 2, greater than or equal to x.
@@ -521,8 +541,18 @@ public class SortedArrayStringMap implements StringMap {
         // Read the keys and values, and put the mappings in the arrays
         for (int i = 0; i < mappings; i++) {
             keys[i] = (String) s.readObject();
-            values[i] = s.readObject();
+            try {
+                final MarshalledObject<Object> marshalledObject = (MarshalledObject<Object>) s.readObject();
+                values[i] = marshalledObject == null ? null : marshalledObject.get();
+            } catch (final Exception | LinkageError error) {
+                handleSerializationException(error, i, keys[i]);
+                values[i] = null;
+            }
         }
         size = mappings;
+    }
+
+    private void handleSerializationException(final Throwable t, final int i, final String key) {
+        StatusLogger.getLogger().warn("Ignoring {} for key[{}] ('{}')", String.valueOf(t), i, keys[i]);
     }
 }

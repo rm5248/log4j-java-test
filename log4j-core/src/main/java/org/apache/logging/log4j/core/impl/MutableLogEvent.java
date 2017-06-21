@@ -24,6 +24,7 @@ import java.util.Map;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.ThreadContext;
+import org.apache.logging.log4j.message.AsynchronouslyFormattable;
 import org.apache.logging.log4j.util.ReadOnlyStringMap;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.util.Constants;
@@ -72,6 +73,10 @@ public class MutableLogEvent implements LogEvent, ReusableMessage {
         this.parameters = replacementParameters;
     }
 
+    public Log4jLogEvent toImmutable() {
+        return createMemento();
+    }
+
     /**
      * Initialize the fields of this {@code MutableLogEvent} from another event.
      * Similar in purpose and usage as {@link org.apache.logging.log4j.core.impl.Log4jLogEvent.LogEventProxy},
@@ -109,7 +114,6 @@ public class MutableLogEvent implements LogEvent, ReusableMessage {
 
     /**
      * Clears all references this event has to other objects.
-     *
      */
     public void clear() {
         loggerFqcn = null;
@@ -214,11 +218,16 @@ public class MutableLogEvent implements LogEvent, ReusableMessage {
             }
         } else {
             // if the Message instance is reused, there is no point in freezing its message here
-            if (!Constants.FORMAT_MESSAGES_IN_BACKGROUND && msg != null) { // LOG4J2-898: user may choose
+            if (msg != null && !canFormatMessageInBackground(msg)) {
                 msg.getFormattedMessage(); // LOG4J2-763: ask message to freeze parameters
             }
             this.message = msg;
         }
+    }
+
+    private boolean canFormatMessageInBackground(final Message message) {
+        return Constants.FORMAT_MESSAGES_IN_BACKGROUND // LOG4J2-898: user wants to format all msgs in background
+                || message.getClass().isAnnotationPresent(AsynchronouslyFormattable.class); // LOG4J2-1718
     }
 
     private StringBuilder getMessageTextForWriting() {

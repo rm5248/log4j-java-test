@@ -16,13 +16,15 @@
  */
 package org.apache.logging.log4j.core.pattern;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.message.SimpleMessage;
+import org.apache.logging.log4j.util.Strings;
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 public class ThrowablePatternConverterTest {
 
@@ -36,19 +38,29 @@ public class ThrowablePatternConverterTest {
         }
     }
 
+    private boolean everyLineEndsWith(final String text, final String suffix) {
+        String[] lines = text.split(Strings.LINE_SEPARATOR);
+        for (String line: lines) {
+            if (!line.trim().endsWith(suffix)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
      * TODO: Needs better a better exception? NumberFormatException is NOT helpful.
      */
     @Test(expected = Exception.class)
     public void testBadShortOption() {
         final String[] options = { "short.UNKNOWN" };
-        ThrowablePatternConverter.newInstance(options);
+        ThrowablePatternConverter.newInstance(null, options);
     }
 
     @Test
     public void testFull() {
         final String[] options = { "full" };
-        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(options);
+        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(null, options);
         Throwable parent;
         try {
             try {
@@ -77,7 +89,7 @@ public class ThrowablePatternConverterTest {
     public void testShortClassName() {
         final String packageName = "org.apache.logging.log4j.core.pattern.";
         final String[] options = { "short.className" };
-        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(options);
+        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(null, options);
         final Throwable cause = new NullPointerException("null pointer");
         final Throwable parent = new IllegalArgumentException("IllegalArgument", cause);
         final LogEvent event = Log4jLogEvent.newBuilder() //
@@ -95,7 +107,7 @@ public class ThrowablePatternConverterTest {
     @Test
     public void testShortFileName() {
         final String[] options = { "short.fileName" };
-        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(options);
+        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(null, options);
         final Throwable cause = new NullPointerException("null pointer");
         final Throwable parent = new IllegalArgumentException("IllegalArgument", cause);
         final LogEvent event = Log4jLogEvent.newBuilder() //
@@ -113,7 +125,7 @@ public class ThrowablePatternConverterTest {
     @Test
     public void testShortLineNumber() {
         final String[] options = { "short.lineNumber" };
-        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(options);
+        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(null, options);
         final Throwable cause = new NullPointerException("null pointer");
         final Throwable parent = new IllegalArgumentException("IllegalArgument", cause);
         final StackTraceElement top = parent.getStackTrace()[0];
@@ -134,7 +146,7 @@ public class ThrowablePatternConverterTest {
     @Test
     public void testShortLocalizedMessage() {
         final String[] options = { "short.localizedMessage" };
-        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(options);
+        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(null, options);
         final Throwable parent = new LocalizedException();
         final LogEvent event = Log4jLogEvent.newBuilder() //
                 .setLoggerName("testLogger") //
@@ -151,7 +163,7 @@ public class ThrowablePatternConverterTest {
     @Test
     public void testShortMessage() {
         final String[] options = { "short.message" };
-        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(options);
+        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(null, options);
         final Throwable cause = new NullPointerException("null pointer");
         final Throwable parent = new IllegalArgumentException("IllegalArgument", cause);
         final LogEvent event = Log4jLogEvent.newBuilder() //
@@ -169,7 +181,7 @@ public class ThrowablePatternConverterTest {
     @Test
     public void testShortMethodName() {
         final String[] options = { "short.methodName" };
-        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(options);
+        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(null, options);
         final Throwable cause = new NullPointerException("null pointer");
         final Throwable parent = new IllegalArgumentException("IllegalArgument", cause);
         final LogEvent event = Log4jLogEvent.newBuilder() //
@@ -182,6 +194,51 @@ public class ThrowablePatternConverterTest {
         converter.format(event, sb);
         final String result = sb.toString();
         assertEquals("The method names should be same", "testShortMethodName", result);
+    }
+
+    @Test
+    public void testFullWithSuffix() {
+        final String[] options = { "full", "suffix(test suffix)" };
+        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(null, options);
+        Throwable parent;
+        try {
+            try {
+                throw new NullPointerException("null pointer");
+            } catch (final NullPointerException e) {
+                throw new IllegalArgumentException("IllegalArgument", e);
+            }
+        } catch (final IllegalArgumentException e) {
+            parent = e;
+        }
+        final LogEvent event = Log4jLogEvent.newBuilder() //
+                .setLoggerName("testLogger") //
+                .setLoggerFqcn(this.getClass().getName()) //
+                .setLevel(Level.DEBUG) //
+                .setMessage(new SimpleMessage("test exception")) //
+                .setThrown(parent).build();
+        final StringBuilder sb = new StringBuilder();
+        converter.format(event, sb);
+        final String result = sb.toString();
+        assertTrue("Each line of full stack trace should end with the specified suffix", everyLineEndsWith(result, "test suffix"));
+    }
+
+    @Test
+    public void testShortOptionWithSuffix() {
+        final String packageName = "org.apache.logging.log4j.core.pattern.";
+        final String[] options = { "short.className", "suffix(test suffix)" };
+        final ThrowablePatternConverter converter = ThrowablePatternConverter.newInstance(null, options);
+        final Throwable cause = new NullPointerException("null pointer");
+        final Throwable parent = new IllegalArgumentException("IllegalArgument", cause);
+        final LogEvent event = Log4jLogEvent.newBuilder() //
+                .setLoggerName("testLogger") //
+                .setLoggerFqcn(this.getClass().getName()) //
+                .setLevel(Level.DEBUG) //
+                .setMessage(new SimpleMessage("test exception")) //
+                .setThrown(parent).build();
+        final StringBuilder sb = new StringBuilder();
+        converter.format(event, sb);
+        final String result = sb.toString();
+        assertTrue("Each line should end with suffix", everyLineEndsWith(result, "test suffix"));
     }
 
 }

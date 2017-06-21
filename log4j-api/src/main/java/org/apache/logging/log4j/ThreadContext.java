@@ -30,19 +30,21 @@ import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.logging.log4j.spi.DefaultThreadContextMap;
 import org.apache.logging.log4j.spi.DefaultThreadContextStack;
 import org.apache.logging.log4j.spi.NoOpThreadContextMap;
+import org.apache.logging.log4j.spi.ReadOnlyThreadContextMap;
 import org.apache.logging.log4j.spi.ThreadContextMap;
 import org.apache.logging.log4j.spi.ThreadContextMap2;
+import org.apache.logging.log4j.spi.CleanableThreadContextMap;
 import org.apache.logging.log4j.spi.ThreadContextMapFactory;
 import org.apache.logging.log4j.spi.ThreadContextStack;
-import org.apache.logging.log4j.status.StatusLogger;
 import org.apache.logging.log4j.util.PropertiesUtil;
 
 /**
  * The ThreadContext allows applications to store information either in a Map or a Stack.
  * <p>
- * <b><em>The MDC is managed on a per thread basis</em></b>. A child thread automatically inherits a <em>copy</em> of
- * the mapped diagnostic context of its parent.
+ * <b><em>The MDC is managed on a per thread basis</em></b>. To enable automatic inheritance of <i>copies</i> of the MDC
+ * to newly created threads, enable the {@value DefaultThreadContextMap#INHERITABLE_MAP} Log4j system property.
  * </p>
+ * @see <a href="https://logging.apache.org/log4j/2.x/manual/thread-context.html">Thread Context Manual</a>
  */
 public final class ThreadContext {
 
@@ -195,7 +197,7 @@ public final class ThreadContext {
     private static boolean useStack;
     private static ThreadContextMap contextMap;
     private static ThreadContextStack contextStack;
-    private static final Logger LOGGER = StatusLogger.getLogger();
+    private static ReadOnlyThreadContextMap readOnlyContextMap;
 
     static {
         init();
@@ -220,6 +222,9 @@ public final class ThreadContext {
             contextMap = new NoOpThreadContextMap();
         } else {
             contextMap = ThreadContextMapFactory.createThreadContextMap();
+        }
+        if (contextMap instanceof ReadOnlyThreadContextMap) {
+            readOnlyContextMap = (ReadOnlyThreadContextMap) contextMap;
         }
     }
 
@@ -283,6 +288,25 @@ public final class ThreadContext {
     }
 
     /**
+     * Removes the context values identified by the <code>keys</code> parameter.
+     *
+     * @param keys The keys to remove.
+     *
+     * @since 2.8
+     */
+    public static void removeAll(final Iterable<String> keys) {
+        if (contextMap instanceof CleanableThreadContextMap) {
+            ((CleanableThreadContextMap) contextMap).removeAll(keys);
+        } else if (contextMap instanceof DefaultThreadContextMap) {
+            ((DefaultThreadContextMap) contextMap).removeAll(keys);
+        } else {
+            for (final String key : keys) {
+                contextMap.remove(key);
+            }
+        }
+    }
+
+    /**
      * Clears the context map.
      */
     public static void clearMap() {
@@ -327,15 +351,23 @@ public final class ThreadContext {
     }
 
     /**
-     * Returns the internal data structure used to store thread context key-value pairs.
-     * <p><em>
-     * This data structure is not intended to be used directly by applications. This method is package protected for
-     * internal log4j2 usage.
-     * </em></p>
-     * @return the internal data structure used to store thread context key-value pairs
+     * Returns a read-only view of the internal data structure used to store thread context key-value pairs,
+     * or {@code null} if the internal data structure does not implement the
+     * {@code ReadOnlyThreadContextMap} interface.
+     * <p>
+     * The {@link DefaultThreadContextMap} implementation does not implement {@code ReadOnlyThreadContextMap}, so by
+     * default this method returns {@code null}.
+     * </p>
+     *
+     * @return the internal data structure used to store thread context key-value pairs or {@code null}
+     * @see ThreadContextMapFactory
+     * @see DefaultThreadContextMap
+     * @see org.apache.logging.log4j.spi.CopyOnWriteSortedArrayThreadContextMap
+     * @see org.apache.logging.log4j.spi.GarbageFreeSortedArrayThreadContextMap
+     * @since 2.8
      */
-    static ThreadContextMap getThreadContextMap() {
-        return contextMap;
+    public static ReadOnlyThreadContextMap getThreadContextMap() {
+        return readOnlyContextMap;
     }
 
     /**

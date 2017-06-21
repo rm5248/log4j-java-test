@@ -19,17 +19,17 @@ package org.apache.logging.slf4j;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.apache.logging.log4j.util.StringMap;
-import org.apache.logging.log4j.spi.ThreadContextMap2;
+import org.apache.logging.log4j.spi.CleanableThreadContextMap;
 import org.apache.logging.log4j.util.SortedArrayStringMap;
+import org.apache.logging.log4j.util.StringMap;
 import org.slf4j.MDC;
 
 /**
  * Bind the ThreadContextMap to the SLF4J MDC.
  */
-public class MDCContextMap implements ThreadContextMap2 {
+public class MDCContextMap implements CleanableThreadContextMap {
 
-    private static final StringMap EMPTY_CONTEXT_DATA = new SortedArrayStringMap();
+    private static final StringMap EMPTY_CONTEXT_DATA = new SortedArrayStringMap(1);
     static {
         EMPTY_CONTEXT_DATA.freeze();
     }
@@ -41,9 +41,9 @@ public class MDCContextMap implements ThreadContextMap2 {
 
     @Override
     public void putAll(final Map<String, String> m) {
-    	for (final Entry<String, String> entry : m.entrySet()) {
+        for (final Entry<String, String> entry : m.entrySet()) {
             MDC.put(entry.getKey(), entry.getValue());
-		}
+        }
     }
 
     @Override
@@ -54,6 +54,14 @@ public class MDCContextMap implements ThreadContextMap2 {
     @Override
     public void remove(final String key) {
         MDC.remove(key);
+    }
+
+
+    @Override
+    public void removeAll(final Iterable<String> keys) {
+        for (final String key : keys) {
+            MDC.remove(key);
+        }
     }
 
     @Override
@@ -90,7 +98,7 @@ public class MDCContextMap implements ThreadContextMap2 {
             return EMPTY_CONTEXT_DATA;
         }
         final StringMap result = new SortedArrayStringMap();
-        for (Entry<String, String> entry : copy.entrySet()) {
+        for (final Entry<String, String> entry : copy.entrySet()) {
             result.putValue(entry.getKey(), entry.getValue());
         }
         return result;

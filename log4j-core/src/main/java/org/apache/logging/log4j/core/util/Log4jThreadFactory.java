@@ -42,7 +42,11 @@ public class Log4jThreadFactory implements ThreadFactory {
 
     /**
      * Creates a new thread factory.
-     * 
+     *
+     * This is mainly used for tests. Production code should be very careful with creating
+     * non-daemon threads since those will block application shutdown
+     * (see https://issues.apache.org/jira/browse/LOG4J2-1748).
+     *
      * @param threadFactoryName
      *            The thread factory name.
      * @return a new daemon thread factory.

@@ -16,27 +16,27 @@
  */
 package org.apache.logging.log4j.core.net.server;
 
-import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.OptionalDataException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.charset.Charset;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.logging.log4j.core.config.ConfigurationFactory;
-import org.apache.logging.log4j.core.util.Log4jThread;
-import org.apache.logging.log4j.message.EntryMessage;
-
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.validators.PositiveInteger;
+import org.apache.logging.log4j.core.config.ConfigurationFactory;
+import org.apache.logging.log4j.core.util.BasicCommandLineArguments;
+import org.apache.logging.log4j.core.util.Closer;
+import org.apache.logging.log4j.core.util.Log4jThread;
+import org.apache.logging.log4j.message.EntryMessage;
 
 /**
  * Listens for Log4j events on a TCP server socket and passes them on to Log4j.
@@ -94,11 +94,7 @@ public class TcpSocketServer<T extends InputStream> extends AbstractSocketServer
                     logger.error("IOException encountered while reading from socket", e);
                 }
                 if (!closed) {
-                    try {
-                        inputStream.close();
-                    } catch (final Exception ex) {
-                        // Ignore the exception;
-                    }
+                    Closer.closeSilently(inputStream);
                 }
             } finally {
                 handlers.remove(Long.valueOf(getId()));
@@ -153,10 +149,27 @@ public class TcpSocketServer<T extends InputStream> extends AbstractSocketServer
      * @since 2.7
      */
     public static TcpSocketServer<ObjectInputStream> createSerializedSocketServer(final int port, final int backlog,
-            InetAddress localBindAddress) throws IOException {
+            final InetAddress localBindAddress) throws IOException {
+        return createSerializedSocketServer(port, backlog, localBindAddress, Collections.<String>emptyList());
+    }
+
+    /**
+     * Creates a socket server that reads serialized log events.
+     *
+     * @param port the port to listen
+     * @param localBindAddress The server socket's local bin address
+     * @param allowedClasses additional class names to allow for deserialization
+     * @return a new a socket server
+     * @throws IOException
+     *         if an I/O error occurs when opening the socket.
+     * @since 2.8.2
+     */
+    public static TcpSocketServer<ObjectInputStream> createSerializedSocketServer(
+        final int port, final int backlog, final InetAddress localBindAddress, final List<String> allowedClasses
+    ) throws IOException {
         LOGGER.entry(port);
         final TcpSocketServer<ObjectInputStream> socketServer = new TcpSocketServer<>(port, backlog, localBindAddress,
-                new ObjectInputStreamLogEventBridge());
+                new ObjectInputStreamLogEventBridge(allowedClasses));
         return LOGGER.exit(socketServer);
     }
 
@@ -184,29 +197,18 @@ public class TcpSocketServer<T extends InputStream> extends AbstractSocketServer
      *         if an error occurs.
      */
     public static void main(final String[] args) throws Exception {
-        final CommandLineArguments cla = parseCommandLine(args, TcpSocketServer.class, new CommandLineArguments());
+        final CommandLineArguments cla = BasicCommandLineArguments.parseCommandLine(args, TcpSocketServer.class, new CommandLineArguments());
         if (cla.isHelp()) {
             return;
         }
         if (cla.getConfigLocation() != null) {
             ConfigurationFactory.setConfigurationFactory(new ServerConfigurationFactory(cla.getConfigLocation()));
         }
-        final TcpSocketServer<ObjectInputStream> socketServer = TcpSocketServer
-                .createSerializedSocketServer(cla.getPort(), cla.getBacklog(), cla.getLocalBindAddress());
-        final Thread serverThread = new Log4jThread(socketServer);
-        serverThread.start();
+        final TcpSocketServer<ObjectInputStream> socketServer = TcpSocketServer.createSerializedSocketServer(
+            cla.getPort(), cla.getBacklog(), cla.getLocalBindAddress(), cla.getAllowedClasses());
+        final Thread serverThread = socketServer.startNewThread();
         if (cla.isInteractive()) {
-            final Charset enc = Charset.defaultCharset();
-            final BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, enc));
-            while (true) {
-                final String line = reader.readLine();
-                if (line == null || line.equalsIgnoreCase("Quit") || line.equalsIgnoreCase("Stop")
-                        || line.equalsIgnoreCase("Exit")) {
-                    socketServer.shutdown();
-                    serverThread.join();
-                    break;
-                }
-            }
+            socketServer.awaitTermination(serverThread);
         }
     }
 
@@ -229,7 +231,7 @@ public class TcpSocketServer<T extends InputStream> extends AbstractSocketServer
      * @since 2.7
      */
     @SuppressWarnings("resource")
-    public TcpSocketServer(final int port, final int backlog, InetAddress localBindAddress, final LogEventBridge<T> logEventInput) throws IOException {
+    public TcpSocketServer(final int port, final int backlog, final InetAddress localBindAddress, final LogEventBridge<T> logEventInput) throws IOException {
         this(port, logEventInput, new ServerSocket(port, backlog, localBindAddress));
     }
 
@@ -308,7 +310,7 @@ public class TcpSocketServer<T extends InputStream> extends AbstractSocketServer
             handler.shutdown();
             try {
                 handler.join();
-            } catch (final InterruptedException ie) {
+            } catch (final InterruptedException ignored) {
                 // Ignore the exception
             }
         }
@@ -320,6 +322,7 @@ public class TcpSocketServer<T extends InputStream> extends AbstractSocketServer
      * 
      * @throws IOException if the server socket could not be closed
      */
+    @Override
     public void shutdown() throws IOException {
         final EntryMessage entry = logger.traceEntry();
         setActive(false);

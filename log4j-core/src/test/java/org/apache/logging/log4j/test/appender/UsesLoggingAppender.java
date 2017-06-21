@@ -17,6 +17,7 @@
 package org.apache.logging.log4j.test.appender;
 
 import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
@@ -31,7 +32,7 @@ import org.apache.logging.log4j.test.SomethingThatUsesLogging;
 /**
  *
  */
-@Plugin(name = "UsesLoggingAppender", category = "Core", elementType = Appender.ELEMENT_TYPE, printObject = true)
+@Plugin(name = "UsesLoggingAppender", category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
 public final class UsesLoggingAppender extends AbstractAppender {
 
     private final SomethingThatUsesLogging thing;

@@ -28,6 +28,7 @@ import java.nio.charset.Charset;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
@@ -48,7 +49,7 @@ import org.apache.logging.log4j.util.PropertiesUtil;
  * encoding. (RG) Encoding is handled within the Layout. Typically, a Layout will generate a String and then call
  * getBytes which may use a configured encoding or the system default. OTOH, a Writer cannot print byte streams.
  */
-@Plugin(name = ConsoleAppender.PLUGIN_NAME, category = "Core", elementType = Appender.ELEMENT_TYPE, printObject = true)
+@Plugin(name = ConsoleAppender.PLUGIN_NAME, category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
 public final class ConsoleAppender extends AbstractOutputStreamAppender<OutputStreamManager> {
 
     public static final String PLUGIN_NAME = "Console";
@@ -64,9 +65,26 @@ public final class ConsoleAppender extends AbstractOutputStreamAppender<OutputSt
      */
     public enum Target {
         /** Standard output. */
-        SYSTEM_OUT,
+        SYSTEM_OUT {
+            @Override
+            public Charset getDefaultCharset() {
+                return getCharset("sun.stdout.encoding");
+            }
+        },
         /** Standard error output. */
-        SYSTEM_ERR
+        SYSTEM_ERR {
+            @Override
+            public Charset getDefaultCharset() {
+                return getCharset("sun.stderr.encoding");
+            }
+        };
+        
+        public abstract Charset getDefaultCharset();
+        
+        protected Charset getCharset(final String property) {
+            return new PropertiesUtil(PropertiesUtil.getSystemProperties()).getCharsetProperty(property);
+        }
+
     }
 
     private ConsoleAppender(final String name, final Layout<? extends Serializable> layout, final Filter filter,
@@ -162,7 +180,7 @@ public final class ConsoleAppender extends AbstractOutputStreamAppender<OutputSt
 
     /**
      * Builds ConsoleAppender instances.
-     * @param <B> This builder class
+     * @param <B> The type to build
      */
     public static class Builder<B extends Builder<B>> extends AbstractOutputStreamAppender.Builder<B>
             implements org.apache.logging.log4j.core.util.Builder<ConsoleAppender> {
@@ -197,7 +215,7 @@ public final class ConsoleAppender extends AbstractOutputStreamAppender<OutputSt
             if (follow && direct) {
                 throw new IllegalArgumentException("Cannot use both follow and direct on ConsoleAppender '" + getName() + "'");
             }
-            final Layout<? extends Serializable> layout = getOrCreateLayout();
+            final Layout<? extends Serializable> layout = getOrCreateLayout(target.getDefaultCharset());
             return new ConsoleAppender(getName(), layout, getFilter(), getManager(target, follow, direct, layout),
                     isIgnoreExceptions(), target);
         }

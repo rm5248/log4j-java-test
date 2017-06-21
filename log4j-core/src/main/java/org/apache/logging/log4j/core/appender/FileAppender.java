@@ -22,13 +22,13 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginBuilderAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginBuilderFactory;
-import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.validation.constraints.Required;
 import org.apache.logging.log4j.core.net.Advertiser;
 import org.apache.logging.log4j.core.util.Booleans;
@@ -37,7 +37,7 @@ import org.apache.logging.log4j.core.util.Integers;
 /**
  * File Appender.
  */
-@Plugin(name = FileAppender.PLUGIN_NAME, category = "Core", elementType = Appender.ELEMENT_TYPE, printObject = true)
+@Plugin(name = FileAppender.PLUGIN_NAME, category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
 public final class FileAppender extends AbstractOutputStreamAppender<FileManager> {
 
     public static final String PLUGIN_NAME = "File";
@@ -46,7 +46,7 @@ public final class FileAppender extends AbstractOutputStreamAppender<FileManager
      * Builds FileAppender instances.
      * 
      * @param <B>
-     *            This builder class
+     *            The type to build
      */
     public static class Builder<B extends Builder<B>> extends AbstractOutputStreamAppender.Builder<B>
             implements org.apache.logging.log4j.core.util.Builder<FileAppender> {
@@ -70,9 +70,6 @@ public final class FileAppender extends AbstractOutputStreamAppender<FileManager
         @PluginBuilderAttribute
         private boolean createOnDemand;
 
-        @PluginConfiguration
-        private Configuration configuration;
-
         @Override
         public FileAppender build() {
             boolean bufferedIo = isBufferedIo();
@@ -87,21 +84,17 @@ public final class FileAppender extends AbstractOutputStreamAppender<FileManager
             final Layout<? extends Serializable> layout = getOrCreateLayout();
 
             final FileManager manager = FileManager.getFileManager(fileName, append, locking, bufferedIo, createOnDemand,
-                    advertiseUri, layout, bufferSize, configuration);
+                    advertiseUri, layout, bufferSize, getConfiguration());
             if (manager == null) {
                 return null;
             }
 
             return new FileAppender(getName(), layout, getFilter(), manager, fileName, isIgnoreExceptions(),
-                    !bufferedIo || isImmediateFlush(), advertise ? configuration.getAdvertiser() : null);
+                    !bufferedIo || isImmediateFlush(), advertise ? getConfiguration().getAdvertiser() : null);
         }
 
         public String getAdvertiseUri() {
             return advertiseUri;
-        }
-
-        public Configuration getConfiguration() {
-            return configuration;
         }
 
         public String getFileName() {
@@ -136,11 +129,6 @@ public final class FileAppender extends AbstractOutputStreamAppender<FileManager
 
         public B withAppend(final boolean append) {
             this.append = append;
-            return asBuilder();
-        }
-
-        public B withConfiguration(final Configuration config) {
-            this.configuration = config;
             return asBuilder();
         }
 
@@ -186,7 +174,7 @@ public final class FileAppender extends AbstractOutputStreamAppender<FileManager
      * @deprecated Use {@link #newBuilder()}
      */
     @Deprecated
-    public static FileAppender createAppender(
+    public static <B extends Builder<B>> FileAppender createAppender(
             // @formatter:off
             final String fileName,
             final String append,
@@ -201,13 +189,13 @@ public final class FileAppender extends AbstractOutputStreamAppender<FileManager
             final String advertise,
             final String advertiseUri,
             final Configuration config) {
-        return newBuilder()
+        return FileAppender.<B>newBuilder()
             .withAdvertise(Boolean.parseBoolean(advertise))
             .withAdvertiseUri(advertiseUri)
             .withAppend(Booleans.parseBoolean(append, true))
             .withBufferedIo(Booleans.parseBoolean(bufferedIo, true))
             .withBufferSize(Integers.parseInt(bufferSizeStr, DEFAULT_BUFFER_SIZE))
-            .withConfiguration(config)
+            .setConfiguration(config)
             .withFileName(fileName)
             .withFilter(filter)
             .withIgnoreExceptions(Booleans.parseBoolean(ignoreExceptions, true))
