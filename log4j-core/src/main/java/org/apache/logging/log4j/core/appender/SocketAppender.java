@@ -21,7 +21,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.logging.log4j.core.AbstractLifeCycle;
 import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
@@ -30,94 +32,70 @@ import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAliases;
 import org.apache.logging.log4j.core.config.plugins.PluginBuilderAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginBuilderFactory;
-import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
+import org.apache.logging.log4j.core.config.plugins.validation.constraints.ValidHost;
+import org.apache.logging.log4j.core.config.plugins.validation.constraints.ValidPort;
 import org.apache.logging.log4j.core.layout.SerializedLayout;
 import org.apache.logging.log4j.core.net.AbstractSocketManager;
 import org.apache.logging.log4j.core.net.Advertiser;
 import org.apache.logging.log4j.core.net.DatagramSocketManager;
 import org.apache.logging.log4j.core.net.Protocol;
+import org.apache.logging.log4j.core.net.SocketOptions;
 import org.apache.logging.log4j.core.net.SslSocketManager;
 import org.apache.logging.log4j.core.net.TcpSocketManager;
 import org.apache.logging.log4j.core.net.ssl.SslConfiguration;
 import org.apache.logging.log4j.core.util.Booleans;
-import org.apache.logging.log4j.core.util.Constants;
 
 /**
  * An Appender that delivers events over socket connections. Supports both TCP and UDP.
  */
-@Plugin(name = "Socket", category = "Core", elementType = Appender.ELEMENT_TYPE, printObject = true)
+@Plugin(name = "Socket", category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
 public class SocketAppender extends AbstractOutputStreamAppender<AbstractSocketManager> {
 
     /**
      * Subclasses can extend this abstract Builder.
      * 
-     * Removed deprecated "delayMillis", use "reconnectionDelayMillis".
-     * Removed deprecated "reconnectionDelay", use "reconnectionDelayMillis".
+     * <ul> 
+     * <li>Removed deprecated "delayMillis", use "reconnectionDelayMillis".</li>
+     * <li>Removed deprecated "reconnectionDelay", use "reconnectionDelayMillis".</li>
+     * </ul> 
      * 
      * @param <B>
-     *            This builder class.
+     *            The type to build.
      */
-    public static class Builder<B extends Builder<B>> extends AbstractOutputStreamAppender.Builder<B>
-            implements org.apache.logging.log4j.core.util.Builder<SocketAppender> {
+    public static abstract class AbstractBuilder<B extends AbstractBuilder<B>> extends AbstractOutputStreamAppender.Builder<B> {
 
         @PluginBuilderAttribute
         private boolean advertise;
-
-        @PluginConfiguration
-        private Configuration configuration;
 
         @PluginBuilderAttribute
         private int connectTimeoutMillis;
 
         @PluginBuilderAttribute
+        @ValidHost
         private String host = "localhost";
 
         @PluginBuilderAttribute
         private boolean immediateFail = true;
 
         @PluginBuilderAttribute
+        @ValidPort
         private int port;
 
         @PluginBuilderAttribute
         private Protocol protocol = Protocol.TCP;
 
         @PluginBuilderAttribute
-        @PluginAliases({ "reconnectDelay, delayMillis" })
+        @PluginAliases({ "reconnectDelay", "reconnectionDelay", "delayMillis", "reconnectionDelayMillis" })
         private int reconnectDelayMillis;
+        
+        @PluginElement("SocketOptions")
+        private SocketOptions socketOptions;
         
         @PluginElement("SslConfiguration")
         @PluginAliases({ "SslConfig" })
         private SslConfiguration sslConfiguration;
-
-        @SuppressWarnings("resource")
-        @Override
-        public SocketAppender build() {
-            boolean immediateFlush = isImmediateFlush();
-            final boolean bufferedIo = isBufferedIo();
-            Layout<? extends Serializable> layout = getLayout();
-            if (layout == null) {
-                layout = SerializedLayout.createLayout();
-            }
-
-            final String name = getName();
-            if (name == null) {
-                SocketAppender.LOGGER.error("No name provided for SocketAppender");
-                return null;
-            }
-
-            final Protocol actualProtocol = protocol != null ? protocol : Protocol.TCP;
-            if (actualProtocol == Protocol.UDP) {
-                immediateFlush = true;
-            }
-
-            final AbstractSocketManager manager = SocketAppender.createSocketManager(name, actualProtocol, host, port,
-                    connectTimeoutMillis, sslConfiguration, reconnectDelayMillis, immediateFail, layout, getBufferSize());
-
-            return new SocketAppender(name, layout, getFilter(), manager, isIgnoreExceptions(),
-                    !bufferedIo || immediateFlush, advertise ? configuration.getAdvertiser() : null);
-        }
 
         public boolean getAdvertise() {
             return advertise;
@@ -152,11 +130,6 @@ public class SocketAppender extends AbstractOutputStreamAppender<AbstractSocketM
             return asBuilder();
         }
 
-        public B withConfiguration(final Configuration configuration) {
-            this.configuration = configuration;
-            return asBuilder();
-        }
-
         public B withConnectTimeoutMillis(final int connectTimeoutMillis) {
             this.connectTimeoutMillis = connectTimeoutMillis;
             return asBuilder();
@@ -187,15 +160,69 @@ public class SocketAppender extends AbstractOutputStreamAppender<AbstractSocketM
             return asBuilder();
         }
 
+        public B withSocketOptions(final SocketOptions socketOptions) {
+            this.socketOptions = socketOptions;
+            return asBuilder();
+        }
+
         public B withSslConfiguration(final SslConfiguration sslConfiguration) {
             this.sslConfiguration = sslConfiguration;
             return asBuilder();
         }
-}
+
+        public int getReconnectDelayMillis() {
+            return reconnectDelayMillis;
+        }
+
+        public SocketOptions getSocketOptions() {
+            return socketOptions;
+        }
+
+    }
+    
+    /**
+     * Builds a SocketAppender.
+     * <ul> 
+     * <li>Removed deprecated "delayMillis", use "reconnectionDelayMillis".</li>
+     * <li>Removed deprecated "reconnectionDelay", use "reconnectionDelayMillis".</li>
+     * </ul> 
+     */
+    public static class Builder extends AbstractBuilder<Builder>
+            implements org.apache.logging.log4j.core.util.Builder<SocketAppender> {
+
+        @SuppressWarnings("resource")
+        @Override
+        public SocketAppender build() {
+            boolean immediateFlush = isImmediateFlush();
+            final boolean bufferedIo = isBufferedIo();
+            Layout<? extends Serializable> layout = getLayout();
+            if (layout == null) {
+                layout = SerializedLayout.createLayout();
+            }
+
+            final String name = getName();
+            if (name == null) {
+                AbstractLifeCycle.LOGGER.error("No name provided for SocketAppender");
+                return null;
+            }
+
+            final Protocol protocol = getProtocol();
+            final Protocol actualProtocol = protocol != null ? protocol : Protocol.TCP;
+            if (actualProtocol == Protocol.UDP) {
+                immediateFlush = true;
+            }
+
+            final AbstractSocketManager manager = SocketAppender.createSocketManager(name, actualProtocol, getHost(), getPort(),
+                    getConnectTimeoutMillis(), getSslConfiguration(), getReconnectDelayMillis(), getImmediateFail(), layout, getBufferSize(), getSocketOptions());
+
+            return new SocketAppender(name, layout, getFilter(), manager, isIgnoreExceptions(),
+                    !bufferedIo || immediateFlush, getAdvertise() ? getConfiguration().getAdvertiser() : null);
+        }
+    }
     
     @PluginBuilderFactory
-    public static <B extends Builder<B>> B newBuilder() {
-        return new Builder<B>().asBuilder();
+    public static Builder newBuilder() {
+        return new Builder();
     }
 
     private final Object advertisement;
@@ -275,19 +302,18 @@ public class SocketAppender extends AbstractOutputStreamAppender<AbstractSocketM
             final int reconnectDelayMillis,
             final boolean immediateFail,
             final String name,
-            boolean immediateFlush,
+            final boolean immediateFlush,
             final boolean ignoreExceptions,
-            Layout<? extends Serializable> layout,
+            final Layout<? extends Serializable> layout,
             final Filter filter,
             final boolean advertise,
             final Configuration configuration) {
             // @formatter:on
 
-        if (true) {
         // @formatter:off
         return newBuilder()
             .withAdvertise(advertise)
-            .withConfiguration(configuration)
+            .setConfiguration(configuration)
             .withConnectTimeoutMillis(connectTimeoutMillis)
             .withFilter(filter)
             .withHost(host)
@@ -301,27 +327,8 @@ public class SocketAppender extends AbstractOutputStreamAppender<AbstractSocketM
             .withSslConfiguration(sslConfig)
             .build();
         // @formatter:on
-        }
-        if (layout == null) {
-            layout = SerializedLayout.createLayout();
-        }
-
-        if (name == null) {
-            LOGGER.error("No name provided for SocketAppender");
-            return null;
-        }
-
-        final Protocol actualProtocol = protocol != null ? protocol : Protocol.TCP;
-        if (actualProtocol == Protocol.UDP) {
-            immediateFlush = true;
-        }
-
-        final AbstractSocketManager manager = createSocketManager(name, actualProtocol, host, port,
-                connectTimeoutMillis, sslConfig, reconnectDelayMillis, immediateFail, layout, Constants.ENCODER_BYTE_BUFFER_SIZE);
-
-        return new SocketAppender(name, layout, filter, manager, ignoreExceptions, immediateFlush,
-                advertise ? configuration.getAdvertiser() : null);
     }
+    
     /**
      * Creates a socket appender.
      *
@@ -392,10 +399,25 @@ public class SocketAppender extends AbstractOutputStreamAppender<AbstractSocketM
      *
      * @throws IllegalArgumentException
      *             if the protocol cannot be handled.
+     * @deprecated Use {@link #createSocketManager(String, Protocol, String, int, int, SslConfiguration, int, boolean, Layout, int, SocketOptions)}.
      */
-    protected static AbstractSocketManager createSocketManager(final String name, Protocol protocol, final String host,
+    @Deprecated
+    protected static AbstractSocketManager createSocketManager(final String name, final Protocol protocol, final String host,
             final int port, final int connectTimeoutMillis, final SslConfiguration sslConfig, final int reconnectDelayMillis,
             final boolean immediateFail, final Layout<? extends Serializable> layout, final int bufferSize) {
+        return createSocketManager(name, protocol, host, port, connectTimeoutMillis, sslConfig, reconnectDelayMillis, immediateFail, layout, bufferSize, null);
+    }
+
+    /**
+     * Creates an AbstractSocketManager for TCP, UDP, and SSL.
+     *
+     * @throws IllegalArgumentException
+     *             if the protocol cannot be handled.
+     */
+    protected static AbstractSocketManager createSocketManager(final String name, Protocol protocol, final String host,
+            final int port, final int connectTimeoutMillis, final SslConfiguration sslConfig,
+            final int reconnectDelayMillis, final boolean immediateFail, final Layout<? extends Serializable> layout,
+            final int bufferSize, final SocketOptions socketOptions) {
         if (protocol == Protocol.TCP && sslConfig != null) {
             // Upgrade TCP to SSL if an SSL config is specified.
             protocol = Protocol.SSL;
@@ -405,13 +427,13 @@ public class SocketAppender extends AbstractOutputStreamAppender<AbstractSocketM
         }
         switch (protocol) {
         case TCP:
-            return TcpSocketManager.getSocketManager(host, port, connectTimeoutMillis, reconnectDelayMillis, immediateFail,
-                    layout, bufferSize);
+            return TcpSocketManager.getSocketManager(host, port, connectTimeoutMillis, reconnectDelayMillis,
+                    immediateFail, layout, bufferSize, socketOptions);
         case UDP:
             return DatagramSocketManager.getSocketManager(host, port, layout, bufferSize);
         case SSL:
             return SslSocketManager.getSocketManager(sslConfig, host, port, connectTimeoutMillis, reconnectDelayMillis,
-                    immediateFail, layout, bufferSize);
+                    immediateFail, layout, bufferSize, socketOptions);
         default:
             throw new IllegalArgumentException(protocol.toString());
         }

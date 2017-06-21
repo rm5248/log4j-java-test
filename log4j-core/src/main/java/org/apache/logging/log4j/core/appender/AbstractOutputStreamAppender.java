@@ -35,7 +35,7 @@ public abstract class AbstractOutputStreamAppender<M extends OutputStreamManager
     /**
      * Subclasses can extend this abstract Builder. 
      * 
-     * @param <B> This builder class.
+     * @param <B> The type to build.
      */
     public abstract static class Builder<B extends Builder<B>> extends AbstractAppender.Builder<B> {
     
@@ -143,6 +143,7 @@ public abstract class AbstractOutputStreamAppender<M extends OutputStreamManager
         if (changeLifeCycleState) {
             setStopped();
         }
+        LOGGER.debug("Appender {} stopped with status {}", getName(), stopped);
         return stopped;
     }
 

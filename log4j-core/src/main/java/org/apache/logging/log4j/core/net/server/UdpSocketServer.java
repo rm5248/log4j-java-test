@@ -16,19 +16,18 @@
  */
 package org.apache.logging.log4j.core.net.server;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.OptionalDataException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.util.List;
 
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
-import org.apache.logging.log4j.core.util.Log4jThread;
+import org.apache.logging.log4j.core.util.BasicCommandLineArguments;
 
 /**
  * Listens for Log4j events on a datagram socket and passes them on to Log4j. 
@@ -66,6 +65,21 @@ public class UdpSocketServer<T extends InputStream> extends AbstractSocketServer
     }
 
     /**
+     * Creates a socket server that reads serialized log events.
+     *
+     * @param port the port to listen
+     * @param allowedClasses additional classes to allow for deserialization
+     * @return a new a socket server
+     * @throws IOException if an I/O error occurs when opening the socket.
+     * @since 2.8.2
+     */
+    public static UdpSocketServer<ObjectInputStream> createSerializedSocketServer(final int port,
+                                                                                  final List<String> allowedClasses)
+        throws IOException {
+        return new UdpSocketServer<>(port, new ObjectInputStreamLogEventBridge(allowedClasses));
+    }
+
+    /**
      * Creates a socket server that reads XML log events.
      * 
      * @param port
@@ -87,7 +101,7 @@ public class UdpSocketServer<T extends InputStream> extends AbstractSocketServer
      *             if an error occurs.
      */
     public static void main(final String[] args) throws Exception {
-        final CommandLineArguments cla = parseCommandLine(args, UdpSocketServer.class, new CommandLineArguments());
+        final CommandLineArguments cla = BasicCommandLineArguments.parseCommandLine(args, UdpSocketServer.class, new CommandLineArguments());
         if (cla.isHelp()) {
             return;
         }
@@ -95,20 +109,10 @@ public class UdpSocketServer<T extends InputStream> extends AbstractSocketServer
             ConfigurationFactory.setConfigurationFactory(new ServerConfigurationFactory(cla.getConfigLocation()));
         }
         final UdpSocketServer<ObjectInputStream> socketServer = UdpSocketServer
-                .createSerializedSocketServer(cla.getPort());
-        final Thread serverThread = new Log4jThread(socketServer);
-        serverThread.start();
+                .createSerializedSocketServer(cla.getPort(), cla.getAllowedClasses());
+        final Thread serverThread = socketServer.startNewThread();
         if (cla.isInteractive()) {
-            final BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            while (true) {
-                final String line = reader.readLine();
-                if (line == null || line.equalsIgnoreCase("Quit") || line.equalsIgnoreCase("Stop")
-                        || line.equalsIgnoreCase("Exit")) {
-                    socketServer.shutdown();
-                    serverThread.join();
-                    break;
-                }
-            }
+            socketServer.awaitTermination(serverThread);
         }
     }
 
@@ -172,6 +176,7 @@ public class UdpSocketServer<T extends InputStream> extends AbstractSocketServer
     /**
      * Shutdown the server.
      */
+    @Override
     public void shutdown() {
         this.setActive(false);
         Thread.currentThread().interrupt();

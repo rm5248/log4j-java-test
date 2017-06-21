@@ -21,6 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
@@ -34,7 +35,7 @@ import org.apache.logging.log4j.core.util.KeyValuePair;
  * 
  * @since 2.4
  */
-@Plugin(name = "LoggerNameLevelRewritePolicy", category = "Core", elementType = "rewritePolicy", printObject = true)
+@Plugin(name = "LoggerNameLevelRewritePolicy", category = Core.CATEGORY_NAME, elementType = "rewritePolicy", printObject = true)
 public class LoggerNameLevelRewritePolicy implements RewritePolicy {
 
     /**
@@ -76,7 +77,7 @@ public class LoggerNameLevelRewritePolicy implements RewritePolicy {
 
     @Override
     public LogEvent rewrite(final LogEvent event) {
-        if (!event.getLoggerName().startsWith(loggerName)) {
+        if (event.getLoggerName() == null || !event.getLoggerName().startsWith(loggerName)) {
             return event;
         }
         final Level sourceLevel = event.getLevel();

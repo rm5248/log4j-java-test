@@ -123,7 +123,7 @@ public final class Log4j1ConfigurationConverter {
                 Log4j1ConfigurationConverter.class, new CommandLineArguments())).run();
     }
 
-    public static Log4j1ConfigurationConverter run(CommandLineArguments cla) {
+    public static Log4j1ConfigurationConverter run(final CommandLineArguments cla) {
         final Log4j1ConfigurationConverter log4j1ConfigurationConverter = new Log4j1ConfigurationConverter(cla);
         log4j1ConfigurationConverter.run();
         return log4j1ConfigurationConverter;
@@ -185,7 +185,7 @@ public final class Log4j1ConfigurationConverter {
                         return FileVisitResult.CONTINUE;
                     }
                 });
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 throw new ConfigurationException(e);
             } finally {
                 verbose("OK = %,d, Failures = %,d, Total = %,d", countOKs.get(), countFails.get(),
@@ -195,7 +195,7 @@ public final class Log4j1ConfigurationConverter {
             verbose("Reading %s", cla.getPathIn());
             try (final InputStream input = getInputStream(); final OutputStream output = getOutputStream()) {
                 convert(input, output);
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 throw new ConfigurationException(e);
             }
             verbose("Wrote %s", cla.getPathOut());

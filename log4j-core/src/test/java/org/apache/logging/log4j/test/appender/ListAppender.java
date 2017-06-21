@@ -24,6 +24,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
@@ -40,14 +41,14 @@ import org.apache.logging.log4j.core.layout.SerializedLayout;
 /**
  * This appender is primarily used for testing. Use in a real environment is discouraged as the
  * List could eventually grow to cause an OutOfMemoryError.
- * 
+ *
  * This appender is not thread-safe.
  *
  * This appender will use {@link Layout#toByteArray(LogEvent)}.
  *
  * @see org.apache.logging.log4j.junit.LoggerContextRule#getListAppender(String) ILC.getListAppender
  */
-@Plugin(name = "List", category = "Core", elementType = Appender.ELEMENT_TYPE, printObject = true)
+@Plugin(name = "List", category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
 public class ListAppender extends AbstractAppender {
 
     // Use CopyOnWriteArrayList?
@@ -64,6 +65,32 @@ public class ListAppender extends AbstractAppender {
 
     private static final String WINDOWS_LINE_SEP = "\r\n";
 
+    /**
+     * CountDownLatch for asynchronous logging tests. Example usage:
+     * <pre>
+     * @Rule
+     * public LoggerContextRule context = new LoggerContextRule("log4j-list.xml");
+     * private ListAppender listAppender;
+     *
+     * @Before
+     * public void before() throws Exception {
+     *     listAppender = context.getListAppender("List");
+     * }
+     *
+     * @Test
+     * public void testSomething() throws Exception {
+     *     listAppender.countDownLatch = new CountDownLatch(1);
+     *
+     *     Logger logger = LogManager.getLogger();
+     *     logger.info("log one event anynchronously");
+     *
+     *     // wait for the appender to finish processing this event (wait max 1 second)
+     *     listAppender.countDownLatch.await(1, TimeUnit.SECONDS);
+     *
+     *     // now assert something or do follow-up tests...
+     * }
+     * </pre>
+     */
     public CountDownLatch countDownLatch = null;
 
     public ListAppender(final String name) {

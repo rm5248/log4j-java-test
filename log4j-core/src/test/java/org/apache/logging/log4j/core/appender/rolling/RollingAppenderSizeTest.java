@@ -28,10 +28,14 @@ import static org.junit.Assert.fail;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +48,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.appender.RollingFileAppender;
 import org.apache.logging.log4j.core.util.Closer;
 import org.apache.logging.log4j.junit.LoggerContextRule;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -119,7 +124,7 @@ public class RollingAppenderSizeTest {
         if (Files.exists(path) && createOnDemand) {
             Assert.fail(String.format("Unexpected file: %s (%s bytes)", path, Files.getAttribute(path, "size")));
         }
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 500; ++i) {
             logger.debug("This is test message number " + i);
         }
         try {
@@ -134,13 +139,12 @@ public class RollingAppenderSizeTest {
         assertNotNull(files);
         assertThat(files, hasItemInArray(that(hasName(that(endsWith(fileExtension))))));
 
-        final DefaultRolloverStrategy.FileExtensions ext = DefaultRolloverStrategy.FileExtensions.lookup(fileExtension);
-        if (ext == null || DefaultRolloverStrategy.FileExtensions.ZIP == ext
-                || DefaultRolloverStrategy.FileExtensions.PACK200 == ext) {
+        final FileExtension ext = FileExtension.lookup(fileExtension);
+        if (ext == null || FileExtension.ZIP == ext || FileExtension.PACK200 == ext) {
             return; // Apache Commons Compress cannot deflate zip? TODO test decompressing these formats
         }
         // Stop the context to make sure all files are compressed and closed. Trying to remedy failures in CI builds.
-        if (loggerContextRule.getLoggerContext().stop(30, TimeUnit.SECONDS)) {
+        if (!loggerContextRule.getLoggerContext().stop(30, TimeUnit.SECONDS)) {
             System.err.println("Could not stop cleanly " + loggerContextRule + " for " + this);
         }
         for (final File file : files) {
@@ -155,7 +159,12 @@ public class RollingAppenderSizeTest {
                     }
                     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     assertNotNull("No input stream for " + file.getName(), in);
-                    IOUtils.copy(in, baos);
+                    try {
+                        IOUtils.copy(in, baos);
+                    } catch (final Exception ex) {
+                        ex.printStackTrace();
+                        fail("Unable to decompress " + file.getAbsolutePath());
+                    }
                     final String text = new String(baos.toByteArray(), Charset.defaultCharset());
                     final String[] lines = text.split("[\\r\\n]+");
                     for (final String line : lines) {

@@ -22,6 +22,7 @@ import java.security.UnrecoverableKeyException;
 
 import javax.net.ssl.KeyManagerFactory;
 
+import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
@@ -29,7 +30,7 @@ import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 /**
  * Configuration of the KeyStore
  */
-@Plugin(name = "KeyStore", category = "Core", printObject = true)
+@Plugin(name = "KeyStore", category = Core.CATEGORY_NAME, printObject = true)
 public class KeyStoreConfiguration extends AbstractKeyStoreConfiguration {
 
     private final String keyManagerFactoryAlgorithm;
@@ -63,7 +64,7 @@ public class KeyStoreConfiguration extends AbstractKeyStoreConfiguration {
     public static KeyStoreConfiguration createKeyStoreConfiguration(
             // @formatter:off
             @PluginAttribute("location") final String location,
-            @PluginAttribute("password") final String password,
+            @PluginAttribute(value = "password", sensitive = true) final String password,
             @PluginAttribute("type") final String keyStoreType, 
             @PluginAttribute("keyManagerFactoryAlgorithm") final String keyManagerFactoryAlgorithm) throws StoreConfigurationException {
             // @formatter:on
@@ -86,7 +87,7 @@ public class KeyStoreConfiguration extends AbstractKeyStoreConfiguration {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(final Object obj) {
         if (this == obj) {
             return true;
         }
@@ -96,7 +97,7 @@ public class KeyStoreConfiguration extends AbstractKeyStoreConfiguration {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        KeyStoreConfiguration other = (KeyStoreConfiguration) obj;
+        final KeyStoreConfiguration other = (KeyStoreConfiguration) obj;
         if (keyManagerFactoryAlgorithm == null) {
             if (other.keyManagerFactoryAlgorithm != null) {
                 return false;

@@ -34,7 +34,7 @@ import org.apache.logging.log4j.util.PropertiesUtil;
  *
  * @since 2.7
  */
-class CopyOnWriteSortedArrayThreadContextMap implements ThreadContextMap2, CopyOnWrite {
+class CopyOnWriteSortedArrayThreadContextMap implements ReadOnlyThreadContextMap, ObjectThreadContextMap, CopyOnWrite {
 
     /**
      * Property name ({@value} ) for selecting {@code InheritableThreadLocal} (value "true") or plain
@@ -52,7 +52,7 @@ class CopyOnWriteSortedArrayThreadContextMap implements ThreadContextMap2, CopyO
      */
     protected static final String PROPERTY_NAME_INITIAL_CAPACITY = "log4j2.ThreadContext.initial.capacity";
 
-    private static final StringMap EMPTY_CONTEXT_DATA = new SortedArrayStringMap();
+    private static final StringMap EMPTY_CONTEXT_DATA = new SortedArrayStringMap(1);
     static {
         EMPTY_CONTEXT_DATA.freeze();
     }
@@ -107,6 +107,11 @@ class CopyOnWriteSortedArrayThreadContextMap implements ThreadContextMap2, CopyO
 
     @Override
     public void put(final String key, final String value) {
+        putValue(key, value);
+    }
+
+    @Override
+    public void putValue(final String key, final Object value) {
         StringMap map = localMap.get();
         map = map == null ? createStringMap() : createStringMap(map);
         map.putValue(key, value);
@@ -129,9 +134,28 @@ class CopyOnWriteSortedArrayThreadContextMap implements ThreadContextMap2, CopyO
     }
 
     @Override
+    public <V> void putAllValues(final Map<String, V> values) {
+        if (values == null || values.isEmpty()) {
+            return;
+        }
+        StringMap map = localMap.get();
+        map = map == null ? createStringMap() : createStringMap(map);
+        for (final Map.Entry<String, V> entry : values.entrySet()) {
+            map.putValue(entry.getKey(), entry.getValue());
+        }
+        map.freeze();
+        localMap.set(map);
+    }
+
+    @Override
     public String get(final String key) {
+        return (String) getValue(key);
+    }
+
+    @Override
+    public Object getValue(final String key) {
         final StringMap map = localMap.get();
-        return map == null ? null : (String) map.getValue(key);
+        return map == null ? null : map.getValue(key);
     }
 
     @Override
@@ -140,6 +164,19 @@ class CopyOnWriteSortedArrayThreadContextMap implements ThreadContextMap2, CopyO
         if (map != null) {
             final StringMap copy = createStringMap(map);
             copy.remove(key);
+            copy.freeze();
+            localMap.set(copy);
+        }
+    }
+
+    @Override
+    public void removeAll(final Iterable<String> keys) {
+        final StringMap map = localMap.get();
+        if (map != null) {
+            final StringMap copy = createStringMap(map);
+            for (final String key : keys) {
+                copy.remove(key);
+            }
             copy.freeze();
             localMap.set(copy);
         }

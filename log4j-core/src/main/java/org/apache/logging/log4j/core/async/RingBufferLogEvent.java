@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.ThreadContext.ContextStack;
+import org.apache.logging.log4j.message.AsynchronouslyFormattable;
 import org.apache.logging.log4j.util.ReadOnlyStringMap;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.impl.ContextDataFactory;
@@ -113,6 +114,11 @@ public class RingBufferLogEvent implements LogEvent, ReusableMessage, CharSequen
         this.asyncLogger = anAsyncLogger;
     }
 
+    @Override
+    public LogEvent toImmutable() {
+        return createMemento();
+    }
+    
     private void setMessage(final Message msg) {
         if (msg instanceof ReusableMessage) {
             final ReusableMessage reusable = (ReusableMessage) msg;
@@ -123,11 +129,16 @@ public class RingBufferLogEvent implements LogEvent, ReusableMessage, CharSequen
             }
         } else {
             // if the Message instance is reused, there is no point in freezing its message here
-            if (!Constants.FORMAT_MESSAGES_IN_BACKGROUND && msg != null) { // LOG4J2-898: user may choose
+            if (msg != null && !canFormatMessageInBackground(msg)) {
                 msg.getFormattedMessage(); // LOG4J2-763: ask message to freeze parameters
             }
             this.message = msg;
         }
+    }
+
+    private boolean canFormatMessageInBackground(final Message message) {
+        return Constants.FORMAT_MESSAGES_IN_BACKGROUND // LOG4J2-898: user wants to format all msgs in background
+                || message.getClass().isAnnotationPresent(AsynchronouslyFormattable.class); // LOG4J2-1718
     }
 
     private StringBuilder getMessageTextForWriting() {
@@ -423,8 +434,8 @@ public class RingBufferLogEvent implements LogEvent, ReusableMessage, CharSequen
      * @return a new immutable copy of the data in this {@code RingBufferLogEvent}
      */
     public LogEvent createMemento() {
-        final LogEvent result = new Log4jLogEvent.Builder(this).build();
-        return result;
+        return new Log4jLogEvent.Builder(this).build();
+        
     }
 
     /**

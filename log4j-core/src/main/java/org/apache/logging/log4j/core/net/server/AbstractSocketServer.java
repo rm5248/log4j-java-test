@@ -16,17 +16,22 @@
  */
 package org.apache.logging.log4j.core.net.server;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.validators.PositiveInteger;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LogEventListener;
@@ -40,16 +45,12 @@ import org.apache.logging.log4j.core.util.InetAddressConverter;
 import org.apache.logging.log4j.core.util.Log4jThread;
 import org.apache.logging.log4j.util.Strings;
 
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.validators.PositiveInteger;
-
 /**
  * Abstract socket server for TCP and UDP implementations.
- * 
+ *
  * @param <T>
  *            The kind of input stream read
- * 
+ *
  *            TODO Make a LifeCycle
  */
 public abstract class AbstractSocketServer<T extends InputStream> extends LogEventListener implements Runnable {
@@ -70,6 +71,9 @@ public abstract class AbstractSocketServer<T extends InputStream> extends LogEve
         @Parameter(names = { "--localbindaddress",
                 "-a" }, converter = InetAddressConverter.class, description = "Server socket local bind address.")
         private InetAddress localBindAddress;
+
+        @Parameter(names = {"--classes", "-C"}, description = "Additional classes to allow deserialization")
+        private List<String> allowedClasses;
 
         String getConfigLocation() {
             return configLocation;
@@ -99,8 +103,16 @@ public abstract class AbstractSocketServer<T extends InputStream> extends LogEve
             return localBindAddress;
         }
 
-        void setLocalBindAddress(InetAddress localBindAddress) {
+        void setLocalBindAddress(final InetAddress localBindAddress) {
             this.localBindAddress = localBindAddress;
+        }
+
+        List<String> getAllowedClasses() {
+            return allowedClasses == null ? Collections.<String>emptyList() : allowedClasses;
+        }
+
+        void setAllowedClasses(final List<String> allowedClasses) {
+            this.allowedClasses = allowedClasses;
         }
     }
 
@@ -125,16 +137,14 @@ public abstract class AbstractSocketServer<T extends InputStream> extends LogEve
                     file = new File(path);
                     final FileInputStream is = new FileInputStream(file);
                     source = new ConfigurationSource(is, file);
-                } catch (final FileNotFoundException ex) {
+                } catch (final FileNotFoundException ignored) {
                     // Ignore this error
                 }
                 if (source == null) {
                     try {
                         final URL url = new URL(path);
                         source = new ConfigurationSource(url.openStream(), url);
-                    } catch (final MalformedURLException mue) {
-                        // Ignore this error
-                    } catch (final IOException ioe) {
+                    } catch (final IOException ignored) {
                         // Ignore this error
                     }
                 }
@@ -143,7 +153,7 @@ public abstract class AbstractSocketServer<T extends InputStream> extends LogEve
                     if (source != null) {
                         return new XmlConfiguration(loggerContext, source);
                     }
-                } catch (final Exception ex) {
+                } catch (final Exception ignored) {
                     // Ignore this error.
                 }
                 System.err.println("Unable to process configuration at " + path + ", using default.");
@@ -154,18 +164,6 @@ public abstract class AbstractSocketServer<T extends InputStream> extends LogEve
 
     protected static final int MAX_PORT = 65534;
 
-    static <T extends CommandLineArguments> T parseCommandLine(final String[] mainArgs, final Class<?> clazz,
-            final T args) {
-        final JCommander jCommander = new JCommander(args);
-        jCommander.setProgramName(clazz.getName());
-        jCommander.setCaseSensitiveOptions(false);
-        jCommander.parse(mainArgs);
-        if (args.isHelp()) {
-            jCommander.usage();
-        }
-        return args;
-    }
-
     private volatile boolean active = true;
 
     protected final LogEventBridge<T> logEventInput;
@@ -174,7 +172,7 @@ public abstract class AbstractSocketServer<T extends InputStream> extends LogEve
 
     /**
      * Creates a new socket server.
-     * 
+     *
      * @param port
      *            listen to this port
      * @param logEventInput
@@ -195,13 +193,30 @@ public abstract class AbstractSocketServer<T extends InputStream> extends LogEve
 
     /**
      * Start this server in a new thread.
-     * 
+     *
      * @return the new thread that running this server.
      */
     public Thread startNewThread() {
         final Thread thread = new Log4jThread(this);
         thread.start();
         return thread;
+    }
+
+    public abstract void shutdown() throws Exception;
+
+    public void awaitTermination(final Thread serverThread) throws Exception {
+        final BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        while (true) {
+            final String line = reader.readLine();
+            if (line == null
+                || line.equalsIgnoreCase("quit")
+                || line.equalsIgnoreCase("stop")
+                || line.equalsIgnoreCase("exit")) {
+                this.shutdown();
+                serverThread.join();
+                break;
+            }
+        }
     }
 
 }

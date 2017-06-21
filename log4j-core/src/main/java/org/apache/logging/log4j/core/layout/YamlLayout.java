@@ -679,10 +679,8 @@ contextStack:
 endOfBatch: false
 loggerFqcn: "f.q.c.n"
 contextMap:
-- key: "MDC.B"
-  value: "B_Value"
-- key: "MDC.A"
-  value: "A_Value"
+ MDC.B: "B_Value"
+ MDC.A: "A_Value"
 threadId: 1
 threadPriority: 5
 source:
@@ -713,8 +711,8 @@ public final class YamlLayout extends AbstractJacksonLayout {
             final String footerPattern, final Charset charset, final boolean includeStacktrace) {
         super(config, new JacksonFactory.YAML(includeStacktrace).newWriter(locationInfo, properties, compact), charset, compact,
                 complete, eventEol,
-                PatternLayout.createSerializer(config, null, headerPattern, DEFAULT_HEADER, null, false, false),
-                PatternLayout.createSerializer(config, null, footerPattern, DEFAULT_FOOTER, null, false, false));
+                PatternLayout.newSerializerBuilder().setConfiguration(config).setPattern(headerPattern).setDefaultPattern(DEFAULT_HEADER).build(),
+                PatternLayout.newSerializerBuilder().setConfiguration(config).setPattern(footerPattern).setDefaultPattern(DEFAULT_FOOTER).build());
     }
 
     /**
@@ -794,8 +792,8 @@ public final class YamlLayout extends AbstractJacksonLayout {
     public static AbstractJacksonLayout createLayout(
             // @formatter:off
             @PluginConfiguration final Configuration config,
-            @PluginAttribute(value = "locationInfo", defaultBoolean = false) final boolean locationInfo,
-            @PluginAttribute(value = "properties", defaultBoolean = false) final boolean properties,
+            @PluginAttribute(value = "locationInfo") final boolean locationInfo,
+            @PluginAttribute(value = "properties") final boolean properties,
             @PluginAttribute(value = "header", defaultString = DEFAULT_HEADER) final String headerPattern,
             @PluginAttribute(value = "footer", defaultString = DEFAULT_FOOTER) final String footerPattern,
             @PluginAttribute(value = "charset", defaultString = "UTF-8") final Charset charset,

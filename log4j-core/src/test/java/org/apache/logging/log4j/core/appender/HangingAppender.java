@@ -20,6 +20,7 @@ import java.io.Serializable;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
@@ -29,7 +30,7 @@ import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import org.apache.logging.log4j.core.config.plugins.validation.constraints.Required;
 
-@Plugin(name = "Hanging", category = "Core", elementType = Appender.ELEMENT_TYPE, printObject = true)
+@Plugin(name = "Hanging", category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
 public class HangingAppender extends AbstractAppender {
 
     private static final long serialVersionUID = 1L;

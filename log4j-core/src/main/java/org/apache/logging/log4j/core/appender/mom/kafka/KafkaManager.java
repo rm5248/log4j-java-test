@@ -17,16 +17,21 @@
 
 package org.apache.logging.log4j.core.appender.mom.kafka;
 
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.appender.AbstractManager;
 import org.apache.logging.log4j.core.config.Property;
+import org.apache.logging.log4j.core.util.Log4jThread;
 
 public class KafkaManager extends AbstractManager {
 
@@ -42,10 +47,12 @@ public class KafkaManager extends AbstractManager {
     private final int timeoutMillis;
 
     private final String topic;
+    private final boolean syncSend;
 
-    public KafkaManager(final LoggerContext loggerContext, final String name, final String topic, final Property[] properties) {
+    public KafkaManager(final LoggerContext loggerContext, final String name, final String topic, final boolean syncSend, final Property[] properties) {
         super(loggerContext, name);
-        this.topic = topic;
+        this.topic = Objects.requireNonNull(topic, "topic");
+        this.syncSend = syncSend;
         config.setProperty("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
         config.setProperty("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
         config.setProperty("batch.size", "0");
@@ -68,17 +75,20 @@ public class KafkaManager extends AbstractManager {
     private void closeProducer(final long timeout, final TimeUnit timeUnit) {
         if (producer != null) {
             // This thread is a workaround for this Kafka issue: https://issues.apache.org/jira/browse/KAFKA-1660
-            final Runnable task = new Runnable() {
+           final Thread closeThread = new Log4jThread(new Runnable() {
                 @Override
                 public void run() {
                     if (producer != null) {
                         producer.close();
                     }
                 }
-            };
+            }, "KafkaManager-CloseThread");
+            closeThread.setDaemon(true); // avoid blocking JVM shutdown
+            closeThread.start();
             try {
-                getLoggerContext().submitDaemon(task).get(timeout, timeUnit);
-            } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                closeThread.join(timeUnit.toMillis(timeout));
+            } catch (final InterruptedException ignore) {
+                Thread.currentThread().interrupt();
                 // ignore
             }
         }
@@ -86,7 +96,19 @@ public class KafkaManager extends AbstractManager {
 
     public void send(final byte[] msg) throws ExecutionException, InterruptedException, TimeoutException {
         if (producer != null) {
-            producer.send(new ProducerRecord<byte[], byte[]>(topic, msg)).get(timeoutMillis, TimeUnit.MILLISECONDS);
+            ProducerRecord<byte[], byte[]> newRecord = new ProducerRecord<>(topic, msg);
+            if (syncSend) {
+                Future<RecordMetadata> response = producer.send(newRecord);
+                response.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            } else {
+                producer.send(newRecord, new Callback() {
+                    public void onCompletion(RecordMetadata metadata, Exception e) {
+                        if (e != null) {
+                            LOGGER.error("Unable to write to Kafka [" + getName() + "].", e);
+                        }
+                    }
+                });
+            }
         }
     }
 

@@ -24,10 +24,10 @@ import com.beust.jcommander.IStringConverter;
 public class InetAddressConverter implements IStringConverter<InetAddress> {
 
     @Override
-    public InetAddress convert(String host) {
+    public InetAddress convert(final String host) {
         try {
             return InetAddress.getByName(host);
-        } catch (UnknownHostException e) {
+        } catch (final UnknownHostException e) {
             throw new IllegalArgumentException(host, e);
         }
     }

@@ -28,21 +28,32 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
 import org.apache.logging.log4j.ThreadContext.ContextStack;
+import org.apache.logging.log4j.categories.AsyncLoggers;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.appender.db.jpa.TestBaseEntity;
 import org.apache.logging.log4j.util.StringMap;
 import org.apache.logging.log4j.core.impl.ThrowableProxy;
 import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.message.SimpleMessage;
 import org.apache.logging.log4j.spi.MutableThreadContextStack;
+import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import static org.junit.Assert.*;
 
 /**
  * Tests the RingBufferLogEvent class.
  */
+@Category(AsyncLoggers.class)
 public class RingBufferLogEventTest {
 
+    @Test
+    public void testToImmutable() {
+        final LogEvent logEvent = new RingBufferLogEvent();
+        Assert.assertNotSame(logEvent, logEvent.toImmutable());
+    }
+    
     @Test
     public void testGetLevelReturnsOffIfNullLevelSet() {
         final RingBufferLogEvent evt = new RingBufferLogEvent();
@@ -138,6 +149,7 @@ public class RingBufferLogEventTest {
         assertEquals(currentTimeMillis, other.getTimeMillis());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testCreateMementoReturnsCopy() {
         final RingBufferLogEvent evt = new RingBufferLogEvent();
@@ -164,6 +176,7 @@ public class RingBufferLogEventTest {
         assertEquals(evt.getMessage(), actual.getMessage());
         assertEquals(evt.getThrown(), actual.getThrown());
         assertEquals(evt.getContextMap(), actual.getContextMap());
+        assertEquals(evt.getContextData(), actual.getContextData());
         assertEquals(evt.getContextStack(), actual.getContextStack());
         assertEquals(evt.getThreadName(), actual.getThreadName());
         assertEquals(evt.getTimeMillis(), actual.getTimeMillis());

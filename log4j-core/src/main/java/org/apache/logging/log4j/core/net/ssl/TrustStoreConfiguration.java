@@ -21,6 +21,7 @@ import java.security.NoSuchAlgorithmException;
 
 import javax.net.ssl.TrustManagerFactory;
 
+import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
@@ -28,7 +29,7 @@ import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 /**
  * Configuration of the TrustStore
  */
-@Plugin(name = "TrustStore", category = "Core", printObject = true)
+@Plugin(name = "TrustStore", category = Core.CATEGORY_NAME, printObject = true)
 public class TrustStoreConfiguration extends AbstractKeyStoreConfiguration {
 
     private final String trustManagerFactoryAlgorithm;
@@ -58,7 +59,7 @@ public class TrustStoreConfiguration extends AbstractKeyStoreConfiguration {
     public static TrustStoreConfiguration createKeyStoreConfiguration(
             // @formatter:off
             @PluginAttribute("location") final String location,
-            @PluginAttribute("password") final String password,
+            @PluginAttribute(value = "password", sensitive = true) final String password,
             @PluginAttribute("type") final String keyStoreType, 
             @PluginAttribute("trustManagerFactoryAlgorithm") final String trustManagerFactoryAlgorithm) throws StoreConfigurationException {
             // @formatter:on
@@ -81,7 +82,7 @@ public class TrustStoreConfiguration extends AbstractKeyStoreConfiguration {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(final Object obj) {
         if (this == obj) {
             return true;
         }
@@ -91,7 +92,7 @@ public class TrustStoreConfiguration extends AbstractKeyStoreConfiguration {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        TrustStoreConfiguration other = (TrustStoreConfiguration) obj;
+        final TrustStoreConfiguration other = (TrustStoreConfiguration) obj;
         if (trustManagerFactoryAlgorithm == null) {
             if (other.trustManagerFactoryAlgorithm != null) {
                 return false;
