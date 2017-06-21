@@ -3,7 +3,7 @@ Author: Emmanuel Bourg <ebourg@apache.org>
 Forwarded: not-needed
 --- a/log4j-core/pom.xml
 +++ b/log4j-core/pom.xml
-@@ -333,6 +333,11 @@
+@@ -341,6 +341,11 @@
        <plugin>
          <artifactId>maven-compiler-plugin</artifactId>
          <version>${compiler.plugin.version}</version>

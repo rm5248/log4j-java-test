@@ -1,4 +1,3 @@
 01-disable-kafka-appender.patch
 02-jackson-compatibility.patch
 03-mongodb-compatibility.patch
-CVE-2017-5645.patch
