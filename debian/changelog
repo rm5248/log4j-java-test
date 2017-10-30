@@ -2,6 +2,7 @@ apache-log4j2 (2.8.2-2) UNRELEASED; urgency=medium
 
   * Team upload.
   * Added the missing build dependency on libnetty-java (Closes: #880239)
+  * Standards-Version updated to 4.1.1
 
  -- Emmanuel Bourg <ebourg@apache.org>  Mon, 30 Oct 2017 23:13:20 +0100
 
