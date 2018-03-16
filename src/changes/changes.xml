@@ -30,9 +30,191 @@
          - "update" - Change
          - "remove" - Removed
     -->
+    <release version="2.10.0" date="2017-11-18" description="GA Release 2.10.0">
+      <action issue="LOG4J2-2120" dev="mikes" type="add" due-to="Carter Douglas Kozak ">
+        Properly escape newlines and other control characters in JSON.
+      </action>
+      <action issue="LOG4J2-2109" dev="mikes" type="add" due-to="Carter Douglas Kozak ">
+        Add property to disable message pattern converter lookups.
+      </action>
+      <action issue="LOG4J2-2112" dev="mikes" type="add" due-to="Carter Douglas Kozak ">
+        MapMessage should use deep toString for values.
+      </action>
+      <action issue="LOG4J2-2107" dev="mikes" type="fix" due-to="Carter Douglas Kozak ">
+        MapMessage supports both StringBuilderFormattable and MultiformatMessage.
+      </action>
+      <action issue="LOG4J2-2102" dev="mikes" type="fix" due-to="Carter Douglas Kozak ">
+        MapMessage JSON encoding will escape keys and values.
+      </action>
+      <action issue="LOG4J2-2101" dev="mikes" type="fix" due-to="Carter Douglas Kozak ">
+        Non-string value in MapMessage caused ClassCastException.
+      </action>
+      <action issue="LOG4J2-2103" dev="mikes" type="add">
+        XML encoding for PatternLayout.
+      </action>
+      <action issue="LOG4J2-2114" dev="ggregory" type="add">
+        Provide a native Log4j 2 implementation of Eclipse Jetty's org.eclipse.jetty.util.log.Logger.
+      </action>
+      <action issue="LOG4J2-1203" dev="mikes" type="add" due-to="Robert Turner">
+        Allow filtering of line breaks in layout pattern.
+      </action>
+      <action issue="LOG4J2-2098" dev="rgoers" type="add">
+        Add a noop AppenderSkeleton for applications still using Log4j 1.x.
+      </action>
+      <action issue="LOG4J2-2091" dev="mikes" type="fix" due-to="Carter Douglas Kozak ">
+        Log4j respects the configured "log4j2.is.webapp" property
+      </action>
+      <action issue="LOG4J2-2100" dev="ggregory" type="fix">
+        LevelMixIn class for Jackson is coded incorrectly
+      </action>
+      <action issue="LOG4J2-2087" dev="rpopma" type="fix" due-to="Andy Gumbrecht">
+        Jansi now needs to be enabled explicitly (by setting system property `log4j.skipJansi` to `false`). To avoid causing problems for web applications, Log4j will no longer automatically try to load Jansi without explicit configuration.
+      </action>
+      <action issue="LOG4J2-2060" dev="rpopma" type="fix">
+        AbstractDatabaseManager should make a copy of LogEvents before holding references to them: AsyncLogger log events are mutable.
+      </action>
+      <action issue="LOG4J2-2076" dev="mikes" type="update">
+        Split up log4j-nosql into one module per appender.
+      </action>
+      <action issue="LOG4J2-2088" dev="rpopma" type="update">
+        Upgrade picocli to 2.0.3 from 0.9.8.
+      </action>
+      <action issue="LOG4J2-2062" dev="mikes" type="add" due-to="Jorge Sanchez">
+        Add possibility of sending the key of a message to Kafka using KafkaAppender.
+      </action>
+      <action issue="LOG4J2-2056" dev="rgoers" type="add">
+        Modularize Log4j-api and make most other log4j jars automatic modules.
+      </action>
+      <action issue="LOG4J2-1431" dev="mattsicker" type="add">
+        Simplify log4j system property naming scheme.
+      </action>
+      <action issue="LOG4J2-1809" dev="mattsicker" type="add">
+        Add global configuration environment SPI.
+      </action>
+      <action issue="LOG4J2-2025" dev="rgoers" type="update">
+        Provide support for overriding the Tomcat Log class in Tomcat 8.5+.
+      </action>
+      <action issue="LOG4J2-1694" dev="mikes" type="add" due-to="Michal Dvořák">
+        Add fields with fixed values to JSON/XML/YAML layouts.
+      </action>
+      <action issue="LOG4J2-2054" dev="rpopma" type="add">
+      Provide ways to configure SSL that avoid plain-text passwords in the log4j configuration. The configuration may
+        now specify a system environment variable that holds the password, or the path to a file that holds the password.
+      </action>
+      <action issue="LOG4J2-2057" dev="rgoers" type="update">
+        Support new SLF4J binding mechanism introduced in SLF4J 1.8.
+      </action>
+      <action issue="LOG4J2-2052" dev="rpopma" type="update">
+        Disable thread name caching by default when running on Java 8u102 or later.
+      </action>
+      <action issue="LOG4J2-2055" dev="rgoers" type="fix">
+        If Log4j is used as the Tomcat logging implementation startup might fail if an application also uses Log4j.
+      </action>
+      <action issue="LOG4J2-1896" dev="rpopma" type="update">
+        Update classes in org.apache.logging.log4j.core.net.ssl in APIs from String to a PasswordProvider producing
+        char[] for passwords.
+      </action>
+      <action issue="LOG4J2-2031" dev="rpopma" type="fix">
+        Until this change, messages appeared out of order in log file any time when the async logging queue was full.
+        With this change, messages are only logged out of order to prevent deadlock when Log4j2 detects recursive
+        logging while the queue is full.
+      </action>
+      <action issue="LOG4J2-2053" dev="ggregory" type="fix">
+        Exception java.nio.charset.UnsupportedCharsetException: cp65001 in 2.9.0.
+      </action>
+      <action issue="LOG4J2-1216" dev="ggregory" type="fix" due-to="Thies Wellpott, Barna Zsombor Klara, GFriedrich">
+        Nested pattern layout options broken.
+      </action>
+      <action issue="LOG4J2-2070" dev="ggregory" type="fix" due-to="Doug Hughes">
+        Log4j1XmlLayout does not provide the entire stack trace, it is missing the caused by information.
+      </action>
+      <action issue="LOG4J2-2036" dev="ggregory" type="fix" due-to="Robert Haycock">
+        CompositeConfiguration supports Reconfiguration. PR #115.
+      </action>
+      <action issue="LOG4J2-2071" dev="ggregory" type="add" due-to="Carter Kozak">
+        Add org.apache.logging.log4j.core.config.composite.CompositeConfiguration#toString().
+      </action>
+      <action issue="LOG4J2-2073" dev="ggregory" type="fix" due-to="Patrick Lucas">
+        Log4j-config.xsd should make AppenderRef optional for each Logger element.
+      </action>
+      <action issue="LOG4J2-2074" dev="ggregory" type="fix">
+        The console appender should say why it cannot load JAnsi.
+      </action>
+      <action issue="LOG4J2-2085" dev="ggregory" type="fix" due-to="István Neuwirth">
+        Wrong Apache Commons CSV version referenced in the Javadoc of CsvParameterLayout.
+      </action>
+      <action issue="LOG4J2-2078" dev="ggregory" type="update">
+        Update LMAX disruptor from 3.3.6 to 3.3.7.
+      </action>
+      <action issue="LOG4J2-2081" dev="ggregory" type="update">
+        Update Apache Commons Compress from 1.14 to 1.15.
+      </action>
+      <action issue="LOG4J2-2089" dev="ggregory" type="update">
+        [TagLib] Update servlet-api provided dependency from 2.5 to 3.0.1.
+      </action>
+      <action issue="LOG4J2-2096" dev="ggregory" type="update">
+        Update Apache Kafka kafka-clients from 0.11.0.1 to 1.0.0.
+      </action>
+      <action issue="LOG4J2-2077" dev="ggregory" type="update">
+        Update from Jackson 2.9.1 to 2.9.2.
+      </action>
+      <action issue="LOG4J2-2117" dev="ggregory" type="update">
+        Jackson dependencies for 2.9.2 incorrectly bring in jackson-annotations 2.9.0 instead of 2.9.2.
+      </action>
+    </release>
+    <release version="2.9.1" date="2017-09-17" description="GA Release 2.9.1">
+      <action issue="LOG4J2-1988" dev="rpopma" type="fix">
+        Prevent ConcurrentModificationException with AsyncLoggerConfig.
+      </action>
+      <action issue="LOG4J2-1914" dev="rpopma" type="fix">
+        Prevent ConcurrentModificationException with AsyncLoggerConfig.
+      </action>
+      <action issue="LOG4J2-2048" dev="rpopma" type="fix">
+        Increase default queue size for AsyncAppender from 128 to 1024.
+      </action>
+      <action issue="LOG4J2-2035" dev="rpopma" type="fix">
+        Fix documentation to clarify disruptor-3.3.4 is now required for async loggers (previously the docs referred to disruptor-3.3.3 which was never released).
+      </action>
+      <action issue="LOG4J2-2030" dev="rgoers" type="fix">
+        Inspect all known ClassLoaders to locate the service provider.
+      </action>
+      <action issue="LOG4J2-2028" dev="rgoers" type="fix" due-to="Jason Tedor">
+        Java 9 StackLocator was not properly skipping the initial stack frames.
+      </action>
+      <action issue="LOG4J2-2023" dev="ggregory" type="update">
+        Use a class' canonical name instead of name to create its logger name.
+      </action>
+      <action issue="LOG4J2-2026" dev="ggregory" type="fix" due-to="Leon Finker">
+        java.lang.AbstractMethodError: javax.xml.parsers.DocumentBuilderFactory.setFeature().
+      </action>
+      <action issue="LOG4J2-2029" dev="ggregory" type="fix" due-to="Fabrizio Cucci">
+        Marker examples should not use deprecated flow APIs.
+      </action>
+      <action issue="LOG4J2-1936" dev="ggregory" type="fix" due-to="Helber Belmiro">
+        ClassNotFoundException when making all loggers asynchronous under OSGi environment.
+      </action>
+      <action issue="LOG4J2-2043" dev="ggregory" type="update">
+        Update Jackson from 2.9.0 to 2.9.1 (fix for Java 9.)
+      </action>
+      <action issue="LOG4J2-2044" dev="ggregory" type="update">
+        Update Apache Commons CSV from 1.4 to 1.5.
+      </action>
+      <action issue="LOG4J2-2045" dev="ggregory" type="update">
+        Update javax.mail from 1.5.6 to 1.6.0.
+      </action>
+      <action issue="LOG4J2-2046" dev="ggregory" type="update">
+        Update Apache Commons Compress from 1.13 to 1.14.
+      </action>
+      <action issue="LOG4J2-2047" dev="ggregory" type="update">
+        Update Cassandra driver from 3.1.0 to 3.1.4.
+      </action>
+      <action issue="LOG4J2-2049" dev="ggregory" type="update">
+        Update Apache Kafka Client from 0.11.0.0 to 0.11.0.1.
+      </action>
+    </release>
     <release version="2.9.0" date="2017-08-26" description="GA Release 2.9.0">
       <action issue="LOG4J2-1928" dev="rgoers" type="update">
-        Add support for DirectWriteRolloverStrategy to RollingRandomAcessFileAppender.
+        Add support for DirectWriteRolloverStrategy to RollingRandomAccessFileAppender.
       </action>
       <action issue="LOG4J2-1833" dev="rgoers" type="fix">
         Prevent NullPointerException when a file name is specified with the DirectWriteRolloverStrategy.

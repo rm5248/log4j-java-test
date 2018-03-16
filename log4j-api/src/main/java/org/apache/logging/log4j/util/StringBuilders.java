@@ -69,6 +69,12 @@ public final class StringBuilders {
      * @param obj the object whose text representation to append to the StringBuilder
      */
     public static void appendValue(final StringBuilder stringBuilder, final Object obj) {
+        if (!appendSpecificTypes(stringBuilder, obj)) {
+            stringBuilder.append(obj);
+        }
+    }
+
+    public static boolean appendSpecificTypes(final StringBuilder stringBuilder, final Object obj) {
         if (obj == null || obj instanceof String) {
             stringBuilder.append((String) obj);
         } else if (obj instanceof StringBuilderFormattable) {
@@ -89,9 +95,12 @@ public final class StringBuilders {
             stringBuilder.append(((Short) obj).shortValue());
         } else if (obj instanceof Float) {
             stringBuilder.append(((Float) obj).floatValue());
+        } else if (obj instanceof Byte) {
+            stringBuilder.append(((Byte) obj).byteValue());
         } else {
-            stringBuilder.append(obj);
+            return false;
         }
+        return true;
     }
 
     /**
@@ -156,6 +165,82 @@ public final class StringBuilders {
         if (stringBuilder != null && stringBuilder.capacity() > maxSize) {
             stringBuilder.setLength(maxSize);
             stringBuilder.trimToSize();
+        }
+    }
+
+    public static void escapeJson(final StringBuilder toAppendTo, final int start) {
+        for (int i = toAppendTo.length() - 1; i >= start; i--) { // backwards: length may change
+            final char c = toAppendTo.charAt(i);
+            switch (c) {
+                case '\b':
+                    toAppendTo.setCharAt(i, '\\');
+                    toAppendTo.insert(i + 1, 'b');
+                    break;
+
+                case '\t':
+                    toAppendTo.setCharAt(i, '\\');
+                    toAppendTo.insert(i + 1, 't');
+                    break;
+
+                case '\f':
+                    toAppendTo.setCharAt(i, '\\');
+                    toAppendTo.insert(i + 1, 'f');
+                    break;
+
+                case '\n':
+                    // Json string newline character must be encoded as literal "\n"
+                    toAppendTo.setCharAt(i, '\\');
+                    toAppendTo.insert(i + 1, 'n');
+                    break;
+
+                case '\r':
+                    toAppendTo.setCharAt(i, '\\');
+                    toAppendTo.insert(i + 1, 'r');
+                    break;
+
+                case '"':
+                case '\\':
+                    // only " and \ need to be escaped; other escapes are optional
+                    toAppendTo.insert(i, '\\');
+                    break;
+
+                default:
+                    if (Character.isISOControl(c)) {
+                        // all iso control characters are in U+00xx
+                        toAppendTo.setCharAt(i, '\\');
+                        toAppendTo.insert(i + 1, "u0000");
+                        toAppendTo.setCharAt(i + 4, Chars.getUpperCaseHex((c & 0xF0) >> 4));
+                        toAppendTo.setCharAt(i + 5, Chars.getUpperCaseHex(c & 0xF));
+                    }
+            }
+        }
+    }
+
+    public static void escapeXml(final StringBuilder toAppendTo, final int start) {
+        for (int i = toAppendTo.length() - 1; i >= start; i--) { // backwards: length may change
+            final char c = toAppendTo.charAt(i);
+            switch (c) {
+                case '&':
+                    toAppendTo.setCharAt(i, '&');
+                    toAppendTo.insert(i + 1, "amp;");
+                    break;
+                case '<':
+                    toAppendTo.setCharAt(i, '&');
+                    toAppendTo.insert(i + 1, "lt;");
+                    break;
+                case '>':
+                    toAppendTo.setCharAt(i, '&');
+                    toAppendTo.insert(i + 1, "gt;");
+                    break;
+                case '"':
+                    toAppendTo.setCharAt(i, '&');
+                    toAppendTo.insert(i + 1, "quot;");
+                    break;
+                case '\'':
+                    toAppendTo.setCharAt(i, '&');
+                    toAppendTo.insert(i + 1, "apos;");
+                    break;
+            }
         }
     }
 }

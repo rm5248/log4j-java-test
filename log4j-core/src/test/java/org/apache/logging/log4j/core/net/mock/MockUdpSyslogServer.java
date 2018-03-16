@@ -37,10 +37,16 @@ public class MockUdpSyslogServer extends MockSyslogServer {
         this.shutdown = true;
         thread.interrupt();
         socket.close();
+        try {
+            thread.join(100);
+        } catch (InterruptedException ie) {
+            System.out.println("Unable to shutdown server");
+        }
     }
 
     @Override
     public void run() {
+        System.out.println("UDP Server Started");
         this.thread = Thread.currentThread();
         final byte[] bytes = new byte[4096];
         final DatagramPacket packet = new DatagramPacket(bytes, bytes.length);
@@ -55,5 +61,6 @@ public class MockUdpSyslogServer extends MockSyslogServer {
                 Throwables.rethrow(e);
             }
         }
+        System.out.println("UDP Server stopped");
     }
 }

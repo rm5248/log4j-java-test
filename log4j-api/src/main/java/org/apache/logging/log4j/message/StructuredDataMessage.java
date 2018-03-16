@@ -20,7 +20,7 @@ package org.apache.logging.log4j.message;
 import java.util.Map;
 
 import org.apache.logging.log4j.util.EnglishEnums;
-import org.apache.logging.log4j.util.StringBuilderFormattable;
+import org.apache.logging.log4j.util.MultiFormatStringBuilderFormattable;
 import org.apache.logging.log4j.util.StringBuilders;
 
 /**
@@ -35,7 +35,7 @@ import org.apache.logging.log4j.util.StringBuilders;
  * @see <a href="https://tools.ietf.org/html/rfc5424">RFC 5424</a>
  */
 @AsynchronouslyFormattable
-public class StructuredDataMessage extends MapMessage<StructuredDataMessage, String> implements StringBuilderFormattable {
+public class StructuredDataMessage extends MapMessage<StructuredDataMessage, String> implements MultiFormatStringBuilderFormattable {
 
     private static final long serialVersionUID = 1703221292892071920L;
     private static final int MAX_LENGTH = 32;
@@ -253,6 +253,11 @@ public class StructuredDataMessage extends MapMessage<StructuredDataMessage, Str
         asString(Format.FULL, null, buffer);
     }
 
+    @Override
+    public void formatTo(String[] formats, StringBuilder buffer) {
+        asString(getFormat(formats), null, buffer);
+    }
+
     /**
      * Returns the message.
      * @return the message.
@@ -334,6 +339,10 @@ public class StructuredDataMessage extends MapMessage<StructuredDataMessage, Str
         if (sdId == null || sdId.getName() == null) {
             return;
         }
+        if (Format.XML.equals(format)) {
+            asXml(sdId, sb);
+            return;
+        }
         sb.append('[');
         StringBuilders.appendValue(sb, sdId); // avoids toString if implements StringBuilderFormattable
         sb.append(' ');
@@ -345,6 +354,14 @@ public class StructuredDataMessage extends MapMessage<StructuredDataMessage, Str
                 sb.append(' ').append(msg);
             }
         }
+    }
+
+    private void asXml(StructuredDataId structuredDataId, StringBuilder sb) {
+        sb.append("<StructuredData>\n");
+        sb.append("<type>").append(type).append("</type>\n");
+        sb.append("<id>").append(structuredDataId).append("</id>\n");
+        super.asXml(sb);
+        sb.append("\n</StructuredData>\n");
     }
 
     /**
@@ -367,32 +384,22 @@ public class StructuredDataMessage extends MapMessage<StructuredDataMessage, Str
      */
     @Override
     public String getFormattedMessage(final String[] formats) {
+        return asString(getFormat(formats), null);
+    }
+
+    private Format getFormat(String[] formats) {
         if (formats != null && formats.length > 0) {
             for (int i = 0; i < formats.length; i++) {
                 final String format = formats[i];
                 if (Format.XML.name().equalsIgnoreCase(format)) {
-                    return asXml();
+                    return Format.XML;
                 } else if (Format.FULL.name().equalsIgnoreCase(format)) {
-                    return asString(Format.FULL, null);
+                    return Format.FULL;
                 }
             }
-            return asString(null, null);
+            return null;
         }
-        return asString(Format.FULL, null);
-    }
-
-    private String asXml() {
-        final StringBuilder sb = new StringBuilder();
-        final StructuredDataId sdId = getId();
-        if (sdId == null || sdId.getName() == null || type == null) {
-            return sb.toString();
-        }
-        sb.append("<StructuredData>\n");
-        sb.append("<type>").append(type).append("</type>\n");
-        sb.append("<id>").append(sdId).append("</id>\n");
-        super.asXml(sb);
-        sb.append("</StructuredData>\n");
-        return sb.toString();
+        return Format.FULL;
     }
 
     @Override

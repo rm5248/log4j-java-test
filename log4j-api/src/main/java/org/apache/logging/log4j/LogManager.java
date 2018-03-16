@@ -333,6 +333,31 @@ public class LogManager {
         }
     }
 
+
+    /**
+     * Returns a LoggerContext
+     *
+     * @param fqcn The fully qualified class name of the Class that this method is a member of.
+     * @param loader The ClassLoader for the context. If null the context will attempt to determine the appropriate
+     *            ClassLoader.
+     * @param currentContext if false the LoggerContext appropriate for the caller of this method is returned. For
+     *            example, in a web application if the caller is a class in WEB-INF/lib then one LoggerContext may be
+     *            returned and if the caller is a class in the container's classpath then a different LoggerContext may
+     *            be returned. If true then only a single LoggerContext will be returned.
+     * @param configLocation The URI for the configuration to use.
+     * @param name The LoggerContext name.
+     * @return a LoggerContext.
+     */
+    protected static LoggerContext getContext(final String fqcn, final ClassLoader loader,
+                                              final boolean currentContext, URI configLocation, String name) {
+        try {
+            return factory.getContext(fqcn, loader, null, currentContext, configLocation, name);
+        } catch (final IllegalStateException ex) {
+            LOGGER.warn(ex.getMessage() + " Using SimpleLogger");
+            return new SimpleLoggerContextFactory().getContext(fqcn, loader, null, currentContext);
+        }
+    }
+
     /**
      * Shutdown using the LoggerContext appropriate for the caller of this method.
      * This is equivalent to calling {@code LogManager.shutdown(false)}.
@@ -378,6 +403,11 @@ public class LogManager {
         if (context != null && context instanceof Terminable) {
             ((Terminable) context).terminate();
         }
+    }
+
+    private static String toLoggerName(final Class<?> cls) {
+        String canonicalName = cls.getCanonicalName();
+        return canonicalName != null ? canonicalName : cls.getName();
     }
 
     /**
@@ -548,7 +578,7 @@ public class LogManager {
      */
     public static Logger getLogger(final Class<?> clazz) {
         final Class<?> cls = callerClass(clazz);
-        return getContext(cls.getClassLoader(), false).getLogger(cls.getCanonicalName());
+        return getContext(cls.getClassLoader(), false).getLogger(toLoggerName(cls));
     }
 
     /**
@@ -564,7 +594,7 @@ public class LogManager {
      */
     public static Logger getLogger(final Class<?> clazz, final MessageFactory messageFactory) {
         final Class<?> cls = callerClass(clazz);
-        return getContext(cls.getClassLoader(), false).getLogger(cls.getCanonicalName(), messageFactory);
+        return getContext(cls.getClassLoader(), false).getLogger(toLoggerName(cls), messageFactory);
     }
 
     /**
