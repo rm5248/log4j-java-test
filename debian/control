@@ -19,6 +19,7 @@ Build-Depends:
  libconversant-disruptor-java,
  libdisruptor-java,
  libgeronimo-jms-1.1-spec-java,
+ libjackson2-annotations-java,
  libjackson2-databind-java,
  libjackson2-dataformat-xml-java,
  libjackson2-dataformat-yaml,
