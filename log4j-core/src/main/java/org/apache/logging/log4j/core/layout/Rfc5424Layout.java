@@ -51,8 +51,11 @@ import org.apache.logging.log4j.core.pattern.ThrowablePatternConverter;
 import org.apache.logging.log4j.core.util.NetUtils;
 import org.apache.logging.log4j.core.util.Patterns;
 import org.apache.logging.log4j.message.Message;
+import org.apache.logging.log4j.message.MessageCollectionMessage;
+import org.apache.logging.log4j.message.StructuredDataCollectionMessage;
 import org.apache.logging.log4j.message.StructuredDataId;
 import org.apache.logging.log4j.message.StructuredDataMessage;
+import org.apache.logging.log4j.util.ProcessIdUtil;
 import org.apache.logging.log4j.util.StringBuilders;
 import org.apache.logging.log4j.util.Strings;
 
@@ -135,7 +138,7 @@ public final class Rfc5424Layout extends AbstractStringLayout {
         this.includeMdc = includeMDC;
         this.includeNewLine = includeNL;
         this.escapeNewLine = escapeNL == null ? null : Matcher.quoteReplacement(escapeNL);
-        this.mdcId = mdcId;
+        this.mdcId = id == null ? DEFAULT_MDCID : id;
         this.mdcSdId = new StructuredDataId(mdcId, enterpriseNumber, null, null);
         this.mdcPrefix = mdcPrefix;
         this.eventPrefix = eventPrefix;
@@ -190,8 +193,7 @@ public final class Rfc5424Layout extends AbstractStringLayout {
         final String name = config == null ? null : config.getName();
         configName = Strings.isNotEmpty(name) ? name : null;
         this.fieldFormatters = createFieldFormatters(loggerFields, config);
-        // TODO Java 9: ProcessHandle.current().getPid();
-        this.procId = "-";
+        this.procId = ProcessIdUtil.getProcessId();
     }
 
     private Map<String, FieldFormatter> createFieldFormatters(final LoggerFields[] loggerFields,
@@ -331,8 +333,8 @@ public final class Rfc5424Layout extends AbstractStringLayout {
     private void appendMessage(final StringBuilder buffer, final LogEvent event) {
         final Message message = event.getMessage();
         // This layout formats StructuredDataMessages instead of delegating to the Message itself.
-        final String text = (message instanceof StructuredDataMessage) ? message.getFormat() : message
-                .getFormattedMessage();
+        final String text = (message instanceof StructuredDataMessage || message instanceof MessageCollectionMessage)
+                ? message.getFormat() : message.getFormattedMessage();
 
         if (text != null && text.length() > 0) {
             buffer.append(' ').append(escapeNewlines(text, escapeNewLine));
@@ -352,7 +354,8 @@ public final class Rfc5424Layout extends AbstractStringLayout {
 
     private void appendStructuredElements(final StringBuilder buffer, final LogEvent event) {
         final Message message = event.getMessage();
-        final boolean isStructured = message instanceof StructuredDataMessage;
+        final boolean isStructured = message instanceof StructuredDataMessage ||
+                message instanceof StructuredDataCollectionMessage;
 
         if (!isStructured && (fieldFormatters != null && fieldFormatters.isEmpty()) && !includeMdc) {
             buffer.append('-');
@@ -381,24 +384,18 @@ public final class Rfc5424Layout extends AbstractStringLayout {
                 union.union(contextMap);
                 sdElements.put(mdcSdIdStr, union);
             } else {
-                final StructuredDataElement formattedContextMap = new StructuredDataElement(contextMap, false);
+                final StructuredDataElement formattedContextMap = new StructuredDataElement(contextMap, mdcPrefix, false);
                 sdElements.put(mdcSdIdStr, formattedContextMap);
             }
         }
 
         if (isStructured) {
-            final StructuredDataMessage data = (StructuredDataMessage) message;
-            final Map<String, String> map = data.getData();
-            final StructuredDataId id = data.getId();
-            final String sdId = getId(id);
-
-            if (sdElements.containsKey(sdId)) {
-                final StructuredDataElement union = sdElements.get(id.toString());
-                union.union(map);
-                sdElements.put(sdId, union);
+            if (message instanceof MessageCollectionMessage) {
+                for (StructuredDataMessage data : ((StructuredDataCollectionMessage)message)) {
+                    addStructuredData(sdElements, data);
+                }
             } else {
-                final StructuredDataElement formattedData = new StructuredDataElement(map, false);
-                sdElements.put(sdId, formattedData);
+                addStructuredData(sdElements, (StructuredDataMessage) message);
             }
         }
 
@@ -408,7 +405,22 @@ public final class Rfc5424Layout extends AbstractStringLayout {
         }
 
         for (final Map.Entry<String, StructuredDataElement> entry : sdElements.entrySet()) {
-            formatStructuredElement(entry.getKey(), mdcPrefix, entry.getValue(), buffer, listChecker);
+            formatStructuredElement(entry.getKey(), entry.getValue(), buffer, listChecker);
+        }
+    }
+
+    private void addStructuredData(final Map<String, StructuredDataElement> sdElements, final StructuredDataMessage data) {
+        final Map<String, String> map = data.getData();
+        final StructuredDataId id = data.getId();
+        final String sdId = getId(id);
+
+        if (sdElements.containsKey(sdId)) {
+            final StructuredDataElement union = sdElements.get(id.toString());
+            union.union(map);
+            sdElements.put(sdId, union);
+        } else {
+            final StructuredDataElement formattedData = new StructuredDataElement(map, eventPrefix, false);
+            sdElements.put(sdId, formattedData);
         }
     }
 
@@ -492,7 +504,7 @@ public final class Rfc5424Layout extends AbstractStringLayout {
         buf.append(Integer.toString(val));
     }
 
-    private void formatStructuredElement(final String id, final String prefix, final StructuredDataElement data,
+    private void formatStructuredElement(final String id, final StructuredDataElement data,
             final StringBuilder sb, final ListChecker checker) {
         if ((id == null && defaultId == null) || data.discard()) {
             return;
@@ -501,9 +513,9 @@ public final class Rfc5424Layout extends AbstractStringLayout {
         sb.append('[');
         sb.append(id);
         if (!mdcSdId.toString().equals(id)) {
-            appendMap(prefix, data.getFields(), sb, noopChecker);
+            appendMap(data.getPrefix(), data.getFields(), sb, noopChecker);
         } else {
-            appendMap(prefix, data.getFields(), sb, checker);
+            appendMap(data.getPrefix(), data.getFields(), sb, checker);
         }
         sb.append(']');
     }
@@ -682,7 +694,7 @@ public final class Rfc5424Layout extends AbstractStringLayout {
                 }
                 map.put(entry.getKey(), buffer.toString());
             }
-            return new StructuredDataElement(map, discardIfEmpty);
+            return new StructuredDataElement(map, eventPrefix, discardIfEmpty);
         }
     }
 
@@ -690,10 +702,13 @@ public final class Rfc5424Layout extends AbstractStringLayout {
 
         private final Map<String, String> fields;
         private final boolean discardIfEmpty;
+        private final String prefix;
 
-        public StructuredDataElement(final Map<String, String> fields, final boolean discardIfEmpty) {
+        public StructuredDataElement(final Map<String, String> fields, final String prefix,
+                                     final boolean discardIfEmpty) {
             this.discardIfEmpty = discardIfEmpty;
             this.fields = fields;
+            this.prefix = prefix;
         }
 
         boolean discard() {
@@ -716,6 +731,10 @@ public final class Rfc5424Layout extends AbstractStringLayout {
 
         Map<String, String> getFields() {
             return this.fields;
+        }
+
+        String getPrefix() {
+            return prefix;
         }
     }
 

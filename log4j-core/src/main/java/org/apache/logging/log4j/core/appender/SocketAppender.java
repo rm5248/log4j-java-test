@@ -36,7 +36,6 @@ import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import org.apache.logging.log4j.core.config.plugins.validation.constraints.ValidHost;
 import org.apache.logging.log4j.core.config.plugins.validation.constraints.ValidPort;
-import org.apache.logging.log4j.core.layout.SerializedLayout;
 import org.apache.logging.log4j.core.net.AbstractSocketManager;
 import org.apache.logging.log4j.core.net.Advertiser;
 import org.apache.logging.log4j.core.net.DatagramSocketManager;
@@ -55,11 +54,16 @@ public class SocketAppender extends AbstractOutputStreamAppender<AbstractSocketM
 
     /**
      * Subclasses can extend this abstract Builder.
-     * 
-     * <ul> 
+     * <h1>Defaults</h1>
+     * <ul>
+     * <li>host: "localhost"</li>
+     * <li>protocol: "TCP"</li>
+     * </ul>
+     * <h1>Changes</h1>
+     * <ul>
      * <li>Removed deprecated "delayMillis", use "reconnectionDelayMillis".</li>
      * <li>Removed deprecated "reconnectionDelay", use "reconnectionDelayMillis".</li>
-     * </ul> 
+     * </ul>
      * 
      * @param <B>
      *            The type to build.
@@ -195,9 +199,10 @@ public class SocketAppender extends AbstractOutputStreamAppender<AbstractSocketM
         public SocketAppender build() {
             boolean immediateFlush = isImmediateFlush();
             final boolean bufferedIo = isBufferedIo();
-            Layout<? extends Serializable> layout = getLayout();
+            final Layout<? extends Serializable> layout = getLayout();
             if (layout == null) {
-                layout = SerializedLayout.createLayout();
+                AbstractLifeCycle.LOGGER.error("No layout provided for SocketAppender");
+                return null;
             }
 
             final String name = getName();
@@ -280,7 +285,7 @@ public class SocketAppender extends AbstractOutputStreamAppender<AbstractSocketM
      *            If {@code "true"} (default) exceptions encountered when appending events are logged; otherwise they
      *            are propagated to the caller.
      * @param layout
-     *            The layout to use (defaults to SerializedLayout).
+     *            The layout to use. Required, there is no default.
      * @param filter
      *            The Filter or null.
      * @param advertise
@@ -354,7 +359,7 @@ public class SocketAppender extends AbstractOutputStreamAppender<AbstractSocketM
      *            If {@code "true"} (default) exceptions encountered when appending events are logged; otherwise they
      *            are propagated to the caller.
      * @param layout
-     *            The layout to use (defaults to {@link SerializedLayout}).
+     *            The layout to use. Required, there is no default.
      * @param filter
      *            The Filter or null.
      * @param advertise

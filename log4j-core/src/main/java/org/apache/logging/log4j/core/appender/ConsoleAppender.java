@@ -45,9 +45,11 @@ import org.apache.logging.log4j.util.PropertiesUtil;
  * Appends log events to <code>System.out</code> or <code>System.err</code> using a layout specified by the user. The
  * default target is <code>System.out</code>.
  * <p>
- * TODO accessing System.out or .err as a byte stream instead of a writer bypasses the JVM's knowledge of the proper
- * encoding. (RG) Encoding is handled within the Layout. Typically, a Layout will generate a String and then call
- * getBytes which may use a configured encoding or the system default. OTOH, a Writer cannot print byte streams.
+ * TODO Accessing <code>System.out</code> or <code>System.err</code> as a byte stream instead of a writer bypasses the
+ * JVM's knowledge of the proper encoding. (RG) Encoding is handled within the Layout. Typically, a Layout will generate
+ * a String and then call getBytes which may use a configured encoding or the system default. OTOH, a Writer cannot
+ * print byte streams.
+ * </p>
  */
 @Plugin(name = ConsoleAppender.PLUGIN_NAME, category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
 public final class ConsoleAppender extends AbstractOutputStreamAppender<OutputStreamManager> {
@@ -64,25 +66,27 @@ public final class ConsoleAppender extends AbstractOutputStreamAppender<OutputSt
      * Enumeration of console destinations.
      */
     public enum Target {
+        
         /** Standard output. */
         SYSTEM_OUT {
             @Override
             public Charset getDefaultCharset() {
-                return getCharset("sun.stdout.encoding");
+                return getCharset("sun.stdout.encoding", Charset.defaultCharset());
             }
         },
+        
         /** Standard error output. */
         SYSTEM_ERR {
             @Override
             public Charset getDefaultCharset() {
-                return getCharset("sun.stderr.encoding");
+                return getCharset("sun.stderr.encoding", Charset.defaultCharset());
             }
         };
         
         public abstract Charset getDefaultCharset();
         
-        protected Charset getCharset(final String property) {
-            return new PropertiesUtil(PropertiesUtil.getSystemProperties()).getCharsetProperty(property);
+        protected Charset getCharset(final String property, Charset defaultCharset) {
+            return new PropertiesUtil(PropertiesUtil.getSystemProperties()).getCharsetProperty(property, defaultCharset);
         }
 
     }

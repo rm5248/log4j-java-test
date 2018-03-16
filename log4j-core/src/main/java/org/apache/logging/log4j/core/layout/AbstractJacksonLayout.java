@@ -47,6 +47,25 @@ abstract class AbstractJacksonLayout extends AbstractStringLayout {
         @PluginBuilderAttribute
         private boolean complete;
 
+        @PluginBuilderAttribute
+        private boolean locationInfo;
+
+        @PluginBuilderAttribute
+        private boolean properties;
+
+        @PluginBuilderAttribute
+        private boolean includeStacktrace = true;
+
+        @PluginBuilderAttribute
+        private boolean stacktraceAsString = false;
+
+        @PluginBuilderAttribute
+        private boolean includeNullDelimiter = false;
+
+        protected String toStringOrNull(final byte[] header) {
+            return header == null ? null : new String(header, Charset.defaultCharset());
+        }
+
         public boolean getEventEol() {
             return eventEol;
         }
@@ -58,6 +77,28 @@ abstract class AbstractJacksonLayout extends AbstractStringLayout {
         public boolean isComplete() {
             return complete;
         }
+
+        public boolean isLocationInfo() {
+            return locationInfo;
+        }
+
+        public boolean isProperties() {
+            return properties;
+        }
+
+        /**
+         * If "true", includes the stacktrace of any Throwable in the generated data, defaults to "true".
+         * @return If "true", includes the stacktrace of any Throwable in the generated data, defaults to "true".
+         */
+        public boolean isIncludeStacktrace() {
+            return includeStacktrace;
+        }
+
+        public boolean isStacktraceAsString() {
+            return stacktraceAsString;
+        }
+
+        public boolean isIncludeNullDelimiter() { return includeNullDelimiter; }
 
         public B setEventEol(final boolean eventEol) {
             this.eventEol = eventEol;
@@ -74,21 +115,69 @@ abstract class AbstractJacksonLayout extends AbstractStringLayout {
             return asBuilder();
         }
 
+        public B setLocationInfo(final boolean locationInfo) {
+            this.locationInfo = locationInfo;
+            return asBuilder();
+        }
+
+        public B setProperties(final boolean properties) {
+            this.properties = properties;
+            return asBuilder();
+        }
+
+        /**
+         * If "true", includes the stacktrace of any Throwable in the generated JSON, defaults to "true".
+         * @param includeStacktrace If "true", includes the stacktrace of any Throwable in the generated JSON, defaults to "true".
+         * @return this builder
+         */
+        public B setIncludeStacktrace(final boolean includeStacktrace) {
+            this.includeStacktrace = includeStacktrace;
+            return asBuilder();
+        }
+
+        /**
+         * Whether to format the stacktrace as a string, and not a nested object (optional, defaults to false).
+         *
+         * @return this builder
+         */
+        public B setStacktraceAsString(final boolean stacktraceAsString) {
+            this.stacktraceAsString = stacktraceAsString;
+            return asBuilder();
+        }
+
+        /**
+         * Whether to include NULL byte as delimiter after each event (optional, default to false).
+         *
+         * @return this builder
+         */
+        public B setIncludeNullDelimiter(final boolean includeNullDelimiter) {
+            this.includeNullDelimiter = includeNullDelimiter;
+            return asBuilder();
+        }
     }
 
     protected final String eol;
     protected final ObjectWriter objectWriter;
     protected final boolean compact;
     protected final boolean complete;
+    protected final boolean includeNullDelimiter;
 
+    @Deprecated
     protected AbstractJacksonLayout(final Configuration config, final ObjectWriter objectWriter, final Charset charset,
             final boolean compact, final boolean complete, final boolean eventEol, final Serializer headerSerializer,
             final Serializer footerSerializer) {
+        this(config, objectWriter, charset, compact, complete, eventEol, headerSerializer, footerSerializer, false);
+    }
+
+    protected AbstractJacksonLayout(final Configuration config, final ObjectWriter objectWriter, final Charset charset,
+            final boolean compact, final boolean complete, final boolean eventEol, final Serializer headerSerializer,
+            final Serializer footerSerializer, final boolean includeNullDelimiter) {
         super(config, charset, headerSerializer, footerSerializer);
         this.objectWriter = objectWriter;
         this.compact = compact;
         this.complete = complete;
         this.eol = compact && !eventEol ? COMPACT_EOL : DEFAULT_EOL;
+        this.includeNullDelimiter = includeNullDelimiter;
     }
 
     /**
@@ -123,6 +212,9 @@ abstract class AbstractJacksonLayout extends AbstractStringLayout {
             throws JsonGenerationException, JsonMappingException, IOException {
         objectWriter.writeValue(writer, convertMutableToLog4jEvent(event));
         writer.write(eol);
+        if (includeNullDelimiter) {
+            writer.write('\0');
+        }
         markEvent();
     }
 
