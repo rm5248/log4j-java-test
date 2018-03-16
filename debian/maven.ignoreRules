@@ -11,6 +11,7 @@ org.apache.logging.log4j.samples log4j-samples pom * * *
 ch.qos.logback logback-classic * * * *
 ch.qos.logback logback-core * * * *
 com.datastax.cassandra cassandra-driver-core * * * *
+com.github.tomakehurst wiremock * * * *
 com.google.code.java-allocation-instrumenter java-allocation-instrumenter * * * *
 com.h2database h2 * * * *
 commons-httpclient commons-httpclient * * * *
@@ -31,6 +32,7 @@ org.apache.maven.plugins maven-pmd-plugin * * * *
 org.apache.maven.plugins maven-project-info-reports-plugin * * * *
 org.apache.maven.plugins maven-remote-resources-plugin * * * *
 org.apache.maven.plugins maven-surefire-plugin * * * *
+org.apache.maven.plugins maven-toolchains-plugin * * * *
 org.apache.maven.wagon wagon-ssh * * * *
 org.apache.rat apache-rat-plugin * * * *
 org.apache.velocity velocity * * * *
