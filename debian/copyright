@@ -3,6 +3,8 @@ Upstream-Name: Apache Log4j 2
 Source: http://logging.apache.org/log4j/2.x/
 Files-Excluded: src/site
                 src/ide
+                .mvn
+                mvnw*
 
 Files: *
 Copyright: 1999-2016, The Apache Software Foundation
