@@ -5,6 +5,7 @@ apache-log4j2 (2.10.0-1) UNRELEASED; urgency=medium
     - Refreshed the patches
     - Build the new log4j-api-java9 module
     - Ignore the new log4j-appserver module
+    - Replaced the log4j-nosql module with log4j-couchdb and log4j-cassandra
     - Updated the Maven rules
     - New dependency on libjackson2-annotations-java
   * Fixed the build failure with Java 9 (Closes: #893085)
