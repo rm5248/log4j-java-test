@@ -1,3 +1,2 @@
 01-disable-kafka-appender.patch
 03-mongodb-compatibility.patch
-04-disable-cassandra-appender.patch
