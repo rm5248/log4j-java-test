@@ -1,4 +1,4 @@
-apache-log4j2 (2.10.0-1) UNRELEASED; urgency=medium
+apache-log4j2 (2.10.0-1) unstable; urgency=medium
 
   * Team upload.
   * New upstream release
@@ -13,7 +13,7 @@ apache-log4j2 (2.10.0-1) UNRELEASED; urgency=medium
   * Switch to debhelper level 11
   * Removed the Maven wrapper from the upstream tarball
 
- -- Emmanuel Bourg <ebourg@apache.org>  Fri, 16 Mar 2018 14:18:48 +0100
+ -- Emmanuel Bourg <ebourg@apache.org>  Fri, 16 Mar 2018 17:14:19 +0100
 
 apache-log4j2 (2.8.2-2) unstable; urgency=medium
 
