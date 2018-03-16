@@ -23,6 +23,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.junit.LoggerContextRule;
 import org.apache.logging.log4j.test.appender.ListAppender;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -45,6 +46,11 @@ import static org.junit.Assert.*;
  */
 public class NestedLoggingFromToStringTest {
 
+    @BeforeClass
+    public static void beforeClass() {
+        System.setProperty("log4j2.is.webapp", "false");
+    }
+    
     @Rule
     public LoggerContextRule context = new LoggerContextRule("log4j-sync-to-list.xml");
     private ListAppender listAppender;
@@ -96,7 +102,7 @@ public class NestedLoggingFromToStringTest {
         logger.info("main: argCount={} it={}", "2", it);
         final List<String> list = listAppender.getMessages();
 
-        final String expect1 = "DEBUG org.apache.logging.log4j.core.impl.NestedLoggingFromToStringTest$ParameterizedLoggingThing getX: values x=3 y=4 z=5";
+        final String expect1 = "DEBUG org.apache.logging.log4j.core.impl.NestedLoggingFromToStringTest.ParameterizedLoggingThing getX: values x=3 y=4 z=5";
         final String expect2 = "INFO org.apache.logging.log4j.core.impl.NestedLoggingFromToStringTest main: argCount=2 it=[ParameterizedLoggingThing x=3 y=4 z=5]";
         assertEquals(expect1, list.get(0));
         assertEquals(expect2, list.get(1));
@@ -108,7 +114,7 @@ public class NestedLoggingFromToStringTest {
         logger.info("next: it={} some{} other{}", it, "AA", "BB");
         final List<String> list = listAppender.getMessages();
 
-        final String expect1 = "DEBUG org.apache.logging.log4j.core.impl.NestedLoggingFromToStringTest$ParameterizedLoggingThing getX: values x=3 y=4 z=5";
+        final String expect1 = "DEBUG org.apache.logging.log4j.core.impl.NestedLoggingFromToStringTest.ParameterizedLoggingThing getX: values x=3 y=4 z=5";
         final String expect2 = "INFO org.apache.logging.log4j.core.impl.NestedLoggingFromToStringTest next: it=[ParameterizedLoggingThing x=3 y=4 z=5] someAA otherBB";
         assertEquals(expect1, list.get(0));
         assertEquals(expect2, list.get(1));
@@ -119,9 +125,9 @@ public class NestedLoggingFromToStringTest {
         logger.info(new ObjectLoggingThing1());
         final List<String> list = listAppender.getMessages();
 
-        final String expect1 = "DEBUG org.apache.logging.log4j.core.impl.NestedLoggingFromToStringTest$ParameterizedLoggingThing getX: values x=3 y=4 z=5";
-        final String expect2 = "TRACE org.apache.logging.log4j.core.impl.NestedLoggingFromToStringTest$ObjectLoggingThing2 [ParameterizedLoggingThing x=3 y=4 z=5]";
-        final String expect3 = "TRACE org.apache.logging.log4j.core.impl.NestedLoggingFromToStringTest$ObjectLoggingThing1 [ObjectLoggingThing2 x=123]";
+        final String expect1 = "DEBUG org.apache.logging.log4j.core.impl.NestedLoggingFromToStringTest.ParameterizedLoggingThing getX: values x=3 y=4 z=5";
+        final String expect2 = "TRACE org.apache.logging.log4j.core.impl.NestedLoggingFromToStringTest.ObjectLoggingThing2 [ParameterizedLoggingThing x=3 y=4 z=5]";
+        final String expect3 = "TRACE org.apache.logging.log4j.core.impl.NestedLoggingFromToStringTest.ObjectLoggingThing1 [ObjectLoggingThing2 x=123]";
         final String expect4 = "INFO org.apache.logging.log4j.core.impl.NestedLoggingFromToStringTest [ObjectLoggingThing1 y=999]";
         assertEquals(expect1, list.get(0));
         assertEquals(expect2, list.get(1));

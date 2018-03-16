@@ -28,16 +28,16 @@ import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.rolling.DefaultRolloverStrategy;
+import org.apache.logging.log4j.core.appender.rolling.DirectFileRolloverStrategy;
+import org.apache.logging.log4j.core.appender.rolling.DirectWriteRolloverStrategy;
 import org.apache.logging.log4j.core.appender.rolling.RollingRandomAccessFileManager;
 import org.apache.logging.log4j.core.appender.rolling.RolloverStrategy;
 import org.apache.logging.log4j.core.appender.rolling.TriggeringPolicy;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
-import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginBuilderAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginBuilderFactory;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
-import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.apache.logging.log4j.core.net.Advertiser;
 import org.apache.logging.log4j.core.util.Booleans;
 import org.apache.logging.log4j.core.util.Integers;
@@ -80,6 +80,15 @@ public final class RollingRandomAccessFileAppender extends AbstractOutputStreamA
         @PluginBuilderAttribute("advertiseURI")
         private String advertiseURI;
 
+        @PluginBuilderAttribute
+        private String filePermissions;
+
+        @PluginBuilderAttribute
+        private String fileOwner;
+
+        @PluginBuilderAttribute
+        private String fileGroup;
+
         @Override
         public RollingRandomAccessFileAppender build() {
             final String name = getName();
@@ -88,8 +97,20 @@ public final class RollingRandomAccessFileAppender extends AbstractOutputStreamA
                 return null;
             }
 
-            if (fileName == null) {
-                LOGGER.error("No filename was provided for FileAppender with name " + name);
+            if (strategy == null) {
+                if (fileName != null) {
+                    strategy = DefaultRolloverStrategy.newBuilder()
+                            .withCompressionLevelStr(String.valueOf(Deflater.DEFAULT_COMPRESSION))
+                            .withConfig(getConfiguration())
+                            .build();
+                } else {
+                    strategy = DirectWriteRolloverStrategy.newBuilder()
+                            .withCompressionLevelStr(String.valueOf(Deflater.DEFAULT_COMPRESSION))
+                            .withConfig(getConfiguration())
+                            .build();
+                }
+            } else if (fileName == null && !(strategy instanceof DirectFileRolloverStrategy)) {
+                LOGGER.error("RollingFileAppender '{}': When no file name is provided a DirectFilenameRolloverStrategy must be configured");
                 return null;
             }
 
@@ -103,18 +124,14 @@ public final class RollingRandomAccessFileAppender extends AbstractOutputStreamA
                 return null;
             }
 
-            if (strategy == null) {
-                strategy = DefaultRolloverStrategy.createStrategy(null, null, null,
-                        String.valueOf(Deflater.DEFAULT_COMPRESSION), null, true, getConfiguration());
-            }
-
             final Layout<? extends Serializable> layout = getOrCreateLayout();
 
             final boolean immediateFlush = isImmediateFlush();
             final int bufferSize = getBufferSize();
             final RollingRandomAccessFileManager manager = RollingRandomAccessFileManager
                     .getRollingRandomAccessFileManager(fileName, filePattern, append, immediateFlush, bufferSize, policy,
-                            strategy, advertiseURI, layout, getConfiguration());
+                            strategy, advertiseURI, layout,
+                            filePermissions, fileOwner, fileGroup, getConfiguration());
             if (manager == null) {
                 return null;
             }
@@ -157,6 +174,21 @@ public final class RollingRandomAccessFileAppender extends AbstractOutputStreamA
 
         public B withAdvertiseURI(final String advertiseURI) {
             this.advertiseURI = advertiseURI;
+            return asBuilder();
+        }
+
+        public B withFilePermissions(final String filePermissions) {
+            this.filePermissions = filePermissions;
+            return asBuilder();
+        }
+
+        public B withFileOwner(final String fileOwner) {
+            this.fileOwner = fileOwner;
+            return asBuilder();
+        }
+
+        public B withFileGroup(final String fileGroup) {
+            this.fileGroup = fileGroup;
             return asBuilder();
         }
 
