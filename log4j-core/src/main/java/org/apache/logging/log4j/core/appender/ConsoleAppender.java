@@ -38,6 +38,7 @@ import org.apache.logging.log4j.core.config.plugins.validation.constraints.Requi
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.apache.logging.log4j.core.util.Booleans;
 import org.apache.logging.log4j.core.util.CloseShieldOutputStream;
+import org.apache.logging.log4j.core.util.Throwables;
 import org.apache.logging.log4j.util.LoaderUtil;
 import org.apache.logging.log4j.util.PropertiesUtil;
 
@@ -66,25 +67,27 @@ public final class ConsoleAppender extends AbstractOutputStreamAppender<OutputSt
      * Enumeration of console destinations.
      */
     public enum Target {
-        
+
         /** Standard output. */
         SYSTEM_OUT {
             @Override
             public Charset getDefaultCharset() {
+                // "sun.stdout.encoding" is only set when running from the console.
                 return getCharset("sun.stdout.encoding", Charset.defaultCharset());
             }
         },
-        
+
         /** Standard error output. */
         SYSTEM_ERR {
             @Override
             public Charset getDefaultCharset() {
+                // "sun.stderr.encoding" is only set when running from the console.
                 return getCharset("sun.stderr.encoding", Charset.defaultCharset());
             }
         };
-        
+
         public abstract Charset getDefaultCharset();
-        
+
         protected Charset getCharset(final String property, Charset defaultCharset) {
             return new PropertiesUtil(PropertiesUtil.getSystemProperties()).getCharsetProperty(property, defaultCharset);
         }
@@ -257,7 +260,7 @@ public final class ConsoleAppender extends AbstractOutputStreamAppender<OutputSt
             throw new IllegalStateException("Unsupported default encoding " + enc, ex);
         }
         final PropertiesUtil propsUtil = PropertiesUtil.getProperties();
-        if (!propsUtil.isOsWindows() || propsUtil.getBooleanProperty("log4j.skipJansi") || direct) {
+        if (!propsUtil.isOsWindows() || propsUtil.getBooleanProperty("log4j.skipJansi", true) || direct) {
             return outputStream;
         }
         try {
@@ -270,7 +273,7 @@ public final class ConsoleAppender extends AbstractOutputStreamAppender<OutputSt
         } catch (final NoSuchMethodException nsme) {
             LOGGER.warn("{} is missing the proper constructor", JANSI_CLASS);
         } catch (final Exception ex) {
-            LOGGER.warn("Unable to instantiate {}", JANSI_CLASS);
+            LOGGER.warn("Unable to instantiate {} due to {}", JANSI_CLASS, Throwables.getRootCause(ex).toString().trim());
         }
         return outputStream;
     }
@@ -342,7 +345,7 @@ public final class ConsoleAppender extends AbstractOutputStreamAppender<OutputSt
     }
 
     /**
-     * Data to pass to factory method.
+     * Data to pass to factory method.Unable to instantiate
      */
     private static class FactoryData {
         private final OutputStream os;

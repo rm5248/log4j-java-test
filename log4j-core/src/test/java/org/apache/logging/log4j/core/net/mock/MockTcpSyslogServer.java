@@ -18,6 +18,7 @@ package org.apache.logging.log4j.core.net.mock;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -40,17 +41,24 @@ public class MockTcpSyslogServer extends MockSyslogServer {
             e.printStackTrace();
         }
         thread.interrupt();
+        try {
+            thread.join(100);
+        } catch (InterruptedException ie) {
+            System.out.println("Shutdown of server thread failed.");
+        }
     }
 
     @Override
     public void run() {
+        System.out.println("TCP Server started");
         this.thread = Thread.currentThread();
         while (!shutdown) {
             try {
                 final byte[] buffer = new byte[4096];
-                final Socket socket = sock.accept();
-                socket.setSoLinger(true, 0);
-                if (socket != null) {
+                Socket socket = null;
+                try {
+                    socket = sock.accept();
+                    socket.setSoLinger(true, 0);
                     final InputStream in = socket.getInputStream();
                     int i = in.read(buffer, 0, buffer.length);
                     while (i != -1) {
@@ -64,8 +72,12 @@ public class MockTcpSyslogServer extends MockSyslogServer {
                             System.out.println("Message too long");
                         }
                     }
-
-                    socket.close();
+                } catch (BindException be) {
+                    be.printStackTrace();
+                } finally {
+                    if (socket != null) {
+                        socket.close();
+                    }
                 }
             } catch (final Exception ex) {
                 if (!shutdown) {
@@ -73,5 +85,6 @@ public class MockTcpSyslogServer extends MockSyslogServer {
                 }
             }
         }
+        System.out.println("TCP Server stopped");
     }
 }

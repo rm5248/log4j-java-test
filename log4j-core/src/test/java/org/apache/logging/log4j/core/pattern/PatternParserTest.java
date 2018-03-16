@@ -54,6 +54,7 @@ public class PatternParserTest {
     private final String mdcMsgPattern3 = "%m : %X{key2}%n";
     private final String mdcMsgPattern4 = "%m : %X{key3}%n";
     private final String mdcMsgPattern5 = "%m : %X{key1},%X{key2},%X{key3}%n";
+    private final String deeplyNestedPattern = "%notEmpty{ %maxLen{%X{var}}{3} }";
 
     private static String badPattern = "[%d{yyyyMMdd HH:mm:ss,SSS] %-5p [%c{10}] - %m%n";
     private static String customPattern = "[%d{yyyyMMdd HH:mm:ss,SSS}] %-5p [%-25.25c{1}:%-4L] - %m%n";
@@ -114,7 +115,7 @@ public class PatternParserTest {
             formatter.format(event, buf);
         }
         final String str = buf.toString();
-        final String expected = "INFO  [PatternParserTest        :100 ] - Hello, world" + Strings.LINE_SEPARATOR;
+        final String expected = "INFO  [PatternParserTest        :101 ] - Hello, world" + Strings.LINE_SEPARATOR;
         assertTrue("Expected to end with: " + expected + ". Actual: " + str, str.endsWith(expected));
     }
 
@@ -159,7 +160,6 @@ public class PatternParserTest {
         final String expected = "INFO  org.a Hello, world" + Strings.LINE_SEPARATOR;
         assertTrue("Expected to end with: " + expected + ". Actual: " + str, str.endsWith(expected));
     }
-
 
     @Test
     public void testBadPattern() {
@@ -229,18 +229,12 @@ public class PatternParserTest {
 
     @Test
     public void testNanoPatternShort() {
-        final List<PatternFormatter> formatters = parser.parse("%N");
-        assertNotNull(formatters);
-        assertEquals(1, formatters.size());
-        assertTrue(formatters.get(0).getConverter() instanceof NanoTimePatternConverter);
+        testFirstConverter("%N", NanoTimePatternConverter.class);
     }
 
     @Test
     public void testNanoPatternLong() {
-        final List<PatternFormatter> formatters = parser.parse("%nano");
-        assertNotNull(formatters);
-        assertEquals(1, formatters.size());
-        assertTrue(formatters.get(0).getConverter() instanceof NanoTimePatternConverter);
+        testFirstConverter("%nano", NanoTimePatternConverter.class);
     }
 
     @Test
@@ -331,5 +325,36 @@ public class PatternParserTest {
 
         pp.parse("%N");
         assertTrue(config.getNanoClock() instanceof SystemNanoClock);
+    }
+
+    @Test
+    public void testDeeplyNestedPattern() {
+        final List<PatternFormatter> formatters = parser.parse(deeplyNestedPattern);
+        assertNotNull(formatters);
+        assertEquals(1, formatters.size());
+
+        final Map<String, String> mdc = new HashMap<>();
+        mdc.put("var", "1234");
+        final Log4jLogEvent event = Log4jLogEvent.newBuilder() //
+            .setContextMap(mdc).build();
+        final StringBuilder buf = new StringBuilder();
+        formatters.get(0).format(event, buf);
+        final String expected = " 123 ";
+        assertEquals(expected, buf.toString());
+    }
+
+    @Test
+    public void testMissingClosingBracket() {
+        testFirstConverter("%d{", DatePatternConverter.class);
+    }
+
+    @Test
+    public void testClosingBracketButWrongPlace() {
+        final List<PatternFormatter> formatters = parser.parse("}%d{");
+        assertNotNull(formatters);
+        assertEquals(2, formatters.size());
+
+        validateConverter(formatters, 0, "Literal");
+        validateConverter(formatters, 1, "Date");
     }
 }

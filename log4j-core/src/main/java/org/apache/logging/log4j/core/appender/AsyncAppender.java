@@ -29,12 +29,15 @@ import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.async.ArrayBlockingQueueFactory;
+import org.apache.logging.log4j.core.async.AsyncQueueFullMessageUtil;
 import org.apache.logging.log4j.core.async.AsyncQueueFullPolicy;
 import org.apache.logging.log4j.core.async.AsyncQueueFullPolicyFactory;
 import org.apache.logging.log4j.core.async.BlockingQueueFactory;
 import org.apache.logging.log4j.core.async.DiscardingAsyncQueueFullPolicy;
 import org.apache.logging.log4j.core.async.EventRoute;
+import org.apache.logging.log4j.core.async.InternalAsyncUtil;
 import org.apache.logging.log4j.core.config.AppenderControl;
 import org.apache.logging.log4j.core.config.AppenderRef;
 import org.apache.logging.log4j.core.config.Configuration;
@@ -47,9 +50,7 @@ import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.validation.constraints.Required;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
-import org.apache.logging.log4j.core.util.Constants;
 import org.apache.logging.log4j.core.util.Log4jThread;
-import org.apache.logging.log4j.message.AsynchronouslyFormattable;
 import org.apache.logging.log4j.message.Message;
 
 /**
@@ -60,7 +61,7 @@ import org.apache.logging.log4j.message.Message;
 @Plugin(name = "Async", category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
 public final class AsyncAppender extends AbstractAppender {
 
-    private static final int DEFAULT_QUEUE_SIZE = 128;
+    private static final int DEFAULT_QUEUE_SIZE = 1024;
     private static final LogEvent SHUTDOWN_LOG_EVENT = new AbstractLogEvent() {
     };
 
@@ -156,25 +157,24 @@ public final class AsyncAppender extends AbstractAppender {
         if (!isStarted()) {
             throw new IllegalStateException("AsyncAppender " + getName() + " is not active");
         }
-        if (!canFormatMessageInBackground(logEvent.getMessage())) {
-            logEvent.getMessage().getFormattedMessage(); // LOG4J2-763: ask message to freeze parameters
-        }
         final Log4jLogEvent memento = Log4jLogEvent.createMemento(logEvent, includeLocation);
+        InternalAsyncUtil.makeMessageImmutable(logEvent.getMessage());
         if (!transfer(memento)) {
             if (blocking) {
-                // delegate to the event router (which may discard, enqueue and block, or log in current thread)
-                final EventRoute route = asyncQueueFullPolicy.getRoute(thread.getId(), memento.getLevel());
-                route.logMessage(this, memento);
+                if (Logger.getRecursionDepth() > 1) { // LOG4J2-1518, LOG4J2-2031
+                    // If queue is full AND we are in a recursive call, call appender directly to prevent deadlock
+                    final Message message = AsyncQueueFullMessageUtil.transform(logEvent.getMessage());
+                    logMessageInCurrentThread(new Log4jLogEvent.Builder(logEvent).setMessage(message).build());
+                } else {
+                    // delegate to the event router (which may discard, enqueue and block, or log in current thread)
+                    final EventRoute route = asyncQueueFullPolicy.getRoute(thread.getId(), memento.getLevel());
+                    route.logMessage(this, memento);
+                }
             } else {
                 error("Appender " + getName() + " is unable to write primary appenders. queue is full");
                 logToErrorAppenderIfNecessary(false, memento);
             }
         }
-    }
-
-    private boolean canFormatMessageInBackground(final Message message) {
-        return Constants.FORMAT_MESSAGES_IN_BACKGROUND // LOG4J2-898: user wants to format all msgs in background
-                || message.getClass().isAnnotationPresent(AsynchronouslyFormattable.class); // LOG4J2-1718
     }
 
     private boolean transfer(final LogEvent memento) {

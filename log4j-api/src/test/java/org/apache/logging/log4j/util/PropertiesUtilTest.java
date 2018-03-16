@@ -17,9 +17,9 @@
 
 package org.apache.logging.log4j.util;
 
+import java.io.Console;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.charset.UnsupportedCharsetException;
 import java.util.Map;
 import java.util.Properties;
 
@@ -77,5 +77,19 @@ public class PropertiesUtilTest {
         assertEquals(Charset.defaultCharset(), pu.getCharsetProperty("e.0"));
         assertEquals(StandardCharsets.US_ASCII, pu.getCharsetProperty("e.1"));
         assertEquals(Charset.defaultCharset(), pu.getCharsetProperty("e.2"));
+    }
+    
+    @Test
+    public void testGetMappedProperty_sun_stdout_encoding() {
+        final PropertiesUtil pu = new PropertiesUtil(System.getProperties());
+        Charset expected = System.console() == null ? Charset.defaultCharset() : StandardCharsets.UTF_8;
+        assertEquals(expected, pu.getCharsetProperty("sun.stdout.encoding"));
+    }
+
+    @Test
+    public void testGetMappedProperty_sun_stderr_encoding() {
+        final PropertiesUtil pu = new PropertiesUtil(System.getProperties());
+        Charset expected = System.console() == null ? Charset.defaultCharset() : StandardCharsets.UTF_8;
+        assertEquals(expected, pu.getCharsetProperty("sun.err.encoding"));
     }
 }
