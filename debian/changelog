@@ -3,6 +3,7 @@ apache-log4j2 (2.9.0-1) UNRELEASED; urgency=medium
   * Team upload.
   * New upstream release
     - Refreshed the patches
+    - Build the new log4j-api-java9 module
   * Fixed the build failure with Java 9 (Closes: #893085)
   * Standards-Version updated to 4.1.3
   * Switch to debhelper level 11

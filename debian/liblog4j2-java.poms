@@ -27,8 +27,7 @@
 #
 pom.xml --no-parent --has-package-version
 log4j-api/pom.xml --has-package-version --java-lib
-log4j-api-scala_2.10/pom.xml --ignore
-log4j-api-scala_2.11/pom.xml --ignore
+log4j-api-java9/pom.xml --has-package-version --java-lib
 log4j-core/pom.xml --has-package-version --java-lib
 log4j-core-its/pom.xml --ignore
 log4j-1.2-api/pom.xml --has-package-version --java-lib
