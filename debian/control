@@ -45,7 +45,7 @@ Build-Depends:
  libslf4j-java,
  libwoodstox-java,
  maven-debian-helper (>= 1.5)
-Standards-Version: 4.1.3
+Standards-Version: 4.1.4
 Vcs-Git: https://anonscm.debian.org/git/pkg-java/apache-log4j2.git
 Vcs-Browser: https://anonscm.debian.org/cgit/pkg-java/apache-log4j2.git
 Homepage: http://logging.apache.org/log4j/2.x/
