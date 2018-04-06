@@ -1,3 +1,10 @@
+apache-log4j2 (2.10.0-2) UNRELEASED; urgency=medium
+
+  * Team upload.
+  * Generate code usable with the Java 8 API to help with the transition
+
+ -- Emmanuel Bourg <ebourg@apache.org>  Fri, 06 Apr 2018 09:12:40 +0200
+
 apache-log4j2 (2.10.0-1) unstable; urgency=medium
 
   * Team upload.
