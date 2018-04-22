@@ -578,6 +578,7 @@ public abstract class AbstractLogger implements ExtendedLogger, Serializable {
         return flowMessage;
     }
 
+    @Deprecated
     @Override
     public void entry() {
         entry(FQCN, (Object[]) null);
@@ -907,11 +908,13 @@ public abstract class AbstractLogger implements ExtendedLogger, Serializable {
         logIfEnabled(FQCN, Level.ERROR, null, message, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9);
     }
 
+    @Deprecated
     @Override
     public void exit() {
         exit(FQCN, (Object) null);
     }
 
+    @Deprecated
     @Override
     public <R> R exit(final R result) {
         return exit(FQCN, result);
@@ -926,7 +929,9 @@ public abstract class AbstractLogger implements ExtendedLogger, Serializable {
      * @return the return value passed to this method.
      */
     protected <R> R exit(final String fqcn, final R result) {
-        logIfEnabled(fqcn, Level.TRACE, EXIT_MARKER, exitMsg(null, result), null);
+        if (isEnabled(Level.TRACE, EXIT_MARKER, (CharSequence) null, null)) {
+            logMessageSafely(fqcn, Level.TRACE, EXIT_MARKER, exitMsg(null, result), null);
+        }
         return result;
     }
 
@@ -939,7 +944,9 @@ public abstract class AbstractLogger implements ExtendedLogger, Serializable {
      * @return the return value passed to this method.
      */
     protected <R> R exit(final String fqcn, final String format, final R result) {
-        logIfEnabled(fqcn, Level.TRACE, EXIT_MARKER, exitMsg(format, result), null);
+        if (isEnabled(Level.TRACE, EXIT_MARKER, (CharSequence) null, null)) {
+            logMessageSafely(fqcn, Level.TRACE, EXIT_MARKER, exitMsg(format, result), null);
+        }
         return result;
     }
 
