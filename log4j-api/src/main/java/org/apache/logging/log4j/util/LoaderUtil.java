@@ -117,9 +117,10 @@ public final class LoaderUtil {
                 classLoaders.add(parent);
             }
         }
-        ClassLoader parent = tcl;
+        ClassLoader parent = tcl.getParent();
         while (parent != null && !classLoaders.contains(parent)) {
             classLoaders.add(parent);
+            parent = parent.getParent();
         }
         if (!classLoaders.contains(ClassLoader.getSystemClassLoader())) {
             classLoaders.add(ClassLoader.getSystemClassLoader());
@@ -276,8 +277,12 @@ public final class LoaderUtil {
     }
 
     static Collection<UrlResource> findUrlResources(final String resource) {
-        final ClassLoader[] candidates = {getThreadContextClassLoader(), LoaderUtil.class.getClassLoader(),
+        // @formatter:off
+        final ClassLoader[] candidates = {
+                getThreadContextClassLoader(), 
+                LoaderUtil.class.getClassLoader(),
                 GET_CLASS_LOADER_DISABLED ? null : ClassLoader.getSystemClassLoader()};
+        // @formatter:on
         final Collection<UrlResource> resources = new LinkedHashSet<>();
         for (final ClassLoader cl : candidates) {
             if (cl != null) {

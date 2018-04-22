@@ -20,7 +20,6 @@ package org.apache.logging.log4j.message;
 import java.util.Map;
 
 import org.apache.logging.log4j.util.EnglishEnums;
-import org.apache.logging.log4j.util.MultiFormatStringBuilderFormattable;
 import org.apache.logging.log4j.util.StringBuilders;
 
 /**
@@ -35,7 +34,7 @@ import org.apache.logging.log4j.util.StringBuilders;
  * @see <a href="https://tools.ietf.org/html/rfc5424">RFC 5424</a>
  */
 @AsynchronouslyFormattable
-public class StructuredDataMessage extends MapMessage<StructuredDataMessage, String> implements MultiFormatStringBuilderFormattable {
+public class StructuredDataMessage extends MapMessage<StructuredDataMessage, String> {
 
     private static final long serialVersionUID = 1703221292892071920L;
     private static final int MAX_LENGTH = 32;
@@ -84,6 +83,7 @@ public class StructuredDataMessage extends MapMessage<StructuredDataMessage, Str
         this.type = type;
         this.maxLength = maxLength;
     }
+    
     /**
      * Creates a StructuredDataMessage using an ID (max 32 characters), message, type (max 32 characters), and an
      * initial map of structured data to include.
@@ -186,7 +186,6 @@ public class StructuredDataMessage extends MapMessage<StructuredDataMessage, Str
         this.type = msg.type;
         this.maxLength = MAX_LENGTH;
     }
-
 
     /**
      * Basic constructor.
