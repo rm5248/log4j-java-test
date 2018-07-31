@@ -1,11 +1,11 @@
-apache-log4j2 (2.11.0-1) UNRELEASED; urgency=medium
+apache-log4j2 (2.11.1-1) UNRELEASED; urgency=medium
 
   * Team upload.
   * New upstream release
     - Refreshed the patches
     - Build the new log4j-core-java9 module
     - Build the mongodb3 module and ignore the mongodb2 one
-    - Ignore the new log4j-jdbc-dbcp2 and log4j-jpa modules
+    - Ignore the new log4j-jdbc-dbcp2, log4j-jpa and log4j-slf4j18-impl modules
   * Standards-Version updated to 4.1.5
   * Use salsa.debian.org Vcs-* URLs
 
