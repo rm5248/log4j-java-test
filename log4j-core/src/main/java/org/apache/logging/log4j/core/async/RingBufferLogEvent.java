@@ -26,6 +26,7 @@ import org.apache.logging.log4j.ThreadContext.ContextStack;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.impl.ContextDataFactory;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
+import org.apache.logging.log4j.core.impl.MementoMessage;
 import org.apache.logging.log4j.core.impl.ThrowableProxy;
 import org.apache.logging.log4j.core.util.*;
 import org.apache.logging.log4j.core.time.Instant;
@@ -290,11 +291,10 @@ public class RingBufferLogEvent implements LogEvent, ReusableMessage, CharSequen
 
     @Override
     public Message memento() {
-        if (message != null) {
-            return message;
+        if (message == null) {
+            message = new MementoMessage(String.valueOf(messageText), messageFormat, getParameters());
         }
-        final Object[] params = parameters == null ? new Object[0] : Arrays.copyOf(parameters, parameterCount);
-        return new ParameterizedMessage(messageText.toString(), params);
+        return message;
     }
 
     // CharSequence impl
@@ -312,11 +312,6 @@ public class RingBufferLogEvent implements LogEvent, ReusableMessage, CharSequen
     @Override
     public CharSequence subSequence(final int start, final int end) {
         return messageText.subSequence(start, end);
-    }
-
-
-    private Message getNonNullImmutableMessage() {
-        return message != null ? message : new SimpleMessage(String.valueOf(messageText));
     }
 
     @Override
@@ -458,7 +453,7 @@ public class RingBufferLogEvent implements LogEvent, ReusableMessage, CharSequen
                 .setLoggerFqcn(fqcn) //
                 .setLoggerName(loggerName) //
                 .setMarker(marker) //
-                .setMessage(getNonNullImmutableMessage()) // ensure non-null & immutable
+                .setMessage(memento()) // ensure non-null & immutable
                 .setNanoTime(nanoTime) //
                 .setSource(location) //
                 .setThreadId(threadId) //
