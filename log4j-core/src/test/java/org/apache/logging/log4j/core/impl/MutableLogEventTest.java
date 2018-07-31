@@ -138,6 +138,20 @@ public class MutableLogEventTest {
         assertEquals("format", "msg in a {}", mutable.getFormat());
         assertEquals("formatted", "msg in a bottle", mutable.getFormattedMessage());
         assertEquals("parameters", new String[] {"bottle"}, mutable.getParameters());
+        Message memento = mutable.memento();
+        assertEquals("format", "msg in a {}", memento.getFormat());
+        assertEquals("formatted", "msg in a bottle", memento.getFormattedMessage());
+        assertEquals("parameters", new String[] {"bottle"}, memento.getParameters());
+
+        Message eventMementoMessage = mutable.createMemento().getMessage();
+        assertEquals("format", "msg in a {}", eventMementoMessage.getFormat());
+        assertEquals("formatted", "msg in a bottle", eventMementoMessage.getFormattedMessage());
+        assertEquals("parameters", new String[] {"bottle"}, eventMementoMessage.getParameters());
+
+        Message log4JLogEventMessage = new Log4jLogEvent.Builder(mutable).build().getMessage();
+        assertEquals("format", "msg in a {}", log4JLogEventMessage.getFormat());
+        assertEquals("formatted", "msg in a bottle", log4JLogEventMessage.getFormattedMessage());
+        assertEquals("parameters", new String[] {"bottle"}, log4JLogEventMessage.getParameters());
     }
 
     @Test
