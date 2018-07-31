@@ -34,10 +34,12 @@ log4j-core/pom.xml --has-package-version --java-lib
 log4j-core-its/pom.xml --ignore
 log4j-core-java9/pom.xml --has-package-version --java-lib
 log4j-couchdb/pom.xml --has-package-version --java-lib
+log4j-jdbc-dbcp2/pom.xml --ignore
 log4j-1.2-api/pom.xml --has-package-version --java-lib
 log4j-slf4j-impl/pom.xml --ignore
 log4j-to-slf4j/pom.xml --has-package-version --java-lib
 log4j-jcl/pom.xml --has-package-version --java-lib
+log4j-jpa/pom.xml --ignore
 log4j-flume-ng/pom.xml --ignore
 log4j-taglib/pom.xml --ignore
 log4j-jmx-gui/pom.xml --ignore
