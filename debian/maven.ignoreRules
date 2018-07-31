@@ -37,6 +37,7 @@ org.apache.maven.plugins maven-toolchains-plugin * * * *
 org.apache.maven.wagon wagon-ssh * * * *
 org.apache.rat apache-rat-plugin * * * *
 org.apache.velocity velocity * * * *
+org.codehaus.groovy groovy-dateutil * * * *
 org.codehaus.mojo clirr-maven-plugin * * * *
 org.codehaus.mojo cobertura-maven-plugin * * * *
 org.codehaus.mojo findbugs-maven-plugin * * * *
