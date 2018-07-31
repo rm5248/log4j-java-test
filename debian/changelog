@@ -3,6 +3,7 @@ apache-log4j2 (2.11.0-1) UNRELEASED; urgency=medium
   * Team upload.
   * New upstream release
     - Refreshed the patches
+    - Build the new log4j-core-java9 module
 
  -- Emmanuel Bourg <ebourg@apache.org>  Sun, 22 Apr 2018 22:39:47 +0200
 

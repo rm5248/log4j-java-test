@@ -32,6 +32,7 @@ log4j-appserver/pom.xml --ignore
 log4j-cassandra/pom.xml --ignore
 log4j-core/pom.xml --has-package-version --java-lib
 log4j-core-its/pom.xml --ignore
+log4j-core-java9/pom.xml --has-package-version --java-lib
 log4j-couchdb/pom.xml --has-package-version --java-lib
 log4j-1.2-api/pom.xml --has-package-version --java-lib
 log4j-slf4j-impl/pom.xml --ignore
