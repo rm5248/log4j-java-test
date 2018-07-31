@@ -1,0 +1,14 @@
+Description: Workaround for a javadoc bug in Java 10 triggering an IllegalArgumentException
+Author: Emmanuel Bourg <ebourg@apache.org>
+Forwarded: no
+--- a/log4j-core/src/main/java/org/apache/logging/log4j/core/tools/picocli/CommandLine.java
++++ b/log4j-core/src/main/java/org/apache/logging/log4j/core/tools/picocli/CommandLine.java
+@@ -2814,7 +2814,7 @@
+      */
+     public static class Help {
+         /** Constant String holding the default program name: {@value} */
+-        protected static final String DEFAULT_COMMAND_NAME = "<main class>";
++        protected static final String DEFAULT_COMMAND_NAME = new String("<main class>");
+ 
+         /** Constant String holding the default string that separates options from option parameters: {@value} */
+         protected static final String DEFAULT_SEPARATOR = "=";

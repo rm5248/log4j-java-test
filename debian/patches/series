@@ -1,2 +1,3 @@
 01-disable-kafka-appender.patch
 03-mongodb-compatibility.patch
+05-fix-javadoc-errors.patch
