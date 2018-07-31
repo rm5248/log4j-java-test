@@ -46,7 +46,8 @@ log4j-jmx-gui/pom.xml --ignore
 log4j-samples/pom.xml --ignore
 log4j-osgi/pom.xml --ignore
 log4j-bom/pom.xml --no-parent --has-package-version
-log4j-mongodb/pom.xml --has-package-version --java-lib
+log4j-mongodb2/pom.xml --ignore
+log4j-mongodb3/pom.xml --has-package-version --java-lib
 log4j-web/pom.xml --has-package-version --java-lib
 log4j-jul/pom.xml --has-package-version --java-lib
 log4j-perf/pom.xml --ignore
