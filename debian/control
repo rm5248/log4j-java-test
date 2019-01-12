@@ -38,7 +38,6 @@ Build-Depends:
  libmaven-install-plugin-java,
  libmaven-javadoc-plugin-java,
  libmaven-source-plugin-java,
- libmongodb-java,
  libnetty-java,
  libosgi-core-java,
  libservlet3.1-java,

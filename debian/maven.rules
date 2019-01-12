@@ -8,8 +8,6 @@ com.fasterxml.jackson.module jackson-module-jaxb-annotations s/jar/bundle/ s/2\.
 com.beust jcommander * s/.*/1.x/ * *
 org.apache apache pom s/.*/debian/ * *
 org.lightcouch lightcouch jar s/.*/debian/ * *
-org.mongodb mongo-java-driver bundle s/.*/debian/ * *
-org.mongodb mongo-java-driver s/jar/bundle/ s/.*/debian/ * *
 com.fasterxml.jackson.core jackson-core * s/.*/2.x/ * *
 com.fasterxml.jackson.core jackson-databind * s/.*/2.x/ * *
 commons-logging s/commons-logging-api/commons-logging/ * s/.*/debian/ * *
