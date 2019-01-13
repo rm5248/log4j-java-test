@@ -10,6 +10,7 @@ org.apache.logging.log4j.osgi log4j-osgi pom * * *
 org.apache.logging.log4j.samples log4j-samples pom * * *
 ch.qos.logback logback-classic * * * *
 ch.qos.logback logback-core * * * *
+de.flapdoodle.embed de.flapdoodle.embed.mongo * * * *
 com.datastax.cassandra cassandra-driver-core * * * *
 com.github.tomakehurst wiremock * * * *
 com.google.code.java-allocation-instrumenter java-allocation-instrumenter * * * *
