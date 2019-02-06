@@ -31,7 +31,7 @@ log4j-api-scala_2.10/pom.xml --ignore
 log4j-api-scala_2.11/pom.xml --ignore
 log4j-core/pom.xml --has-package-version --java-lib
 log4j-1.2-api/pom.xml --has-package-version --java-lib
-log4j-slf4j-impl/pom.xml --ignore
+log4j-slf4j-impl/pom.xml --has-package-version --java-lib
 log4j-to-slf4j/pom.xml --has-package-version --java-lib
 log4j-jcl/pom.xml --has-package-version --java-lib
 log4j-flume-ng/pom.xml --ignore
